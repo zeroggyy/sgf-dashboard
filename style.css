@@ -1,0 +1,1749 @@
+/* 
+ * SGF Progress Dashboard Style System
+ * Base: Glassmorphism + Tech Dark Theme
+ */
+
+:root {
+  /* 日式極簡報紙色彩計畫 */
+  --bg-color: #eae7df;           /* 報紙米白紙張底色 */
+  --panel-bg: #f2efe7;           /* 卡片米白底色 */
+  --border-color: #1c1a17;      /* 所有邊框與線條皆為墨水黑 */
+  --border-focus: #1c1a17;
+  
+  --text-primary: #1c1a17;       /* 墨水黑 */
+  --text-secondary: #4a4740;     /* 深褐灰 */
+  --text-muted: #8c887d;         /* 灰褐 */
+  
+  --primary: #1c1a17;           /* 交互主色 */
+  --primary-hover: #3c3933;
+  --success: #2b7a4c;           /* 硃砂紅或墨綠 (已完成為墨綠) */
+  --warning: #b77c1a;
+  --danger: #e03e2d;            /* 硃砂紅 */
+  --info: #225c8a;
+  --accent-red: #e03e2d;        /* 硃砂點綴紅 */
+  
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  
+  --font-main: 'Georgia', 'Playfair Display', 'Noto Sans TC', serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) var(--bg-color);
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  /* 模擬細微紙張噪點顆粒 */
+  background-image: radial-gradient(rgba(28, 26, 23, 0.05) 1px, transparent 0);
+  background-size: 8px 8px;
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 0 0 6.5rem 0; /* 底部預留 6.5rem，防止被置中釘底頁尾阻擋 */
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* 報紙實體紙張容器 ( Page-like Container) */
+.page-container {
+  max-width: 1200px;
+  margin: 2rem auto 0 auto; /* 頂部與頂端保留 2rem */
+  padding: 0 2rem;
+  background-color: transparent;
+  border-left: 2px solid var(--border-color); /* 左右報紙雙邊界實線 */
+  border-right: 2px solid var(--border-color);
+  box-sizing: border-box;
+}
+
+/* 隱藏科技風背景光暈 (改為乾淨扁平) */
+.bg-glow {
+  display: none !important;
+}
+
+/* 日式實線卡片通用樣式 (扁平化取代 Glassmorphism) */
+.glass-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角硬邊 */
+  box-shadow: none;
+}
+
+/* Header (100% 還原日本讀賣新聞報頭風格) */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 2rem;
+  margin-bottom: 2rem;
+  background-color: transparent; /* 背景透明，融入噪點紙張底色 */
+  color: var(--text-primary);
+  border-bottom: 5px double var(--border-color); /* 讀賣/朝日報名下经典雙實線 */
+}
+
+/* 左側：模仿報紙左上角的訂閱熱線/廣告框 */
+.header-ad-box {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 0.8rem;
+  font-family: var(--font-main);
+  background: var(--panel-bg);
+  min-width: 170px;
+}
+
+.ad-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 0.1rem;
+}
+
+.ad-phone {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.ad-url {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 0.1rem;
+}
+
+/* 中央：巨幅報名標題 */
+.header-center-title {
+  text-align: center;
+  flex-grow: 1;
+}
+
+.header-center-title h1 {
+  font-size: 2.2rem; /* 巨幅標題 */
+  font-weight: 900;
+  letter-spacing: 4px; /* 字元大間距，極具報紙字體美感 */
+  color: var(--text-primary);
+  font-family: 'Playfair Display', Georgia, serif;
+  text-shadow: 0.5px 0.5px 0px rgba(0, 0, 0, 0.15); /* 模擬活版油墨微溢 */
+}
+
+/* 右側：日期資訊與號外按鈕組 */
+.header-right-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.newspaper-meta-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 0.2rem;
+  font-family: var(--font-main);
+  padding: 0 0.8rem;
+}
+
+.newspaper-meta-box .meta-val {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+#meta-current-week {
+  color: var(--accent-red) !important; /* 週別標記用硃砂紅點綴 */
+}
+
+/* 號外印章按鈕 */
+.btn-gouga {
+  background-color: var(--border-color) !important;
+  color: var(--bg-color) !important;
+  font-size: 1.2rem;
+  font-weight: 900;
+  padding: 0.5rem 1.4rem;
+  border-radius: 0px;
+  border: 2px solid var(--border-color);
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-gouga:hover {
+  background-color: #ffffff !important;
+  color: var(--border-color) !important;
+}
+
+/* 設定齒輪按鈕 */
+.btn-config-gear {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0px;
+  cursor: pointer;
+}
+
+.btn-config-gear:hover {
+  background-color: var(--border-color) !important;
+  color: #ffffff !important;
+}
+
+/* 按鈕樣式 (全扁平日式極簡風格) */
+.btn {
+  font-family: var(--font-main);
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 0px; /* 直角 */
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary); /* 墨水黑 */
+  color: var(--bg-card);      /* 米白 */
+}
+
+.btn-primary:hover {
+  background: #3c3933;
+  color: var(--bg-card);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: #e2ded5;
+}
+
+.btn-icon {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  width: 42px;
+  height: 42px;
+  border-radius: 0px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: var(--accent-red) !important; /* 滑鼠滑過時呈現精美高質感的硃砂紅 */
+  color: #ffffff !important; /* 強制圖示反白 */
+  border-color: var(--accent-red) !important;
+}
+
+.btn-icon:hover i {
+  color: #ffffff !important; /* 確保內置 FontAwesome 鉛筆圖標絕對反白，防止被父級顏色覆蓋 */
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  padding: 0.8rem;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  border-radius: 0px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-xs:hover {
+  background: var(--primary);
+  color: var(--bg-card);
+}
+
+/* Dashboard Layout */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Stats container (指標卡片) */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.2rem;
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 左右拉開，填滿空間 */
+  gap: 0.8rem; /* 稍微縮小間距，給文字留出空間 */
+  padding: 1.2rem 1.4rem; /* 稍微壓縮左右內距 */
+  outline: 1px solid var(--border-color); /* 報紙框線內框 */
+  outline-offset: -4px;
+}
+
+/* 左側包裹 icon 與標題 */
+.stat-card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  z-index: 2;
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0px; /* 直角 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.icon-flat { 
+  background: transparent; 
+  color: var(--text-primary); 
+  border: 1px solid var(--border-color);
+}
+
+.stat-info h3 {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.2rem;
+  white-space: nowrap; /* 禁止中文字體在大螢幕下折行 */
+}
+
+.stat-value {
+  font-size: 2.2rem; /* 放得更大 */
+  font-weight: 900;  /* 報頭粗體 */
+  margin: 0;
+  z-index: 2;
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* 報紙專欄背景版面序號 (水印裝飾：巨幅截斷效果) */
+.stat-card::after {
+  position: absolute;
+  left: -0.5rem; /* 稍微往左溢出 */
+  top: 50%;
+  transform: translateY(-50%); /* 垂直置中 */
+  font-size: 8rem; /* 巨幅 8rem，產生震撼的被裁切效果 */
+  font-weight: 900;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: rgba(28, 26, 23, 0.035); /* 降低透明度，使其更為隱約優雅 */
+  z-index: 1;
+  pointer-events: none;
+  line-height: 0.8;
+}
+
+.stat-card:nth-child(1)::after { content: "01"; }
+.stat-card:nth-child(2)::after { content: "02"; }
+.stat-card:nth-child(3)::after { content: "03"; }
+.stat-card:nth-child(4)::after { content: "04"; }
+
+/* Progress Ring Card Layout (環形進度卡片) */
+.progress-ring-card {
+  min-width: unset; /* 移除寬度限制，讓 grid 自動分配 */
+}
+
+.stat-info-ring {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.stat-info-ring h3 {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.2rem;
+}
+
+.stat-info-ring p {
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.progress-ring-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 刻度進度環樣式 */
+.progress-ring-circle {
+  transform: rotate(-90deg);
+  transform-origin: 32px 32px; /* 修改為與新寬高(64px)對齊的中心點 */
+  transition: stroke-dashoffset 0.85s cubic-bezier(0.1, 0.8, 0.2, 1);
+}
+
+.tick-ring {
+  /* 使用 dash 定義刻度樣式 */
+  stroke-dasharray: 3 1.5; /* 3px 實線, 1.5px 虛線間隔 */
+}
+
+/* Progress bar system */
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #d8d4c7;
+  border-radius: 0px; /* 直角 */
+  overflow: hidden;
+  margin-top: 0;
+  border: 1px solid var(--border-color); /* 墨黑邊框 */
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary); /* 純黑填充色 */
+  border-radius: 0px; /* 直角 */
+  transition: width 0.8s cubic-bezier(0.1, 0.8, 0.2, 1);
+}
+
+/* 手風琴大分類專用的進度條包裝 */
+.group-progress-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* 右對齊，逼緊右邊邊界 */
+  gap: 0.8rem;
+  min-width: 180px; /* 給予大分類進度條組足夠的固定寬度 */
+}
+
+.group-progress-bar {
+  width: 120px !important; /* 寬度拉大至 120px，非常霸氣 */
+  height: 10px; /* 稍微加粗，更有存在感 */
+}
+
+.group-progress-percent {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  font-family: 'Playfair Display', Georgia, serif;
+  min-width: 45px;
+  text-align: right;
+}
+
+/* 個別任務列純數字進度顯示 */
+.task-progress-only-cell {
+  display: flex;
+  justify-content: flex-end; /* 改為右對齊，與上方數字對齊一線 */
+  align-items: center;
+  padding-right: 0.8rem; /* 保持與最右側編輯按鈕的距離 */
+}
+
+.task-progress-percent-only {
+  font-size: 1.15rem; /* 大數字 */
+  font-weight: 800;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+/* Filters */
+.filter-bar {
+  display: block; /* 改為 block 流，讓內容自然填充 */
+  padding: 1.5rem 2rem;
+  background: var(--panel-bg);
+  border: 2px solid var(--border-color);
+}
+
+.filter-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem; /* 每一列的間距 */
+  width: 100%;
+}
+
+.filter-row {
+  display: flex;
+  align-items: flex-start; /* 頂端對齊，保證多行按鈕也協調 */
+  width: 100%;
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  width: 120px; /* 固定寬度，對齊的靈魂！ */
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.35rem; /* 微調垂直位置，與按鈕高度對齊 */
+}
+
+.filter-content {
+  flex-grow: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* 搜尋輸入框樣式對齊 */
+.filter-content input[type="text"] {
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角 */
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  width: 350px; /* 合理的搜尋框寬度 */
+  max-width: 100%;
+  transition: all 0.2s;
+}
+
+.filter-content input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.chip-container {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chip:hover {
+  background: #e2ded5;
+}
+
+.chip.active {
+  background: #fdf5f3;        /* 極淡硃砂粉紅底色 */
+  color: var(--accent-red);   /* 硃砂紅字 */
+  border-color: var(--accent-red); /* 硃砂紅邊框 */
+  box-shadow: none;
+  font-weight: bold;
+}
+
+/* 篩選器按鈕禁用壓灰狀態 */
+.chip.disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important; /* 直接封鎖滑鼠事件 */
+}
+
+.chip.active::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent-red);
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+
+
+/* Custom Checkbox (美化勾選框且扁平對比) */
+.checkbox-cell input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角硬邊 */
+  outline: none;
+  cursor: not-allowed;
+  position: relative;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+/* 已完成狀態 (黑底 + 白色勾勾，高對比扁平) */
+.checkbox-cell input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 繪製打勾符號 */
+.checkbox-cell input[type="checkbox"]:checked::after {
+  content: "✔";
+  color: #f2efe7; /* 米白色勾 */
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* 已完成的任務列樣式淡化與刪除線 */
+.task-item.task-done {
+  opacity: 0.5;
+  background: #eae7df;
+}
+
+.task-item.task-done .task-name-cell {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-item.task-done .progress-percent {
+  color: var(--success);
+}
+
+/* 高優先項目高亮 (開頭為 > 的項目) */
+.task-item.task-priority-high {
+  background-color: #fcf4ee; /* 淡硃砂紙色背景 */
+  border-left: 3px solid var(--accent-red); /* 左邊界硃砂紅指示豎線 */
+}
+
+/* 高優先項目已完成時，降低優先紅條的干擾 */
+.task-item.task-priority-high.task-done {
+  border-left-color: var(--text-muted);
+  background-color: #eae7df;
+}
+
+.badge-priority {
+  background: var(--accent-red);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: var(--font-main);
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.5rem;
+  border-radius: 0px; /* 直角徽章，十足鉛字印刷感 */
+  display: inline-block;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+/* 等 Andy 確認項目高亮 (B欄為 !! 的項目) */
+.task-item.task-priority-andy {
+  background-color: #f6f5ee; /* 淡土黃偏褐紙色背景，代表阻塞或待確認 */
+  border-left: 3px solid var(--text-secondary); /* 左側炭灰色警告指示豎線 */
+}
+
+/* 待確認項目已完成時的弱化 */
+.task-item.task-priority-andy.task-done {
+  border-left-color: var(--text-muted);
+  background-color: #eae7df;
+}
+
+.badge-andy {
+  background: var(--text-primary); /* 炭黑底色 */
+  color: var(--bg-color); /* 米白反白字 */
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: var(--font-main);
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.5rem;
+  border-radius: 0px; /* 直角 */
+  display: inline-block;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+/* Task list layout */
+.task-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.task-list-header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+}
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角報紙感 */
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 展開與折疊控制列 */
+.accordion-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-link-action {
+  background: transparent;
+  border: none;
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  transition: color 0.15s ease;
+}
+
+.btn-link-action:hover {
+  color: var(--accent-red); /* 滑鼠滑過變為硃砂紅 */
+}
+
+.divider-slash {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+/* Accordion Component */
+.accordion-group {
+  margin-bottom: 1rem;
+  border-radius: 0px; /* 直角 */
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem 1.2rem 2rem; /* 稍微增加左側內邊距，為斜邊條留出呼吸空間 */
+  background: var(--bg-card); /* 還原溫潤米色背景 */
+  cursor: pointer;
+  user-select: none;
+  position: relative; /* 支援虛擬元素定位 */
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+.accordion-header:hover {
+  background: #e2ded5; /* 還原 hover 效果 */
+}
+
+/* 提案 B：日式傳統斜紋網點細側邊 */
+.accordion-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--text-secondary),
+    var(--text-secondary) 1.5px,
+    transparent 1.5px,
+    transparent 5px
+  );
+  opacity: 0.75;
+  transition: width 0.2s ease, opacity 0.2s ease;
+}
+
+/* 展開狀態下斜邊條維持寬度，僅維持適當透明度 */
+.accordion-group.expanded .accordion-header::before {
+  opacity: 1;
+}
+
+.accordion-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.accordion-chevron {
+  transition: transform 0.3s;
+  color: var(--text-secondary);
+}
+
+.accordion-group.expanded .accordion-chevron {
+  transform: rotate(90deg);
+}
+
+.group-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.accordion-body {
+  display: none;
+  padding: 0;
+  background: var(--bg-main); /* 與網頁底色一致 */
+  border-top: 1px solid var(--border-color);
+}
+
+.accordion-group.expanded .accordion-body {
+  display: block;
+}
+
+/* Task Item (列) - 擴大項目名稱，縮小進度內容 */
+.task-item {
+  display: grid;
+  grid-template-columns: 50px 4.5fr 1.2fr 3fr 80px 50px; /* 重新配置 Grid 寬度，縮減尾部空缺 */
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(28, 26, 23, 0.08); /* 墨水細分割線 */
+  transition: background 0.2s;
+}
+
+.task-item:last-child {
+  border-bottom: none;
+}
+
+.task-item:hover {
+  background: #f8f6f0; /* 細微高亮暖米灰 */
+}
+
+/* Task elements formatting */
+.checkbox-cell {
+  display: flex;
+  justify-content: center;
+}
+
+.task-name-cell {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* 最多顯示兩行 */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 1.5rem; /* 與負責人欄位保留適度空隙 */
+  line-height: 1.4;
+}
+
+.owner-cell {
+  display: flex;
+  align-items: center;
+}
+
+.byline-tag {
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+/* 任務數量標籤：扁平黑框紙張色 */
+.task-count-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: #dcd8cd; /* 稍暗的米灰色 */
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角硬邊 */
+  margin-left: 0.8rem;
+  line-height: 1.2;
+}
+
+.detail-cell {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 1rem;
+}
+
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.progress-percent {
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 35px;
+  text-align: right;
+}
+
+.weeks-cell {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.2rem 0;
+}
+
+.week-tag {
+  padding: 0.2rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.week-tag.active-week {
+  color: var(--info);
+  border: 1px solid rgba(0, 176, 255, 0.2);
+  background: rgba(0, 176, 255, 0.05);
+}
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Edit Drawer (側邊滑出選單 - 全螢幕半透明遮罩層) */
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(28, 26, 23, 0); /* 初始透明 */
+  backdrop-filter: blur(0px); /* 初始無模糊 */
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  display: flex; /* 啟用 flex 佈局 */
+  justify-content: flex-end; /* 強制子元素靠最右側對齊 */
+  transition: opacity 0.25s ease, background-color 0.25s ease, backdrop-filter 0.25s ease;
+}
+
+.drawer.open {
+  opacity: 1;
+  pointer-events: auto;
+  background-color: rgba(28, 26, 23, 0.45); /* 質感深炭褐色半透明遮罩 */
+  backdrop-filter: blur(5px); /* 優雅毛玻璃模糊首頁 */
+}
+
+.drawer-content {
+  width: 900px;
+  height: 100%;
+  background-color: var(--panel-bg); /* 明確使用溫潤米色底 */
+  color: var(--text-primary);
+  border-radius: 0;
+  border-left: 1px solid var(--border-color);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15); /* 增加抽屜向左投影 */
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.drawer.open .drawer-content {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+.drawer-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-close:hover {
+  color: var(--danger);
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 0.8fr; /* 三欄並排比例，分類群組放寬，完成度收窄 */
+  gap: 2rem; /* 增加一點左右間隔，使其更好讀 */
+}
+
+.form-group-row .form-group {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.form-group-row .static-val {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100% !important;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.static-val {
+  padding: 0.6rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  background-color: #f3efe5;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 0px;
+  display: block;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* 乾淨無框的靜態文字樣式 (配合貫穿整行的水平虛線) */
+.static-val-clean {
+  padding: 0.2rem 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none !important;
+}
+
+/* 報紙風格橫貫水平虛線 */
+.info-divider {
+  width: 100%;
+  border-bottom: 1px dashed var(--border-color);
+  margin: 0.4rem 0 1rem 0;
+  box-sizing: border-box;
+}
+
+.form-group textarea, 
+.form-group select,
+.form-group-inline input {
+  width: 100%;
+  padding: 0.8rem;
+  background: #ffffff; /* 白底 */
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角 */
+  color: var(--text-primary); /* 墨水黑字，保證可讀 */
+  font-family: var(--font-main);
+  transition: all 0.2s;
+}
+
+.form-group textarea {
+  resize: vertical; /* 限制僅能垂直調整高度，寬度永遠維持 100% 以防版面擠壓變形 */
+}
+
+.form-group textarea:focus, 
+.form-group select:focus,
+.form-group-inline input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: none;
+}
+
+/* Slider Customization */
+.slider-wrapper {
+  background: var(--bg-card);
+  padding: 1rem;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
+}
+
+/* 儲存變更提交按鈕：極致硃砂紅印章配色 */
+#edit-form button[type="submit"] {
+  background-color: var(--accent-red) !important;
+  color: #f2efe7 !important; /* 米白字 */
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  width: 100%;
+  justify-content: center;
+  padding: 0.8rem;
+  border-radius: 0px; /* 直角 */
+}
+
+#edit-form button[type="submit"] i {
+  color: #f2efe7 !important;
+}
+
+#edit-form button[type="submit"]:hover {
+  background-color: #b71c1c !important; /* 深硃砂紅 */
+}
+
+.form-group-inline {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-group-inline select {
+  width: 120px;
+}
+
+/* Modal for API Config */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(28, 26, 23, 0.4); /* 半透明暖炭灰遮罩 */
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.open {
+  display: flex;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 500px;
+  padding: 2.5rem;
+  background: var(--panel-bg); /* 改用系統米色底，確保色調一致 */
+  border: 2px solid var(--border-color);
+  border-radius: 0px; /* 直角 */
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.modal-close-btn {
+  position: absolute;
+  right: 1.2rem;
+  top: 1.2rem;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-secondary);
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: var(--accent-red);
+}
+
+.modal-content h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input-group input {
+  padding: 0.8rem;
+  background: #ffffff !important; /* 強制純白底 */
+  border: 1px solid var(--border-color) !important;
+  border-radius: 0px; /* 直角 */
+  color: var(--text-primary) !important; /* 強制高清晰度墨水黑字 */
+  font-family: var(--font-main);
+  width: 100%;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Loading, Empty, Toast states */
+.loading-state {
+  text-align: center;
+  padding: 4rem 0;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 3.5rem; /* 稍微往上抬，避開固定底欄 */
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: 0.8rem 1.8rem;
+  border-radius: 0px; /* 直角 */
+  background: #ffffff !important; /* 強制不透明實體純白底，防內容穿透 */
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  font-weight: 700;
+  z-index: 3000; /* 高於一切 */
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
+  opacity: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* 增加厚重陰影使其立體 */
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* 分色實體高對比底色方案 */
+.toast.success { 
+  background-color: #f4f8f5 !important; /* 淡竹綠底 */
+  border-color: #2b7a4c !important; /* 竹綠框 */
+  color: #1e5233 !important; /* 深綠字 */
+}
+.toast.error { 
+  background-color: #fdf5f3 !important; /* 淡硃砂紅底 */
+  border-color: #e03e2d !important; /* 硃砂紅框 */
+  color: #b71c1c !important; /* 深紅字 */
+}
+.toast.info {
+  background-color: #fcfbf9 !important; /* 報紙淡黃底 */
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Timeline / Weeks Label Styles (與目標欄位一致的風格) */
+.week-title-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-left: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* 負責人/時間軸標籤顏色統一 */
+.label-last { color: var(--text-secondary) !important; }
+.label-current { color: #2b7a4c !important; } /* 竹綠色 */
+.label-next { color: var(--info) !important; }
+
+/* 當週焦點高亮：淡竹葉綠背景與邊框，直角高反差 */
+.current-week-highlight textarea {
+  border-color: #2b7a4c !important; /* 竹綠實線邊框 */
+  background-color: #f4f8f5 !important; /* 淡雅竹色紙張背景 */
+}
+
+.current-week-highlight textarea:focus {
+  border-color: #2b7a4c !important;
+  border-width: 2px; /* 焦點時稍微加粗，日式手繪感 */
+  box-shadow: none !important; /* 移除科技風發光陰影 */
+}
+
+/* 雙欄抽屜佈局樣式 */
+.drawer-two-col {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 2rem;
+  height: calc(100vh - 120px); /* 扣除 Header 和 Padding 的可用高度 */
+}
+
+.drawer-col-left, .drawer-col-right {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin-top: 0 !important; /* 強制切齊頂部 */
+  padding-top: 0 !important;
+}
+
+.drawer-col-left .form-group, .drawer-col-right .form-group {
+  margin-top: 0 !important; /* 強制切齊頂部 */
+}
+
+.drawer-col-left {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawer-col-right {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* 讓左側 textarea 撐滿剩餘空間 */
+.flex-textarea-group {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.flex-textarea-group label {
+  margin-bottom: 0.8rem;
+}
+
+.flex-textarea-group textarea {
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  resize: none; /* 填滿後不需要使用者手動拉大小，更乾淨 */
+  padding: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* 唯讀輸入框的色彩計畫強化，防止文字被瀏覽器淡化 */
+textarea[readonly],
+textarea[disabled],
+input[readonly],
+input[disabled] {
+  background-color: #f3efe5 !important; /* 微暗的紙質底色 */
+  color: var(--text-primary) !important; /* 墨水黑字，高度清晰 */
+  opacity: 1 !important; /* 覆蓋瀏覽器預設的 0.4 透明度 */
+  -webkit-text-fill-color: var(--text-primary) !important; /* Safari/iOS 專屬字色覆蓋 */
+  cursor: not-allowed;
+}
+
+/* Details element (所有週) */
+.all-weeks-details {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角 */
+  padding: 0.8rem;
+  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+}
+
+.all-weeks-details summary {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.all-weeks-details[open] summary {
+  margin-bottom: 0.8rem;
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+/* Weeks Input Grid in Drawer */
+.weeks-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-top: 0.5rem;
+  background: var(--bg-main); /* 與網頁底色一致 */
+  padding: 0.8rem;
+  border-radius: 0px; /* 直角 */
+  border: 1px solid var(--border-color);
+}
+
+.week-input-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.week-input-item label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: bold;
+}
+
+.week-input-item input {
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  background: #ffffff; /* 白底 */
+  border: 1px solid var(--border-color);
+  border-radius: 0px; /* 直角 */
+  color: var(--text-primary); /* 黑字 */
+}
+
+.week-input-item input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .page-container {
+    margin: 0 auto;
+    padding: 0 1rem;
+    border-left: none; /* 行動端關閉左右框邊界線 */
+    border-right: none;
+    max-width: 100%;
+  }
+  .app-footer-bar {
+    left: 0;
+    transform: none; /* 行動端關閉置中偏移 */
+    max-width: 100%; /* 雙實線 100% 撐滿貼邊 */
+    border-left: none;
+    border-right: none;
+    padding: 0.6rem 1rem; /* 廢話文字留邊，線條 100% */
+  }
+
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .stat-card {
+    padding: 0.8rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: 95px; /* 固定高度防止擠壓變形 */
+  }
+  .stat-card-left {
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .stat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.95rem;
+  }
+  .stat-info h3 {
+    font-size: 0.75rem;
+    white-space: nowrap; /* 禁止中文字體換行 */
+    letter-spacing: 0px;
+  }
+  .stat-value {
+    position: absolute;
+    right: 1.2rem;
+    bottom: 0.4rem;
+    font-size: 1.8rem; /* 稍微縮小，避免爆框 */
+    line-height: 1;
+  }
+  .stat-card::after {
+    font-size: 5.5rem;
+    left: -0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    right: auto;
+    bottom: auto;
+    color: rgba(28, 26, 23, 0.03); /* 水印稍微再淡一些 */
+  }
+  .task-item {
+    grid-template-columns: 40px 3fr 1fr 1.5fr 1fr 40px;
+    font-size: 0.9rem;
+  }
+  .weeks-cell {
+    display: none; /* 在平板以下隱藏每週細節以保證排版 */
+  }
+  .drawer {
+    width: 100%;
+    right: -100%;
+  }
+  .drawer-two-col {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
+  }
+  .drawer-col-left {
+    height: auto;
+  }
+  .flex-textarea-group textarea {
+    min-height: 250px;
+    height: 250px;
+  }
+  .drawer-col-right {
+    height: auto;
+    overflow-y: visible;
+  }
+}
+
+/* 全域自訂捲軸樣式 (極窄黑直角，融入報紙調性) */
+::-webkit-scrollbar {
+  width: 5px; /* 超細滾動條 */
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color); /* 報紙米白紙張底色 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color); /* 墨水黑 */
+  border-radius: 0px; /* 直角 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* 頁尾廢話體社論樣式 (無封邊雙線對齊 - Borderless Double Rule Footer) */
+.app-footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%); /* 大螢幕下置中 */
+  max-width: calc(1200px - 4rem); /* 1200px 扣掉 page-container 左右 padding 共 4rem，與列表寬度完美切齊 */
+  width: 100%;
+  background-color: var(--bg-color); /* 米紙底色，完美遮擋後方滾動文字 */
+  background-image: radial-gradient(rgba(28, 26, 23, 0.05) 1px, transparent 0); /* 保持噪點顆粒質感 */
+  background-size: 8px 8px;
+  border-top: 5px double var(--border-color); /* 頂部雙黑實線，長度與標題/列表嚴格一致 */
+  border-left: none; /* 徹底拔掉左右邊框，消除突兀的小拐角 */
+  border-right: none;
+  padding: 0.6rem 0; /* 移除左右 padding，讓文字與雙線兩側邊緣自然對齊 */
+  text-align: center;
+  z-index: 900; /* 高於列表，低於側邊抽屜 */
+  box-sizing: border-box;
+}
+
+.footer-line {
+  display: none; /* 既然底欄自帶 border-top，此處隱藏 */
+}
+
+.nonsense-quote {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-main);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  user-select: none;
+  font-style: italic; /* 斜體文藝感 */
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer; /* 設定為手型游標，暗示可點擊 */
+  transition: color 0.15s ease;
+}
+
+.nonsense-quote:hover {
+  color: var(--accent-red); /* 滑鼠移上去時字體變紅 */
+  text-decoration: underline dotted var(--accent-red); /* 加上極具暗示的虛線底線 */
+}
+
+/* === 廢話文學管理器彈窗專屬樣式 === */
+.nonsense-list-container {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+.nonsense-manager-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px dashed rgba(28, 26, 23, 0.15); /* 報紙感虛分割線 */
+  gap: 1rem;
+}
+
+.nonsense-manager-item:last-child {
+  border-bottom: none;
+}
+
+.nonsense-item-text {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.btn-delete-nonsense {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  transition: color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.btn-delete-nonsense:hover {
+  color: var(--accent-red); /* 滑鼠滑過時垃圾桶變為硃砂紅 */
+  transform: scale(1.1); /* 微微放大 */
+}
+
+/* 專案項目超連結小圖示 */
+.task-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  margin-left: 0.4rem;
+  text-decoration: none !important;
+  transition: color 0.15s ease, transform 0.1s ease;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.task-link-icon:hover {
+  color: var(--accent-red) !important; /* 懸浮變硃砂紅 */
+  transform: scale(1.15); /* 微微放大突出 */
+}
+
+/* 抽屜內極簡手寫填空式輸入框與下拉選單 */
+.drawer-flat-input,
+.drawer-flat-select {
+  width: 100%;
+  padding: 0.4rem 0.2rem !important;
+  font-size: 0.88rem;
+  font-family: var(--font-main);
+  font-weight: 700;
+  border: none !important;
+  border-bottom: 1px solid var(--border-color) !important; /* 僅保留底部一條黑線 */
+  background: transparent !important; /* 透明底色，融合紙張背景 */
+  color: var(--text-primary) !important;
+  border-radius: 0px !important;
+  box-sizing: border-box;
+  height: 34px;
+  vertical-align: bottom;
+  transition: border-color 0.15s ease;
+}
+
+.drawer-flat-input:hover,
+.drawer-flat-select:hover,
+#edit-task-name:hover {
+  border-bottom-color: var(--text-primary) !important; /* 滑過時底線變炭黑色 */
+}
+
+.drawer-flat-input:focus,
+.drawer-flat-select:focus,
+#edit-task-name:focus {
+  outline: none !important;
+  border-bottom: 2px solid var(--accent-red) !important; /* 聚焦時底線變硃砂紅並明確加粗為 2px */
+}
+
+/* 右側專屬的扁平跳轉連結按鈕 */
+.btn-flat-link {
+  width: 34px;
+  height: 34px;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-secondary); /* 預設灰褐色 */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.btn-flat-link:hover {
+  color: var(--accent-red) !important; /* 懸浮變硃砂紅 */
+  transform: scale(1.15); /* 微微放大 */
+}
+
+/* 當輸入框為空被壓灰時 */
+.btn-flat-link.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 確保編輯抽屜內容容器支援絕對定位浮水印與防溢出 */
+#edit-drawer .drawer-content {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* 編輯抽屜背景復古鋼筆浮水印 */
+.drawer-watermark {
+  position: absolute !important;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  font-size: 17rem; /* 巨大的復古鋼筆尖 */
+  color: var(--text-primary) !important;
+  opacity: 0.035 !important; /* 3.5% 的若隱若現透明度，高質感不干擾閱讀 */
+  transform: rotate(-20deg); /* 微微傾斜，增強手寫信箋氛圍 */
+  pointer-events: none !important; /* 滑鼠事件穿透，點擊完全穿透不干擾編輯 */
+  z-index: 0 !important; /* 置於最背景底層 */
+}
+
+/* 強制確保使用說明 Modal 在 open 狀態下能 display: flex 並且在最上層 */
+#help-modal.open {
+  display: flex !important;
+  z-index: 9999 !important;
+}
+
+/* 確保編輯抽屜內容容器支援絕對定位浮水印與防溢出 */
+#edit-drawer .drawer-content {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* 編輯抽屜背景復古鋼筆浮水印 */
+.drawer-watermark {
+  position: absolute !important;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  font-size: 17rem; /* 巨大的復古鋼筆尖 */
+  color: var(--text-primary) !important;
+  opacity: 0.035 !important; /* 3.5% 的若隱若現透明度，高質感不干擾閱讀 */
+  transform: rotate(-20deg); /* 微微傾斜，增強手寫信箋氛圍 */
+  pointer-events: none !important; /* 滑鼠事件穿透，點擊完全穿透不干擾編輯 */
+  z-index: 0 !important; /* 置於最背景底層 */
+}
+
