@@ -4,13 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SGF 專案進度控制台</title>
-  <!-- 引入 Google Fonts 提升質感 -->
+  
+  <!-- 導入 Google Fonts 美化字型 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
-  <!-- 引入 FontAwesome 圖示 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 圖示 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 核心報紙風 CSS 樣式 -->
   <link rel="stylesheet" href="style.css">
+  
   <style>
     /* 鎖死里程碑 Modal 排版，不被任何舊 CSS 快取干擾 */
     #schedule-list-container {
@@ -73,7 +78,7 @@
         <p style="margin-top: 0; font-weight: 700;">歡迎使用 SGF 專案進度控制台！以下是網頁操作功能說明：</p>
         <ul style="padding-left: 1.2rem; margin-bottom: 1.2rem;">
           <li style="margin-bottom: 0.6rem;">
-            <strong>任務編輯</strong>：點擊列表最右側 the <strong>🖊️ 編輯</strong> 按鈕，可拉出右側編輯抽屜。
+            <strong>任務編輯</strong>：點擊列表最右側的 <strong>🖊️ 編輯</strong> 按鈕，可拉出右側編輯抽屜。
           </li>
           <li style="margin-bottom: 0.6rem;">
             <strong>名稱與 ID 寫回</strong>：您可以直接在抽屜頂部修改<strong>「專案項目名稱」</strong>，或修改下方<strong>「ID 欄位」</strong>，系統會自動在保存時寫回 Google 試算表對應位置。
@@ -115,7 +120,7 @@
   <div id="schedule-modal" class="modal">
     <div class="modal-content" style="max-width: 650px; width: 92vw; max-height: 85vh; padding: 2.2rem; font-family: var(--font-main); display: flex; flex-direction: column;">
       <!-- 右上角關閉按鈕 -->
-      <button id="close-schedule-btn" class="modal-close-btn" style="position: absolute; right: 1.2rem; top: 1.2rem; background: none; border: none; font-size: 1.8rem; font-weight: 700; cursor: pointer; color: var(--text-secondary);" title="關閉">&times;</button>
+      <button id="close-schedule-btn" class="modal-close-btn" title="關閉">&times;</button>
       
       <h3 style="margin-top: 0; font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-shrink: 0;">
         <span style="display: flex; align-items: center; gap: 0.5rem;">
@@ -154,56 +159,45 @@
     </div>
   </div>
 
-  <!-- 時程里程碑目標迷你編輯彈窗 (Mini Modal - 全域 fixed) -->
-  <div id="milestone-edit-modal" class="modal" style="z-index: 10000;">
-    <div class="modal-content glass-card" style="max-width: 460px; width: 90vw; padding: 2rem; position: relative;">
-      <!-- 右上角關閉按鈕 -->
-      <button id="close-milestone-edit-modal-btn" class="modal-close-btn" title="關閉">&times;</button>
-      
-      <h3 style="margin-top: 0; font-size: 1.15rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-pen-to-square" style="color: var(--accent-red);"></i> 編輯時程目標
+  <!-- 專案里程碑目標迷你編輯彈窗 (Mini Modal - 全域 fixed) -->
+  <div id="milestone-edit-modal" class="modal" style="z-index: 10800 !important;">
+    <div class="modal-content glass-card" style="width: 480px; max-width: 90vw; padding: 2rem;">
+      <h3 style="margin-top: 0; font-size: 1.2rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem;">
+        <i class="fa-solid fa-pen-to-square" style="color: var(--accent-red);"></i> 修改當日專案目標
       </h3>
-      
-      <p id="milestone-edit-date-display" style="font-size: 0.85rem; color: var(--text-secondary); margin: 0.5rem 0 1rem 0; font-weight: 700; text-align: left;">
-        日期：--月--日 (星期-)
-      </p>
-      
-      <!-- 多行編輯輸入框 -->
-      <div class="input-group" style="margin-bottom: 1.2rem; text-align: left;">
-        <label for="milestone-edit-textarea" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem; display: block;">專案目標內容</label>
-        <textarea id="milestone-edit-textarea" rows="6" style="width: 100%; padding: 0.6rem; font-size: 0.9rem; border: 1px solid var(--border-color); background: transparent; font-family: var(--font-main); color: var(--text-primary); outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5;" placeholder="請輸入當天目標..."></textarea>
-        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: right;">
-          提示：按 <kbd style="background: rgba(28,26,23,0.08); padding: 0.1rem 0.3rem; border-radius: 2px;">Ctrl + Enter</kbd> 快速存檔
-        </div>
+      <div id="milestone-edit-date-display" style="font-size: 0.88rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem;">
+        編輯日期：--/--/-- (星期-)
       </div>
-      
-      <!-- 控制按鈕組 -->
-      <div class="modal-actions" style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-        <button id="save-milestone-modal-btn" class="btn btn-gouga" style="flex: 1; justify-content: center; font-size: 0.95rem; padding: 0.6rem 0;">儲存變更</button>
-        <button id="cancel-milestone-modal-btn" class="btn btn-config-gear" style="flex: 1; justify-content: center; font-size: 0.95rem; padding: 0.6rem 0;">取消</button>
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <textarea id="milestone-edit-textarea" rows="5" placeholder="請輸入當日里程碑目標內容...支援 Ctrl + Enter 儲存" style="width: 100%; font-family: var(--font-main); padding: 0.6rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); resize: vertical; box-sizing: border-box;"></textarea>
+      </div>
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button id="cancel-milestone-modal-btn" class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.5rem 1.2rem; cursor: pointer; font-weight: 700;">取消</button>
+        <button id="save-milestone-modal-btn" class="btn btn-primary" style="padding: 0.5rem 1.5rem; font-weight: 700;">儲存變更</button>
       </div>
     </div>
   </div>
 
-  <!-- API 設定彈出視窗 -->
   <div id="setup-modal" class="modal">
-    <div class="modal-content glass-card" style="position: relative;">
+    <div class="modal-content glass-card" style="position: relative; width: 450px; max-width: 90vw; padding: 2rem;">
       <!-- 右上角關閉按鈕 -->
       <button id="close-modal-btn" class="modal-close-btn" title="關閉">&times;</button>
       
-      <h2><i class="fa-solid fa-gears"></i> 初始化 API 設定</h2>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
-        此網頁需要連接到您的 Google Apps Script API 方能讀取與寫入資料。
+      <h2><i class="fa-solid fa-gears"></i> 連線 API 設定</h2>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 1.2rem;">
+        需要連接您的 Google Apps Script API 讀取與寫入資料。
       </p>
+      
       <div class="input-group">
         <label for="gas-url">Google Apps Script Web App URL</label>
         <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
       </div>
+      
       <div class="input-group">
-        <label for="api-key">安全金鑰 (API Key)</label>
+        <label for="api-key">金鑰 (API Key)</label>
         <input type="password" id="api-key" value="SGF_SECURE_TOKEN_2026" placeholder="請輸入您在 Apps Script 設定的金鑰">
       </div>
-      
+
       <!-- 按鈕組：儲存與取消 -->
       <div class="modal-actions" style="display: flex; gap: 1rem; margin-top: 0.5rem;">
         <button id="save-config-btn" class="btn btn-gouga" style="flex: 1; justify-content: center; font-size: 0.95rem; padding: 0.6rem 0;">儲存並連線</button>
@@ -228,162 +222,165 @@
         <h1>SGF 專案進度控制台</h1>
       </div>
     
-    <!-- 右側：發行日期與號外按鈕 -->
-    <div class="header-right-meta">
-      <div class="newspaper-meta-box">
-        <span class="meta-val">2026年</span>
-        <span class="meta-val" id="meta-current-week">W--</span>
-        <span class="meta-val" id="meta-today-date">--月--日 (星期-)</span>
-      </div>
-      
-      <!-- 系統控制按鈕組 (第一行: 日曆、使用說明；第二行: 刷新、設定) -->
-      <div style="display: grid; grid-template-columns: repeat(2, auto); gap: 0.35rem 0.5rem; align-items: center;">
-        <!-- 第一行 -->
-        <button id="schedule-btn" class="btn btn-config-gear" title="專案時程里程碑" style="padding: 0.4rem 0.6rem !important;">
-          <i class="fa-regular fa-calendar-days"></i>
-        </button>
-        <button id="help-btn" class="btn btn-config-gear" title="使用說明" style="padding: 0.4rem 0.6rem !important;">
-          <i class="fa-solid fa-circle-question"></i>
-        </button>
-        <!-- 第二行 -->
-        <button id="refresh-btn" class="btn btn-config-gear" title="手動同步重新整理最新進度" style="padding: 0.4rem 0.6rem !important;">
-          <i class="fa-solid fa-arrows-rotate"></i>
-        </button>
-        <button id="config-btn" class="btn btn-config-gear" title="設定連線資訊" style="padding: 0.4rem 0.6rem !important;">
-          <i class="fa-solid fa-gear"></i>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <main class="dashboard-layout">
-    
-    <!-- Stats Cards (新聞專欄 Featured Box 風格) -->
-    <section class="stats-container">
-      <div class="stat-card glass-card">
-        <div class="stat-card-left">
-          <div class="stat-icon icon-flat"><i class="fa-solid fa-list-check"></i></div>
-          <div class="stat-info">
-            <h3>總任務數</h3>
-          </div>
-        </div>
-        <p id="stat-total-tasks" class="stat-value">-</p>
-      </div>
-      <div class="stat-card glass-card">
-        <div class="stat-card-left">
-          <div class="stat-icon icon-flat"><i class="fa-solid fa-circle-check"></i></div>
-          <div class="stat-info">
-            <h3>已完成</h3>
-          </div>
-        </div>
-        <p id="stat-completed-tasks" class="stat-value">-</p>
-      </div>
-      <div class="stat-card glass-card">
-        <div class="stat-card-left">
-          <div class="stat-icon icon-flat"><i class="fa-solid fa-spinner"></i></div>
-          <div class="stat-info">
-            <h3>進行中</h3>
-          </div>
-        </div>
-        <p id="stat-pending-tasks" class="stat-value">-</p>
-      </div>
-      <div class="stat-card glass-card">
-        <div class="stat-card-left">
-          <div class="stat-icon icon-flat"><i class="fa-solid fa-chart-line"></i></div>
-          <div class="stat-info">
-            <h3>專案進度</h3>
-          </div>
-        </div>
-        <p id="stat-overall-progress" class="stat-value">- %</p>
-      </div>
-    </section>
-
-    <!-- 快速篩選列 (Filters) -->
-    <section class="filter-bar glass-card">
-      <div class="filter-group-vertical">
-        <!-- 負責人 row -->
-        <div class="filter-row">
-          <div class="filter-label"><i class="fa-solid fa-user-tie"></i> 負責人：</div>
-          <div class="filter-content">
-            <div id="owner-chips" class="chip-container">
-              <button class="chip active" data-owner="all">全部</button>
-            </div>
-          </div>
+      <!-- 右側：發行日期與號外按鈕 -->
+      <div class="header-right-meta">
+        <div class="newspaper-meta-box">
+          <span class="meta-val">2026年</span>
+          <span class="meta-val" id="meta-current-week">W--</span>
+          <span class="meta-val" id="meta-today-date">--月--日 (星期-)</span>
         </div>
         
-        <!-- 任務狀態 row -->
-        <div class="filter-row">
-          <div class="filter-label"><i class="fa-solid fa-square-check"></i> 任務狀態：</div>
-          <div class="filter-content">
-            <div id="status-chips" class="chip-container">
-              <button class="chip" data-status="all">全部</button>
-              <button class="chip active" data-status="pending">進行中</button>
-              <button class="chip" data-status="completed">已完成</button>
+        <!-- 系統控制按鈕組 (第一行: 日曆、使用說明；第二行: 刷新、設定) -->
+        <div style="display: grid; grid-template-columns: repeat(2, auto); gap: 0.35rem 0.5rem; align-items: center;">
+          <!-- 第一行 -->
+          <button id="schedule-btn" class="btn btn-config-gear" title="專案時程里程碑" style="padding: 0.4rem 0.6rem !important;">
+            <i class="fa-regular fa-calendar-days"></i>
+          </button>
+          <button id="help-btn" class="btn btn-config-gear" title="使用說明" style="padding: 0.4rem 0.6rem !important;">
+            <i class="fa-solid fa-circle-question"></i>
+          </button>
+          <!-- 第二行 -->
+          <button id="refresh-btn" class="btn btn-config-gear" title="手動同步重新整理最新進度" style="padding: 0.4rem 0.6rem !important;">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+          <button id="config-btn" class="btn btn-config-gear" title="設定連線資訊" style="padding: 0.4rem 0.6rem !important;">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-layout">
+      
+      <!-- Stats Cards (新聞專欄 Featured Box 風格) -->
+      <section class="stats-container">
+        <div class="stat-card glass-card">
+          <div class="stat-card-left">
+            <div class="stat-icon icon-flat"><i class="fa-solid fa-list-check"></i></div>
+            <div class="stat-info">
+              <h3>總任務數</h3>
+            </div>
+          </div>
+          <p id="stat-total-tasks" class="stat-value">-</p>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-card-left">
+            <div class="stat-icon icon-flat"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-info">
+              <h3>已完成</h3>
+            </div>
+          </div>
+          <p id="stat-completed-tasks" class="stat-value">-</p>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-card-left">
+            <div class="stat-icon icon-flat"><i class="fa-solid fa-spinner"></i></div>
+            <div class="stat-info">
+              <h3>進行中</h3>
+            </div>
+          </div>
+          <p id="stat-pending-tasks" class="stat-value">-</p>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-card-left">
+            <div class="stat-icon icon-flat"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="stat-info">
+              <h3>專案進度</h3>
+            </div>
+          </div>
+          <p id="stat-overall-progress" class="stat-value">- %</p>
+        </div>
+      </section>
+
+      <!-- 快速篩選列 (Filters) -->
+      <section class="filter-bar glass-card">
+        <div class="filter-group-vertical">
+          <!-- 負責人 row -->
+          <div class="filter-row">
+            <div class="filter-label"><i class="fa-solid fa-user-tie"></i> 負責人：</div>
+            <div class="filter-content">
+              <div id="owner-chips" class="chip-container">
+                <button class="chip active" data-owner="all">全部</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 任務狀態 row -->
+          <div class="filter-row">
+            <div class="filter-label"><i class="fa-solid fa-square-check"></i> 任務狀態：</div>
+            <div class="filter-content">
+              <div id="status-chips" class="chip-container">
+                <button class="chip" data-status="all">全部</button>
+                <button class="chip active" data-status="pending">進行中</button>
+                <button class="chip" data-status="completed">已完成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 時間區間 row -->
+          <div class="filter-row">
+            <div class="filter-label"><i class="fa-solid fa-clock"></i> 時間區間：</div>
+            <div class="filter-content">
+              <div id="time-chips" class="chip-container">
+                <button class="chip active" data-time="current">當週焦點</button>
+                <button class="chip" data-time="last">上週回顧</button>
+                <button class="chip" data-time="next">下週展望</button>
+                <button class="chip" data-time="all">全部週別</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 特殊篩選 row -->
+          <div class="filter-row">
+            <div class="filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div>
+            <div class="filter-content">
+              <div id="special-chips" class="chip-container">
+                <button class="chip active" data-special="all">無</button>
+                <button class="chip" data-special="priority">優先 ( &gt; )</button>
+                <button class="chip" data-special="andy">等 Andy 確認 ( !! )</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 搜尋 row -->
+          <div class="filter-row">
+            <div class="filter-label"><i class="fa-solid fa-magnifying-glass"></i> 搜尋：</div>
+            <div class="filter-content">
+              <input type="text" id="search-input" placeholder="搜尋項目名稱或目標描述..." autocomplete="off">
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- 時間區間 row -->
-        <div class="filter-row">
-          <div class="filter-label"><i class="fa-solid fa-clock"></i> 時間區間：</div>
-          <div class="filter-content">
-            <div id="time-chips" class="chip-container">
-              <button class="chip active" data-time="current">當週焦點</button>
-              <button class="chip" data-time="last">上週回顧</button>
-              <button class="chip" data-time="next">下週展望</button>
-              <button class="chip" data-time="all">全部週別</button>
-            </div>
+      <!-- 任務清單區 -->
+      <section class="task-section">
+        <div class="task-list-header">
+          <div style="display: flex; align-items: center; gap: 0.8rem;">
+            <h2><i class="fa-solid fa-list-check"></i> 專案項目列表</h2>
+            <span id="filtered-count" class="badge">共 - 項</span>
+          </div>
+          <!-- 展開與折疊控制器 -->
+          <div class="accordion-controls">
+            <button id="add-task-btn" class="btn-link-action" style="color: var(--accent-red) !important; font-weight: 700 !important; margin-right: 0.5rem;"><i class="fa-solid fa-circle-plus"></i> 新建任務項目</button>
+            <span class="divider-slash" style="margin-right: 0.5rem;">|</span>
+            <button id="expand-all-btn" class="btn-link-action">＋ 全部展開</button>
+            <span class="divider-slash">|</span>
+            <button id="collapse-all-btn" class="btn-link-action">－ 全部折疊</button>
           </div>
         </div>
-
-        <!-- 特殊篩選 row -->
-        <div class="filter-row">
-          <div class="filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div>
-          <div class="filter-content">
-            <div id="special-chips" class="chip-container">
-              <button class="chip active" data-special="all">無</button>
-              <button class="chip" data-special="priority">優先 ( &gt; )</button>
-              <button class="chip" data-special="andy">等 Andy 確認 ( !! )</button>
-            </div>
+        <div id="task-accordion" class="accordion-container">
+          <!-- 動態渲染各組與任務 -->
+          <div class="loading-state">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> 載入中，請確保已在右上角設定您的 API 網址...
           </div>
         </div>
+      </section>
 
-        <!-- 搜尋 row -->
-        <div class="filter-row">
-          <div class="filter-label"><i class="fa-solid fa-magnifying-glass"></i> 搜尋：</div>
-          <div class="filter-content">
-            <input type="text" id="search-input" placeholder="搜尋項目名稱或目標描述..." autocomplete="off">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 任務清單區 -->
-    <section class="task-section">
-      <div class="task-list-header">
-        <div style="display: flex; align-items: center; gap: 0.8rem;">
-          <h2><i class="fa-solid fa-list-check"></i> 專案項目列表</h2>
-          <span id="filtered-count" class="badge">共 - 項</span>
-        </div>
-        <!-- 展開與折疊控制器 -->
-        <div class="accordion-controls">
-          <button id="expand-all-btn" class="btn-link-action">＋ 全部展開</button>
-          <span class="divider-slash">|</span>
-          <button id="collapse-all-btn" class="btn-link-action">－ 全部折疊</button>
-        </div>
-      </div>
-      <div id="task-accordion" class="accordion-container">
-        <!-- 動態渲染各組與任務 -->
-        <div class="loading-state">
-          <i class="fa-solid fa-circle-notch fa-spin"></i> 載入中，請確保已在右上角設定您的 API 網址...
-        </div>
-      </div>
-    </section>
-
-    <!-- 頁尾自然流新聞廢話體 -->
-    <footer class="app-footer-bar">
-      <p id="footer-nonsense" class="nonsense-quote">聽君一席話，如聽一席話。</p>
-    </footer>
+      <!-- 頁尾自然流新聞廢話體 -->
+      <footer class="app-footer-bar">
+        <p id="footer-nonsense" class="nonsense-quote">聽君一席話，如聽一席話。</p>
+      </footer>
+    </main>
   </main>
 
   <!-- 側邊編輯抽屜 (Edit Drawer - 全域 fixed) -->
@@ -392,7 +389,7 @@
       <!-- 編輯抽屜背景復古鉛筆浮水印 -->
       <i class="fa-solid fa-pen drawer-watermark"></i>
       <div class="drawer-header">
-        <h3><i class="fa-solid fa-pen-to-square"></i> 編輯任務進度</h3>
+        <h3 id="drawer-title-text"><i class="fa-solid fa-pen-to-square"></i> 編輯任務進度</h3>
         <button id="close-drawer-btn" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="drawer-body">
@@ -420,19 +417,20 @@
             <div class="info-divider" style="margin-top: 1rem; margin-bottom: 1rem;"></div>
 
             <!-- 完成度與類型 (唯讀資訊欄 - 對調美化版) -->
-            <div style="display: grid; grid-template-columns: 1.2fr 3fr; gap: 1.5rem; margin-bottom: 0.5rem; align-items: center; width: 100%; box-sizing: border-box;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="text-align: left; display: block;">完成度</label>
-                <div id="edit-progress-val" class="static-val-clean" style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem; font-weight: 900; border: none !important; background: transparent !important; padding: 0.3rem 0; text-align: left; justify-content: flex-start; min-height: 34px; display: flex; align-items: center; width: 100%;"></div>
+            <div id="drawer-readonly-section">
+              <div style="display: grid; grid-template-columns: 1.2fr 3fr; gap: 1.5rem; margin-bottom: 0.5rem; align-items: center; width: 100%; box-sizing: border-box;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="text-align: left; display: block;">完成度</label>
+                  <div id="edit-progress-val" class="static-val-clean" style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem; font-weight: 900; border: none !important; background: transparent !important; padding: 0.3rem 0; text-align: left; justify-content: flex-start; min-height: 34px; display: flex; align-items: center; width: 100%;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="text-align: left; display: block;">類型</label>
+                  <div id="edit-group" class="static-val-clean" style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); border: none !important; background: transparent !important; padding: 0.3rem 0; word-break: break-word; line-height: 1.3; min-height: 34px; height: auto; display: flex; align-items: center; text-align: left;"></div>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="text-align: left; display: block;">類型</label>
-                <div id="edit-group" class="static-val-clean" style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); border: none !important; background: transparent !important; padding: 0.3rem 0; word-break: break-word; line-height: 1.3; min-height: 34px; height: auto; display: flex; align-items: center; text-align: left;"></div>
-              </div>
+              <!-- 類型/完成度 下方的水平虛線 -->
+              <div class="info-divider" style="margin-top: 1rem; margin-bottom: 1rem;"></div>
             </div>
-
-            <!-- 類型/完成度 下方的水平虛線 -->
-            <div class="info-divider" style="margin-top: 1rem; margin-bottom: 1rem;"></div>
 
             <!-- ID 與 負責人 (可編輯欄位) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 0.5rem; align-items: end; width: 100%; box-sizing: border-box;">
@@ -492,6 +490,7 @@
           </div>
         </form>
       </div>
+    </div>
   </div>
 
   <!-- 廢話文學管理彈出視窗 (Nonsense Manager Modal) -->
@@ -517,7 +516,9 @@
       </div>
 
       <div style="margin-top: 1.2rem; text-align: right; border-top: 1px dashed var(--border-color); padding-top: 0.8rem;">
-        <button id="reset-nonsense-btn" class="btn-link-action" style="font-size: 0.75rem;">↩ 恢復預設 50 句</button>
+        <button id="reset-nonsense-btn" class="btn" style="background: transparent; border: 1px dashed var(--border-color); color: var(--text-secondary); padding: 0.4rem 1rem; font-size: 0.82rem; cursor: pointer;">
+          <i class="fa-solid fa-rotate-left"></i> 恢復預設 50 句
+        </button>
       </div>
     </div>
   </div>
@@ -525,8 +526,7 @@
   <!-- 提示框 (Toast Notification) -->
   <div id="toast" class="toast"></div>
 
-
-
+  <!-- 全域核心腳本 -->
   <script src="app_v10.js"></script>
 </body>
 </html>
