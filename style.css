@@ -50,6 +50,10 @@ body {
   position: relative;
 }
 
+body.body-scroll-lock {
+  overflow: hidden !important;
+}
+
 /* 報紙實體紙張容器 ( Page-like Container) */
 .page-container {
   max-width: 1200px;

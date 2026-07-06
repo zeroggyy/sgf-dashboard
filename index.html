@@ -273,7 +273,7 @@
           <div class="stat-card-left">
             <div class="stat-icon icon-flat"><i class="fa-solid fa-circle-check"></i></div>
             <div class="stat-info">
-              <h3>已完成</h3>
+              <h3>已結案</h3>
             </div>
           </div>
           <p id="stat-completed-tasks" class="stat-value">-</p>
@@ -282,7 +282,7 @@
           <div class="stat-card-left">
             <div class="stat-icon icon-flat"><i class="fa-solid fa-spinner"></i></div>
             <div class="stat-info">
-              <h3>進行中</h3>
+              <h3>未結案</h3>
             </div>
           </div>
           <p id="stat-pending-tasks" class="stat-value">-</p>
@@ -311,14 +311,14 @@
             </div>
           </div>
           
-          <!-- 任務狀態 row -->
+          <!-- 結案狀態 row -->
           <div class="filter-row">
-            <div class="filter-label"><i class="fa-solid fa-square-check"></i> 任務狀態：</div>
+            <div class="filter-label"><i class="fa-solid fa-square-check"></i> 結案狀態：</div>
             <div class="filter-content">
               <div id="status-chips" class="chip-container">
                 <button class="chip" data-status="all">全部</button>
-                <button class="chip active" data-status="pending">進行中</button>
-                <button class="chip" data-status="completed">已完成</button>
+                <button class="chip active" data-status="pending">未結案</button>
+                <button class="chip" data-status="completed">已結案</button>
               </div>
             </div>
           </div>
@@ -344,6 +344,7 @@
                 <button class="chip active" data-special="all">無</button>
                 <button class="chip" data-special="priority">優先 ( &gt; )</button>
                 <button class="chip" data-special="andy">等 Andy 確認 ( !! )</button>
+                <button class="chip" data-special="dash">顯示(-)</button>
               </div>
             </div>
           </div>
@@ -533,6 +534,6 @@
   <div id="toast" class="toast"></div>
 
   <!-- 全域核心腳本 -->
-  <script src="app_v10.js"></script>
+  <script src="app_v10.js?v=1.0.9"></script>
 </body>
 </html>

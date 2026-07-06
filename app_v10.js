@@ -1,3 +1,11 @@
+// NodeList & HTMLCollection 相容性 Polyfill
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = Array.prototype.forEach;
+}
+if (window.HTMLCollection && !HTMLCollection.prototype.forEach) {
+  HTMLCollection.prototype.forEach = Array.prototype.forEach;
+}
+
 // 專案全域狀態管理
 let appState = {
   gasUrl: localStorage.getItem('sgf_gas_url') || 'https://script.google.com/macros/s/AKfycbzj2EVoj-PzVjctoE0CzODST_M-5CGiYdQAo4oJTJthfpIO6Dxzcsysv-s1UO4Ywd0j/exec',
@@ -59,7 +67,7 @@ const editDetail = document.getElementById('edit-detail');
 const editIsDone = document.getElementById('edit-is-done');
 const editTaskLink = document.getElementById('edit-task-link');
 const btnOpenTaskLink = document.getElementById('btn-open-task-link');
-const btnCancelEdit = document.getElementById('btn-cancel-edit');
+const btnCancelEdit = document.getElementById('btn-cancel-edit') || document.getElementById('btn-abandon-changes');
 
 // 新建任務項目所屬 DOM 與變量
 const addTaskBtn = document.getElementById('add-task-btn');
@@ -78,6 +86,7 @@ const focusNextWeekHeader = document.getElementById('focus-next-week-header');
 
 // 初始化載入
 window.addEventListener('DOMContentLoaded', () => {
+  setupGlobalScrollLockObserver(); // 初始化全域背景滾動鎖定監聽器
   updateNonsenseQuote(); // 初始化隨機拉出一句廢話體
   if (!appState.gasUrl) {
     showSetupModal();
@@ -389,7 +398,9 @@ function setupEventListeners() {
         const nonAllStatusChips = statusChips ? statusChips.querySelectorAll('.chip:not([data-status="all"])') : [];
         const allStatusChip = statusChips ? statusChips.querySelector('.chip[data-status="all"]') : null;
 
-        if (appState.activeSpecialFilter !== 'all') {
+        const isForceAllFilter = (appState.activeSpecialFilter === 'priority' || appState.activeSpecialFilter === 'andy');
+
+        if (isForceAllFilter) {
           // A. 強制時間篩選切換為「全部週別」
           appState.activeTimeFilter = 'all';
           if (timeChips) {
@@ -406,23 +417,26 @@ function setupEventListeners() {
           if (allStatusChip) allStatusChip.classList.add('active');
           nonAllStatusChips.forEach(c => c.classList.add('disabled'));
         } else {
-          // A. 恢復時間篩選為預設「當週焦點」
-          appState.activeTimeFilter = 'current';
-          if (timeChips) {
-            timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            const currentChip = timeChips.querySelector('.chip[data-time="current"]');
-            if (currentChip) currentChip.classList.add('active');
-          }
+          // 解鎖所有的時間與狀態晶片
           nonAllTimeChips.forEach(c => c.classList.remove('disabled'));
-
-          // B. 恢復狀態篩選為預設「進行中」
-          appState.activeStatusFilter = 'pending';
-          if (statusChips) {
-            statusChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            const pendingChip = statusChips.querySelector('.chip[data-status="pending"]');
-            if (pendingChip) pendingChip.classList.add('active');
-          }
           nonAllStatusChips.forEach(c => c.classList.remove('disabled'));
+
+          // 僅當切換回「無特殊篩選 (all)」時，才強制恢復預設的「當週焦點」和「進行中」
+          if (appState.activeSpecialFilter === 'all') {
+            appState.activeTimeFilter = 'current';
+            if (timeChips) {
+              timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+              const currentChip = timeChips.querySelector('.chip[data-time="current"]');
+              if (currentChip) currentChip.classList.add('active');
+            }
+
+            appState.activeStatusFilter = 'pending';
+            if (statusChips) {
+              statusChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+              const pendingChip = statusChips.querySelector('.chip[data-status="pending"]');
+              if (pendingChip) pendingChip.classList.add('active');
+            }
+          }
         }
 
         renderTasks();
@@ -458,9 +472,11 @@ function setupEventListeners() {
   });
 
   // 放棄修改按鈕點擊 (主動宣告放棄，直接強制關閉不詢問)
-  btnCancelEdit.addEventListener('click', () => {
-    attemptCloseDrawer(true);
-  });
+  if (btnCancelEdit) {
+    btnCancelEdit.addEventListener('click', () => {
+      attemptCloseDrawer(true);
+    });
+  }
 }
 
 // 顯示設定視窗 (預填已存參數)
@@ -540,7 +556,7 @@ function renderStats() {
   const total = appState.tasks.length;
   if (total === 0) return;
 
-  const completed = appState.tasks.filter(t => t.progress === 100 || t.isDone).length;
+  const completed = appState.tasks.filter(t => t.isDone).length;
   const pending = total - completed;
   
   // 計算加權/平均總進度
@@ -600,10 +616,11 @@ function renderTasks() {
     // 4. 特殊條件過濾
     const isAndyFilter = appState.activeSpecialFilter === 'andy';
     const isPriorityFilter = appState.activeSpecialFilter === 'priority';
-    const isSpecialActive = isAndyFilter || isPriorityFilter;
+    const isDashFilter = appState.activeSpecialFilter === 'dash';
+    const isSpecialActive = isAndyFilter || isPriorityFilter; // dash 不需要繞過時間/狀態限制
     
     // 狀態過濾 (當特殊篩選 Andy 時，不限制狀態，全顯)
-    const isTaskCompleted = task.isDone || task.progress === 100;
+    const isTaskCompleted = task.isDone;
     let matchesStatus = true;
     if (!isAndyFilter) {
       if (appState.activeStatusFilter === 'pending') {
@@ -613,7 +630,7 @@ function renderTasks() {
       }
     }
 
-    // 時間週別過濾 (當有啟用任何「特殊篩選」時，自動繞過時間區間限制，顯示全域符合項目)
+    // 時間週別過濾 (當有啟用限制繞過之「特殊篩選」時，自動繞過時間區間限制，顯示全域符合項目)
     let matchesTime = true;
     if (!isSpecialActive) {
       if (appState.activeTimeFilter === 'current' && currentWeekLabel) {
@@ -633,6 +650,30 @@ function renderTasks() {
       const idMatch = task.taskId && task.taskId.trim() === '!!';
       const groupMatch = task.group.includes('!!') || task.group.includes('等Andy確認');
       matchesSpecial = idMatch || groupMatch;
+    } else if (isDashFilter) {
+      // 動態抓取當前時間篩選下，該任務所顯示的進度內容（排除週別標籤前綴）
+      let currentProgressText = '';
+      if (appState.activeTimeFilter === 'current' && currentWeekLabel) {
+        currentProgressText = task.weeks[currentWeekLabel] || '';
+      } else if (appState.activeTimeFilter === 'last' && lastWeekLabel) {
+        currentProgressText = task.weeks[lastWeekLabel] || '';
+      } else if (appState.activeTimeFilter === 'next' && nextWeekLabel) {
+        currentProgressText = task.weeks[nextWeekLabel] || '';
+      } else {
+        // 全部週別時，尋找有填資料的最後一週的純值
+        const nonEmptyWeeks = Object.entries(task.weeks).filter(([_, val]) => val !== '');
+        if (nonEmptyWeeks.length > 0) {
+          const [_, lastVal] = nonEmptyWeeks[nonEmptyWeeks.length - 1];
+          currentProgressText = lastVal || '';
+        }
+      }
+
+      // 判斷該進度內容是否任一行以「-」開頭 (採高相容性 charAt 判斷)
+      const lines = currentProgressText.split('\n');
+      matchesSpecial = lines.some(line => {
+        const trimmed = line.trim();
+        return trimmed.charAt(0) === '-';
+      });
     }
 
     return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial;
@@ -1677,5 +1718,32 @@ function initScheduleWeekSelectOptions() {
 
 // 立即執行迷你編輯 Modal 的按鈕事件綁定
 setupMilestoneEditModalListeners();
+
+// 使用 MutationObserver 全域監聽所有彈窗與抽屜的 class 變化，自動切換背景鎖定
+function setupGlobalScrollLockObserver() {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        // 判定畫面上是否還有任何處於開啟狀態的彈窗或抽屜
+        const hasOpenModal = document.querySelector('.modal.open');
+        const hasOpenDrawer = document.querySelector('.drawer.open');
+        
+        if (hasOpenModal || hasOpenDrawer) {
+          document.body.classList.add('body-scroll-lock');
+        } else {
+          document.body.classList.remove('body-scroll-lock');
+        }
+      }
+    });
+  });
+
+  // 監聽所有 modal 和 drawer 容器
+  const lockableElements = document.querySelectorAll('.modal, .drawer');
+  if (lockableElements && lockableElements.length > 0) {
+    for (let i = 0; i < lockableElements.length; i++) {
+      observer.observe(lockableElements[i], { attributes: true, attributeFilter: ['class'] });
+    }
+  }
+}
 
 
