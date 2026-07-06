@@ -1,6 +1,6 @@
 // 專案全域狀態管理
 let appState = {
-  gasUrl: localStorage.getItem('sgf_gas_url') || '',
+  gasUrl: localStorage.getItem('sgf_gas_url') || 'https://script.google.com/macros/s/AKfycbzj2EVoj-PzVjctoE0CzODST_M-5CGiYdQAo4oJTJthfpIO6Dxzcsysv-s1UO4Ywd0j/exec',
   apiKey: localStorage.getItem('sgf_api_key') || 'SGF_SECURE_TOKEN_2026',
   tasks: [],
   milestones: [], // 新增：專案時程里程碑
