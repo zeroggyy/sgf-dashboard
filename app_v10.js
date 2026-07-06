@@ -185,6 +185,26 @@ function setupEventListeners() {
         renderMilestones();
       });
     }
+
+    // 監聽上一週 / 下一週按鈕切換週別
+    const schedulePrevWeekBtn = document.getElementById('schedule-prev-week-btn');
+    const scheduleNextWeekBtn = document.getElementById('schedule-next-week-btn');
+    if (schedulePrevWeekBtn) {
+      schedulePrevWeekBtn.addEventListener('click', () => {
+        if (scheduleWeekSelect && scheduleWeekSelect.selectedIndex > 0) {
+          scheduleWeekSelect.selectedIndex -= 1;
+          scheduleWeekSelect.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+    if (scheduleNextWeekBtn) {
+      scheduleNextWeekBtn.addEventListener('click', () => {
+        if (scheduleWeekSelect && scheduleWeekSelect.selectedIndex < scheduleWeekSelect.options.length - 1) {
+          scheduleWeekSelect.selectedIndex += 1;
+          scheduleWeekSelect.dispatchEvent(new Event('change'));
+        }
+      });
+    }
   }
   
   // 搜尋過濾
@@ -1335,6 +1355,19 @@ function renderMilestones() {
   const year = scheduleYearSelect ? scheduleYearSelect.value : new Date().getFullYear().toString();
   const month = scheduleMonthSelect ? scheduleMonthSelect.value : ("0" + (new Date().getMonth() + 1)).slice(-2);
   const weekVal = scheduleWeekSelect ? scheduleWeekSelect.value : 'all';
+
+  // 切換到整月的時候，隱藏左右箭頭
+  const schedulePrevWeekBtn = document.getElementById('schedule-prev-week-btn');
+  const scheduleNextWeekBtn = document.getElementById('schedule-next-week-btn');
+  if (schedulePrevWeekBtn && scheduleNextWeekBtn) {
+    if (weekVal === 'all') {
+      schedulePrevWeekBtn.style.display = 'none';
+      scheduleNextWeekBtn.style.display = 'none';
+    } else {
+      schedulePrevWeekBtn.style.display = 'inline-flex';
+      scheduleNextWeekBtn.style.display = 'inline-flex';
+    }
+  }
 
   console.log(`【SGF 核心偵錯】呼叫了最新 Table 版本的 renderMilestones。模式：${weekVal === 'all' ? '整月' : '週 ' + weekVal}`);
 

@@ -146,9 +146,15 @@
             <option value="11">11月</option>
             <option value="12">12月</option>
           </select>
-          <select id="schedule-week-select" style="padding: 0.2rem; font-family: var(--font-main); border: 1px solid var(--border-color); background: transparent; margin-left: 0.2rem;">
+          <button id="schedule-prev-week-btn" title="上一週" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0 !important; border: 1px solid var(--border-color) !important; background: transparent !important; cursor: pointer; margin-left: 0.2rem; box-sizing: border-box; -webkit-appearance: none; appearance: none;">
+            <i class="fa-solid fa-chevron-left" style="font-size: 0.75rem; color: var(--text-primary);"></i>
+          </button>
+          <select id="schedule-week-select" style="padding: 0.2rem; font-family: var(--font-main); border: 1px solid var(--border-color); background: transparent; height: 24px; box-sizing: border-box;">
             <option value="all">整月</option>
           </select>
+          <button id="schedule-next-week-btn" title="下一週" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0 !important; border: 1px solid var(--border-color) !important; background: transparent !important; cursor: pointer; box-sizing: border-box; -webkit-appearance: none; appearance: none;">
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem; color: var(--text-primary);"></i>
+          </button>
         </div>
       </h3>
 
@@ -322,10 +328,10 @@
             <div class="filter-label"><i class="fa-solid fa-clock"></i> 時間區間：</div>
             <div class="filter-content">
               <div id="time-chips" class="chip-container">
-                <button class="chip active" data-time="current">當週焦點</button>
-                <button class="chip" data-time="last">上週回顧</button>
-                <button class="chip" data-time="next">下週展望</button>
                 <button class="chip" data-time="all">全部週別</button>
+                <button class="chip" data-time="last">上週回顧</button>
+                <button class="chip active" data-time="current">當週焦點</button>
+                <button class="chip" data-time="next">下週展望</button>
               </div>
             </div>
           </div>
