@@ -1054,6 +1054,7 @@ async function handleFormSubmit(e) {
     // 送出 POST 到 Google Apps Script 同步
     showToast('正在將變更同步到 Google Sheet...', 'info');
     const payload = {
+      action: "updateTask",
       rowNumber: rowNum,
       detail: detail,
       taskId: taskId,     
