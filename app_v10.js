@@ -17,6 +17,7 @@ let appState = {
   activeStatusFilter: 'pending', // 首頁預設顯示狀態：進行中
   activeTimeFilter: 'current',   // 首頁預設時間篩選：當週焦點
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
+  activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
   searchQuery: '',
   expandedGroups: new Set()
 };
@@ -118,8 +119,17 @@ function setupEventListeners() {
     });
   }
   
-  // 重新整理
-  refreshBtn.addEventListener('click', loadData);
+  // 重新整理 (改為自動排序試算表並重新載入)
+  refreshBtn.addEventListener('click', runSortAndLoad);
+  
+  // 取消專注分類
+  const clearGroupFilterBtn = document.getElementById('clear-group-filter-btn');
+  if (clearGroupFilterBtn) {
+    clearGroupFilterBtn.addEventListener('click', () => {
+      appState.activeGroupFilter = 'all';
+      renderTasks();
+    });
+  }
   
   // 使用說明 Modal 點擊打開與關閉
   const helpBtnEl = document.getElementById('help-btn');
@@ -551,6 +561,54 @@ async function loadData() {
   }
 }
 
+// 自動執行試算表排序並重新載入資料
+async function runSortAndLoad() {
+  if (!appState.gasUrl) return;
+  
+  const sortIcon = refreshBtn.querySelector('i');
+  const originalIconClass = sortIcon ? sortIcon.className : 'fa-solid fa-arrow-down-short-wide';
+  
+  if (sortIcon) {
+    sortIcon.className = 'fa-solid fa-circle-notch fa-spin';
+  }
+  refreshBtn.disabled = true;
+
+  showToast('正在向 Google Sheet 請求執行自動排序 (manualSortTasks)...', 'info');
+
+  try {
+    const postUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
+    const payload = {
+      action: "sortTasks"
+    };
+
+    const response = await fetch(postUrl, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'text/plain'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showToast('試算表已成功完成自動排序！正在重新載入最新資料...', 'success');
+      await loadData();
+    } else {
+      showToast(`排序失敗: ${result.error || '未知錯誤'}`, 'error');
+    }
+  } catch (err) {
+    console.error('Sort Error:', err);
+    showToast('連線失敗，無法執行試算表排序。', 'error');
+  } finally {
+    if (sortIcon) {
+      sortIcon.className = originalIconClass;
+    }
+    refreshBtn.disabled = false;
+  }
+}
+
 // 渲染頂部統計卡片
 function renderStats() {
   const total = appState.tasks.length;
@@ -676,7 +734,9 @@ function renderTasks() {
       });
     }
 
-    return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial;
+    const matchesGroup = appState.activeGroupFilter === 'all' || task.group === appState.activeGroupFilter;
+
+    return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial && matchesGroup;
   });
 
   filteredCount.textContent = `共 ${filteredTasks.length} 項`;
@@ -716,6 +776,11 @@ function renderTasks() {
             <span class="task-count-badge">
               ${tasksInGroup.length} 項任務
             </span>
+            ${appState.activeGroupFilter === 'all' ? `
+              <span class="btn-focus-group" data-group="${groupName.replace(/"/g, '&quot;')}" title="只專注看此分類">
+                <i class="fa-solid fa-eye"></i> 專注
+              </span>
+            ` : ''}
           </div>
           <div class="group-progress-cell">
             <div class="progress-bar-container group-progress-bar">
@@ -797,6 +862,32 @@ function renderTasks() {
   }
 
   taskAccordion.innerHTML = html;
+
+  // 顯示或隱藏分類專注提示欄
+  const groupFilterIndicator = document.getElementById('group-filter-indicator');
+  const focusedGroupName = document.getElementById('focused-group-name');
+  if (groupFilterIndicator && focusedGroupName) {
+    if (appState.activeGroupFilter !== 'all') {
+      focusedGroupName.textContent = appState.activeGroupFilter;
+      groupFilterIndicator.style.display = 'flex';
+    } else {
+      groupFilterIndicator.style.display = 'none';
+    }
+  }
+
+  // 綁定 [專注] 按鈕事件
+  taskAccordion.querySelectorAll('.btn-focus-group').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // 阻止事件冒泡，防止手風琴收折
+      const targetGroup = btn.getAttribute('data-group');
+      appState.activeGroupFilter = targetGroup;
+      
+      // 自動展開被鎖定的分類，以利閱讀
+      appState.expandedGroups.add(targetGroup);
+      
+      renderTasks();
+    });
+  });
 
   // 綁定手風琴展開收合
   taskAccordion.querySelectorAll('.accordion-header').forEach(header => {
@@ -1189,61 +1280,62 @@ function updateNewspaperMeta() {
 
 // 50 句精選網路流行廢話文學 (Nonsense Quotes)
 const NONSENSE_QUOTES = [
-  "聽君一席話，如聽一席話。",
-  "據研究顯示，人活著就是為了能活著。",
-  "只要你每天起得夠早，你今天就能起得很早。",
-  "關於明天的事，我們明天再說。",
-  "如果你不胖的話，你其實還挺瘦的。",
-  "這個西瓜，嚐起來有一種西瓜的味道。",
-  "如果我沒猜錯的話，我應該是沒猜錯。",
-  "只要你肯努力，你早晚能把這件事做完。",
-  "七天不吃飯，人就會餓一個星期。",
-  "當你主動放棄了，你就真的放棄了。",
-  "其實每多過一分鐘，你的壽命就減少了六十秒。",
-  "在我還沒變老之前，我一直都還挺年輕的。",
-  "如果你覺得這句話很有道理，那它確實挺有道理。",
-  "據統計，所有單身的人，目前都沒有伴侶。",
-  "只要你還沒有睡著，你此時此刻就是醒著的。",
-  "每呼吸六十秒，就有一分鐘過去了。",
-  "這杯開水要是再燙一點，它就不是溫水了。",
-  "如果不出意外的話，馬上就要出意外了。",
-  "只要你站在原地不動，你就不會往前走。",
-  "據調查，人在睡覺的時候，眼睛閉起來的概率極高。",
-  "你的中文說得這麼好，想必你一定會說中文吧。",
-  "只要能解決這個問題，這個問題就被解決了。",
-  "如果你不理我，那我們今天就沒有對話了。",
-  "人在生氣的時候，通常都不怎麼高興。",
-  "當你買了這個東西，你的錢就變成這個東西了。",
-  "如果你今天不努力，你明天可能還是要努力。",
-  "據說，人在下雨天出門，身上被淋濕的概率會增加。",
-  "所謂的開會，就是把大家聚在一起開個會。",
-  "如果你此時此刻正在看這句話，那你就是在看這句話。",
-  "只要你把這碗飯吃完，這碗飯就空了。",
-  "這條路如果沒有轉彎，它大概就是直的。",
-  "只要你把燈關掉，房間裡就會變暗。",
-  "據科學研究，所有吃過鹽的人，體內都含有鈉。",
-  "當你抬頭看天，你的頭就往上抬了。",
-  "只要你不說話，此時就沒有你的聲音。",
-  "如果這台電腦沒有開機，它多半是關著的。",
-  "每當你踩下一腳油門，你的車就在消耗燃油。",
-  "只要今天過完了，明天就會如期而至。",
-  "如果你把這杯水喝下去，你的口渴就會得到緩解。",
-  "據統計，所有長胖的人，體重都比以前增加了。",
-  "當你把這行字讀完，你就讀完了這行字。",
-  "遊客在景區不小心跌倒，一般都會接觸地面。",
-  "只要你把門打開，門就是開著的。",
-  "關於這件事的詳細情況，請參照這件事的詳細情況。",
-  "如果你沒有忘記這件事，那你一定還記得。",
-  "只要你現在不放棄，你就還在繼續。",
-  "這個專案如果能按時完成，那它就不會延遲。",
-  "當你寫完這行代碼，這行代碼就被寫完了。",
-  "只要你點了重新整理，數據就會重新整理一次。",
-  "據調查，凡是去過公司的人，都曾經去過公司。",
-  "如果你的規格文件沒有變動，那它目前就是一樣的。"
+  "「你要記住身為一個過來人，我已經過來了。」",
+  "「沒有什麼困難是沒有困難的，你要記住：你的後背就在你的背後。」",
+  "「財富的累積就是要靠累積財富。」",
+  "「當你撐不住的時候，你一定要撐住！！除非撐不住。」",
+  "「聽君一席話，如聽一席話。」",
+  "「我上次這麼無語的時候，還是上次。」",
+  "「如果你沒說錯的話，那就是沒說錯的話。」",
+  "「只要你不肥，你就不會太胖。」",
+  "「每過一分鐘，就有六十秒過去了。」",
+  "「據統計，所有活著的人，目前都還沒去世。」",
+  "「當你還沒醒來，你依然在睡夢中。」",
+  "「如果不出意外的話，接下來應該是不會出意外的。」",
+  "「如果明天不下雨，明天大概就不會下雨。」",
+  "「只要你站在原地，你就不會走到別的地方去。」",
+  "「如果這杯開水不燙，那它就已經涼了。」",
+  "「關於明天的事，我們到了明天就會知道了。」",
+  "「當你買了這個東西，你就花掉了買這個東西的錢。」",
+  "「如果你覺得這句話很有道理，那它確實很有道理。」",
+  "「每呼吸一分鐘，你的壽命就減少了六十秒。」",
+  "「據研究顯示，人活著就是為了能繼續活著。」",
+  "「只要你把眼睛閉上，你就看不見眼前的世界了。」",
+  "「如果這條路沒有轉彎，它通常是直的。」",
+  "「據調查，人在生氣的時候，心情往往不太好。」",
+  "「只要你每天起得夠早，你今天就能起得很早。」",
+  "「如果我沒猜錯的話，那我應該是猜對了。」",
+  "「當你主動放棄，你就真的放棄了。」",
+  "「在你變老之前，你其實一直都挺年輕的。」",
+  "「據統計，所有單身的人，目前都沒有伴侶。」",
+  "「只要你把這碗飯吃完，這碗飯的飯就被你吃完了。」",
+  "「如果你不理我，那我們今天就沒有對話了。」",
+  "「每當你踩下一腳油門，你的車就在消耗燃油。」",
+  "「只要今天過完了，明天就會如期而至。」",
+  "「據科學研究，所有吃過鹽的人，體內都含有鈉。」",
+  "「當你抬頭看天，你的頭就往上抬了。」",
+  "「如果你沒有忘記這件事，那你一定還記得。」",
+  "「只要你現在不放棄，你就還在繼續努力。」",
+  "「這個專案如果能按時完成，那它就不會延遲。」",
+  "「當你寫完這行代碼，這行代碼就已經被寫完了。」",
+  "「只要你點了重新整理，數據就會重新整理一次。」",
+  "「據調查，凡是去過公司的人，都曾經去過公司。」",
+  "「如果你的規格文件沒有變動，那它目前就沒有變化。」",
+  "「吃麵如果不放湯，那就是乾麵了。」",
+  "「當你吃飽了，你就不會覺得餓了。」",
+  "「如果你有十塊錢，你再加十塊就是二十塊了。」",
+  "「人在洗澡的時候，身上被水弄濕的機率高達百分之百。」",
+  "「據研究，所有的貓在睡著時，都處於睡眠狀態。」",
+  "「如果你不睡覺，你今晚就會一直醒著。」",
+  "「這個西瓜嚐起來有一種西瓜的味道。」",
+  "「只要你能解決這個問題，這個問題就被解決了。」",
+  "「如果你把這杯水喝下去，你的口渴就會得到緩解。」"
 ];
 
+
+
 // 從 localStorage 載入使用者自訂的廢話清單，若無則載入預設 50 句
-let userNonsenseQuotes = JSON.parse(localStorage.getItem('sgf_nonsense_quotes')) || [...NONSENSE_QUOTES];
+let userNonsenseQuotes = JSON.parse(localStorage.getItem('sgf_nonsense_quotes_v2')) || [...NONSENSE_QUOTES];
 
 // 隨機抽出一句廢話文學渲染到頁尾
 function updateNonsenseQuote() {
@@ -1344,7 +1436,7 @@ function deleteNonsenseQuote(index) {
 
 // 恢復預設 50 句
 function resetNonsenseQuotes() {
-  if (confirm('確定要捨棄自訂內容，恢復為預設的 50 句經典廢話嗎？')) {
+  if (confirm('確定要捨棄自訂內容，恢復為預設的 50 句精選廢話嗎？')) {
     userNonsenseQuotes = [...NONSENSE_QUOTES];
     saveNonsenseToLocalStorage();
     renderNonsenseList();
@@ -1355,7 +1447,7 @@ function resetNonsenseQuotes() {
 
 // 寫入 localStorage 儲存
 function saveNonsenseToLocalStorage() {
-  localStorage.setItem('sgf_nonsense_quotes', JSON.stringify(userNonsenseQuotes));
+  localStorage.setItem('sgf_nonsense_quotes_v2', JSON.stringify(userNonsenseQuotes));
 }
 
 // 初始化事件監聽

@@ -193,10 +193,6 @@ body.body-scroll-lock {
   cursor: pointer;
 }
 
-.btn-config-gear:hover {
-  background-color: var(--border-color) !important;
-  color: #ffffff !important;
-}
 
 /* 按鈕樣式 (全扁平日式極簡風格) */
 .btn {
@@ -1750,4 +1746,57 @@ input[disabled] {
   pointer-events: none !important; /* 滑鼠事件穿透，點擊完全穿透不干擾編輯 */
   z-index: 0 !important; /* 置於最背景底層 */
 }
+
+/* 專注看此分類按鈕樣式 */
+.btn-focus-group {
+  font-size: 0.78rem;
+  background: var(--panel-bg);
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+  padding: 0.1rem 0.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+  font-family: var(--font-main);
+  user-select: none;
+  margin-left: 0.5rem;
+}
+
+.btn-focus-group:hover {
+  background: var(--accent-red);
+  color: #ffffff !important;
+}
+
+.btn-focus-group i {
+  font-size: 0.72rem;
+}
+
+/* 確保控制區 4 個按鈕大小完全一致、圖示置中，且預設為統一的黑框與透明底 */
+.header-control-grid button {
+  width: 36px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 0px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+/* 4 個按鈕 Hover 時統一變為紅色背景與白色圖示 */
+.header-control-grid button:hover {
+  background-color: var(--accent-red) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-red) !important;
+}
+
+
 

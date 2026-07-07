@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- 核心報紙風 CSS 樣式 -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1.0.1">
   
   <style>
     /* 鎖死里程碑 Modal 排版，不被任何舊 CSS 快取干擾 */
@@ -237,19 +237,19 @@
         </div>
         
         <!-- 系統控制按鈕組 (第一行: 日曆、使用說明；第二行: 刷新、設定) -->
-        <div style="display: grid; grid-template-columns: repeat(2, auto); gap: 0.35rem 0.5rem; align-items: center;">
+        <div class="header-control-grid" style="display: grid; grid-template-columns: repeat(2, auto); gap: 0.35rem 0.5rem; align-items: center;">
           <!-- 第一行 -->
-          <button id="schedule-btn" class="btn btn-config-gear" title="專案時程里程碑" style="padding: 0.4rem 0.6rem !important;">
+          <button id="schedule-btn" class="btn" title="專案時程里程碑">
             <i class="fa-regular fa-calendar-days"></i>
           </button>
-          <button id="help-btn" class="btn btn-config-gear" title="使用說明" style="padding: 0.4rem 0.6rem !important;">
+          <button id="help-btn" class="btn" title="使用說明">
             <i class="fa-solid fa-circle-question"></i>
           </button>
-          <!-- 第二行 -->
-          <button id="refresh-btn" class="btn btn-config-gear" title="手動同步重新整理最新進度" style="padding: 0.4rem 0.6rem !important;">
-            <i class="fa-solid fa-arrows-rotate"></i>
+          <!-- 第二行 (已改為自動排序試算表並重新載入) -->
+          <button id="refresh-btn" class="btn" title="自動排序試算表並重新整理載入最新進度 (manualSortTasks)">
+            <i class="fa-solid fa-arrow-down-short-wide"></i>
           </button>
-          <button id="config-btn" class="btn btn-config-gear" title="設定連線資訊" style="padding: 0.4rem 0.6rem !important;">
+          <button id="config-btn" class="btn" title="設定連線資訊">
             <i class="fa-solid fa-gear"></i>
           </button>
         </div>
@@ -375,6 +375,13 @@
             <button id="collapse-all-btn" class="btn-link-action">－ 全部折疊</button>
           </div>
         </div>
+        
+        <!-- 鎖定特定分類的專注模式提示欄 -->
+        <div id="group-filter-indicator" style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; padding: 0.5rem 0.8rem; background: rgba(183, 28, 28, 0.04); border: 1px dashed var(--accent-red); font-size: 0.88rem; color: var(--accent-red); font-family: var(--font-main); box-sizing: border-box;">
+          <i class="fa-solid fa-eye"></i> 正在專注看分類：<strong id="focused-group-name">--</strong>
+          <button id="clear-group-filter-btn" class="btn-link-action" style="color: var(--text-secondary) !important; margin-left: auto; font-weight: 700; font-family: var(--font-main); border: none; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0 !important; font-size: 0.88rem;"><i class="fa-solid fa-circle-xmark"></i> 取消專注</button>
+        </div>
+
         <div id="task-accordion" class="accordion-container">
           <!-- 動態渲染各組與任務 -->
           <div class="loading-state">
