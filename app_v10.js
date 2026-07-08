@@ -13,7 +13,7 @@ let appState = {
   tasks: [],
   milestones: [], // 新增：專案時程里程碑
   weeksList: [],
-  activeOwnerFilter: 'all',
+  activeOwnerFilters: [], // 負責人篩選名單，空陣列代表「全部 (all)」
   activeStatusFilter: 'pending', // 首頁預設顯示狀態：進行中
   activeTimeFilter: 'current',   // 首頁預設時間篩選：當週焦點
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
@@ -272,6 +272,30 @@ function setupEventListeners() {
         }).join('');
         editOwnerSelect.selectedIndex = 0;
       }
+
+      // 初始化協辦人核取方塊 (新建任務時)
+      const coOwnersContainer = document.getElementById('edit-co-owners-container');
+      if (coOwnersContainer) {
+        const members = ownersList.filter(o => o !== "" && o !== "企劃");
+        coOwnersContainer.innerHTML = members.map(m => {
+          return `
+            <label class="drawer-checkbox-item">
+              <input type="checkbox" value="${m}" class="co-owner-checkbox">
+              <span>${m}</span>
+            </label>
+          `;
+        }).join('');
+      }
+
+      // 重設摺疊狀態為收合
+      const coOwnersWrapper = document.getElementById('edit-co-owners-wrapper');
+      const coOwnersToggleBtn = document.getElementById('co-owners-toggle-btn');
+      if (coOwnersWrapper && coOwnersToggleBtn) {
+        coOwnersWrapper.style.display = 'none';
+        const arrow = coOwnersToggleBtn.querySelector('.toggle-arrow');
+        if (arrow) arrow.textContent = '►';
+      }
+      toggleCoOwnersSection();
       
       // 3. 取得並清空週別編輯欄位
       const timeWeeks = getTimelineWeeks();
@@ -487,6 +511,62 @@ function setupEventListeners() {
       attemptCloseDrawer(true);
     });
   }
+
+  // 當主辦人下拉選單變動時，連動禁用/啟用協辦人核取方塊與隱藏邏輯
+  if (editOwnerSelect) {
+    editOwnerSelect.addEventListener('change', () => {
+      toggleCoOwnersSection();
+      const selectedOwner = editOwnerSelect.value;
+      const coOwnersContainer = document.getElementById('edit-co-owners-container');
+      if (coOwnersContainer) {
+        const checkboxes = coOwnersContainer.querySelectorAll('.co-owner-checkbox');
+        checkboxes.forEach(cb => {
+          const labelEl = cb.closest('.drawer-checkbox-item');
+          if (!labelEl) return;
+          const textSpan = labelEl.querySelector('span');
+          const memberName = cb.value;
+          
+          if (memberName === selectedOwner) {
+            cb.checked = false;
+            cb.disabled = true;
+            labelEl.classList.add('disabled');
+            if (textSpan) textSpan.textContent = `${memberName} (已負責)`;
+          } else {
+            cb.disabled = false;
+            labelEl.classList.remove('disabled');
+            if (textSpan) textSpan.textContent = memberName;
+          }
+        });
+      }
+    });
+  }
+
+  // 支援區塊摺疊展開邏輯
+  const coOwnersToggleBtn = document.getElementById('co-owners-toggle-btn');
+  const coOwnersWrapper = document.getElementById('edit-co-owners-wrapper');
+  if (coOwnersToggleBtn && coOwnersWrapper) {
+    coOwnersToggleBtn.addEventListener('click', () => {
+      const isHidden = coOwnersWrapper.style.display === 'none';
+      coOwnersWrapper.style.display = isHidden ? 'block' : 'none';
+      const arrow = coOwnersToggleBtn.querySelector('.toggle-arrow');
+      if (arrow) {
+        arrow.textContent = isHidden ? '▼' : '►';
+      }
+    });
+  }
+}
+
+// 根據負責人是否選了「企劃」來切換顯示/隱藏支援區塊
+function toggleCoOwnersSection() {
+  const selectedOwner = editOwnerSelect ? editOwnerSelect.value : '';
+  const coOwnersSection = document.getElementById('edit-co-owners-section');
+  if (coOwnersSection) {
+    if (selectedOwner === '企劃') {
+      coOwnersSection.style.display = 'none';
+    } else {
+      coOwnersSection.style.display = 'block';
+    }
+  }
 }
 
 // 顯示設定視窗 (預填已存參數)
@@ -627,13 +707,29 @@ function renderStats() {
   statOverallProgress.textContent = `${overallAvg}%`;
 }
 
-// 渲染負責人篩選標籤
+// 渲染負責人篩選標籤 (支援複選)
 function renderOwnerChips() {
-  const owners = ['all', ...new Set(appState.tasks.map(t => t.owner))];
+  const allNames = [];
+  appState.tasks.forEach(t => {
+    if (t.owner && t.owner !== '未分配' && t.owner !== '-') allNames.push(t.owner);
+    if (t.coOwners) {
+      t.coOwners.forEach(co => {
+        if (co && co !== '未分配' && co !== '-') allNames.push(co);
+      });
+    }
+  });
+  
+  const owners = ['all', ...new Set(allNames)];
   
   ownerChips.innerHTML = owners.map(owner => {
     const label = owner === 'all' ? '全部' : owner;
-    const activeClass = appState.activeOwnerFilter === owner ? 'active' : '';
+    let isActive = false;
+    if (owner === 'all') {
+      isActive = appState.activeOwnerFilters.length === 0;
+    } else {
+      isActive = appState.activeOwnerFilters.includes(owner);
+    }
+    const activeClass = isActive ? 'active' : '';
       
     return `<button class="chip ${activeClass}" data-owner="${owner}">${label}</button>`;
   }).join('');
@@ -641,9 +737,20 @@ function renderOwnerChips() {
   // 綁定點擊事件
   ownerChips.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', (e) => {
-      ownerChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      e.target.classList.add('active');
-      appState.activeOwnerFilter = e.target.getAttribute('data-owner');
+      const targetChip = e.target.closest('.chip');
+      if (!targetChip) return;
+      
+      const owner = targetChip.getAttribute('data-owner');
+      if (owner === 'all') {
+        appState.activeOwnerFilters = [];
+      } else {
+        if (appState.activeOwnerFilters.includes(owner)) {
+          appState.activeOwnerFilters = appState.activeOwnerFilters.filter(o => o !== owner);
+        } else {
+          appState.activeOwnerFilters.push(owner);
+        }
+      }
+      renderOwnerChips();
       renderTasks();
     });
   });
@@ -666,7 +773,9 @@ function renderTasks() {
   console.log("【除錯】包含 '!' 或群組有 'Andy' 的任務：", appState.tasks.filter(t => t.taskName.includes('!') || t.taskName.includes('Andy') || t.group.includes('Andy')));
   
   const filteredTasks = appState.tasks.filter(task => {
-    const matchesOwner = appState.activeOwnerFilter === 'all' || task.owner === appState.activeOwnerFilter;
+    const matchesOwner = appState.activeOwnerFilters.length === 0 || 
+                         appState.activeOwnerFilters.includes(task.owner) ||
+                         (task.coOwners && task.coOwners.some(co => appState.activeOwnerFilters.includes(co)));
     
     const matchesSearch = task.taskName.toLowerCase().includes(appState.searchQuery) || 
                           task.detail.toLowerCase().includes(appState.searchQuery);
@@ -839,9 +948,16 @@ function renderTasks() {
               <input type="checkbox" ${checkedAttr} disabled class="task-checkbox" data-row="${task.rowNumber}">
             </div>
             <div class="task-name-cell">${priorityBadge}${displayName}${linkIcon}</div>
-           <div class="owner-cell" title="特派記者">
-             <span class="byline-tag">■ ${task.owner}</span>
-           </div>
+            <div class="owner-cell" title="支援">
+              ${(function() {
+                if (task.coOwners && task.coOwners.length > 0) {
+                  const tooltipText = `支援: ${task.coOwners.join(', ')}`;
+                  return `<span class="byline-tag owner-tooltip" data-tooltip="${tooltipText}">■ ${task.owner} <i class="fa-solid fa-user-group team-icon"></i></span>`;
+                } else {
+                  return `<span class="byline-tag">■ ${task.owner}</span>`;
+                }
+              })()}
+            </div>
            <div class="detail-cell" title="${currentProgressText}">${currentProgressText || '<span style="color: var(--text-muted);">無進度狀態</span>'}</div>
            <div class="task-progress-only-cell">
              <span class="task-progress-percent-only">${task.progress}%</span>
@@ -1010,6 +1126,38 @@ function openDrawer(rowNum) {
     const label = o === "" ? "-" : o;
     return `<option value="${o}" ${isMatched ? 'selected' : ''}>${label}</option>`;
   }).join('');
+
+  // 渲染支援核取方塊
+  const coOwnersContainer = document.getElementById('edit-co-owners-container');
+  if (coOwnersContainer) {
+    const members = ownersList.filter(o => o !== "" && o !== "企劃");
+    const taskCoOwners = task.coOwners || [];
+    
+    coOwnersContainer.innerHTML = members.map(m => {
+      const isChecked = taskCoOwners.includes(m);
+      const isMainOwner = (task.owner === m) || (m === "" && (task.owner === "未分配" || !task.owner || task.owner === "-"));
+      const disabledAttr = isMainOwner ? 'disabled' : '';
+      const disabledClass = isMainOwner ? 'disabled' : '';
+      const checkedAttr = (isChecked && !isMainOwner) ? 'checked' : '';
+      
+      return `
+        <label class="drawer-checkbox-item ${disabledClass}">
+          <input type="checkbox" value="${m}" ${checkedAttr} ${disabledAttr} class="co-owner-checkbox">
+          <span>${m}${isMainOwner ? ' (已負責)' : ''}</span>
+        </label>
+      `;
+    }).join('');
+  }
+
+  // 重設摺疊狀態為收合
+  const coOwnersWrapper = document.getElementById('edit-co-owners-wrapper');
+  const coOwnersToggleBtn = document.getElementById('co-owners-toggle-btn');
+  if (coOwnersWrapper && coOwnersToggleBtn) {
+    coOwnersWrapper.style.display = 'none';
+    const arrow = coOwnersToggleBtn.querySelector('.toggle-arrow');
+    if (arrow) arrow.textContent = '►';
+  }
+  toggleCoOwnersSection();
   
   // 完成度僅做展示 (純文字)
   editProgressVal.textContent = `${task.progress}%`;
@@ -1069,10 +1217,12 @@ function openDrawer(rowNum) {
   }
 
   // 記錄開啟時的原始狀態 (用於髒數據防呆比對)
+  const currentCoOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
   drawerOriginalState = {
     taskName: editTaskName.value.trim(), // 專案項目名稱
     taskId: editTaskId.value.trim(),
     owner: editOwnerSelect.value,
+    coOwners: JSON.stringify(currentCoOwners),
     detail: editDetail.value.trim(),
     taskLink: editTaskLink.value.trim(),
     isDone: editIsDone.checked,
@@ -1094,10 +1244,12 @@ function closeDrawer() {
 function isDrawerDirty() {
   if (!drawerOriginalState) return false;
 
+  const currentCoOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
   return (
     editTaskName.value.trim() !== drawerOriginalState.taskName ||
     editTaskId.value.trim() !== drawerOriginalState.taskId ||
     editOwnerSelect.value !== drawerOriginalState.owner ||
+    JSON.stringify(currentCoOwners) !== drawerOriginalState.coOwners ||
     editDetail.value.trim() !== drawerOriginalState.detail ||
     editTaskLink.value.trim() !== drawerOriginalState.taskLink ||
     editIsDone.checked !== drawerOriginalState.isDone ||
@@ -1132,6 +1284,7 @@ async function handleFormSubmit(e) {
   const taskId = editTaskId.value.trim(); 
   const owner = editOwnerSelect.value;   
   const taskName = editTaskName.value.trim(); 
+  const coOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
 
   if (!taskName) {
     showToast('專案項目名稱不可為空！', 'error');
@@ -1161,6 +1314,7 @@ async function handleFormSubmit(e) {
       taskId: taskId,
       taskName: taskName,
       owner: owner,
+      coOwners: coOwners,
       taskLink: taskLink,
       weeks: weeksPayload
     };
@@ -1193,6 +1347,7 @@ async function handleFormSubmit(e) {
       taskId: taskId,
       taskName: taskName,
       owner: owner,
+      coOwners: coOwners,
       isDone: isDone,
       taskLink: taskLink,
       weeks: updatedWeeks
@@ -1212,6 +1367,7 @@ async function handleFormSubmit(e) {
       taskId: taskId,     
       taskName: taskName, 
       owner: owner,       
+      coOwners: coOwners,
       isDone: isDone,     
       taskLink: taskLink, 
       weeks: weeksPayload 

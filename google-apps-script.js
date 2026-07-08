@@ -76,6 +76,14 @@ function doGet(e) {
     if (idIdx === -1) {
       idIdx = taskIdx > 0 ? taskIdx - 1 : 1; // 預設定位在專案項目欄的前一格 (B欄)
     }
+    
+    const coOwnerIndices = [];
+    for (let col = 0; col < headers.length; col++) {
+      if (headers[col] === "協") {
+        coOwnerIndices.push(col);
+      }
+    }
+    
     const tasks = [];
     let currentGroup = "未分類";
     // 從第三列開始解析資料
@@ -122,6 +130,16 @@ function doGet(e) {
           progressVal = Math.round(progressVal * 100);
         }
       }
+      
+      // 解析協辦人
+      const coOwners = [];
+      coOwnerIndices.forEach(function(colIdx) {
+        var val = row[colIdx] ? row[colIdx].toString().trim() : "";
+        if (val && val !== "-" && val !== "") {
+          coOwners.push(val);
+        }
+      });
+
       tasks.push({
         rowNumber: i + 1, // 記錄對應的試算表行數，以便更新
         group: currentGroup,
@@ -130,6 +148,7 @@ function doGet(e) {
         taskName: taskName,
         taskLink: taskLink, // 傳送專案超連結 URL
         owner: row[ownerIdx] ? row[ownerIdx].toString().trim() : "未分配",
+        coOwners: coOwners,
         detail: row[detailIdx] ? row[detailIdx].toString().trim() : "",
         progress: progressVal,
         weeks: weeksData
@@ -241,6 +260,21 @@ function doPost(e) {
       }
       if (detailIdx !== -1 && postData.detail !== undefined) {
         newRowValues[detailIdx] = postData.detail;
+      }
+      
+      // 寫入協辦人 (建立任務時)
+      if (postData.coOwners !== undefined) {
+        const coOwnersList = Array.isArray(postData.coOwners) ? postData.coOwners : [];
+        let coOwnerColIndices = [];
+        for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+          if (headers[colIdx] === "協") {
+            coOwnerColIndices.push(colIdx);
+          }
+        }
+        for (let cIdx = 0; cIdx < coOwnerColIndices.length; cIdx++) {
+          const colIdx = coOwnerColIndices[cIdx];
+          newRowValues[colIdx] = cIdx < coOwnersList.length ? coOwnersList[cIdx] : "-";
+        }
       }
       
       // 寫入試算表最後一行
@@ -388,6 +422,21 @@ function doPost(e) {
       const ownerIdx = headers.indexOf("主") + 1;
       if (ownerIdx > 0) {
         sheet.getRange(rowNumber, ownerIdx).setValue(postData.owner);
+      }
+    }
+    // 更新協辦人 (E, F, G, H 欄等所有 "協" 標題欄位)
+    if (postData.coOwners !== undefined) {
+      const coOwnersList = Array.isArray(postData.coOwners) ? postData.coOwners : [];
+      let coOwnerColIndices = [];
+      for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+        if (headers[colIdx] === "協") {
+          coOwnerColIndices.push(colIdx + 1); // 1-based column index
+        }
+      }
+      for (let cIdx = 0; cIdx < coOwnerColIndices.length; cIdx++) {
+        const colNumber = coOwnerColIndices[cIdx];
+        const ownerVal = cIdx < coOwnersList.length ? coOwnersList[cIdx] : "-";
+        sheet.getRange(rowNumber, colNumber).setValue(ownerVal);
       }
     }
     // 更新備忘錄目標內容

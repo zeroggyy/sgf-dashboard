@@ -1798,5 +1798,116 @@ input[disabled] {
   border-color: var(--accent-red) !important;
 }
 
+/* 確保展開後的手風琴容器不遮擋 Tooltip 浮動視窗 */
+.accordion-group.expanded {
+  overflow: visible !important;
+}
+
+/* 團隊協辦人懸浮提示框 (Tooltip) */
+.owner-tooltip {
+  position: relative;
+  cursor: help !important;
+  display: inline-flex;
+  align-items: center;
+}
+
+.owner-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.72rem !important;
+  font-family: var(--font-main) !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.15) !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.12s ease;
+  z-index: 9999 !important;
+  line-height: 1.4 !important;
+  border-radius: 0px !important;
+}
+
+.owner-tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.team-icon {
+  margin-left: 5px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  vertical-align: middle;
+}
+
+/* 編輯抽屜：協辦人複選框群組樣式 */
+.drawer-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  padding: 0.4rem 0.2rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.drawer-checkbox-item {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+}
+
+.drawer-checkbox-item input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--border-color);
+  margin-right: 6px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+  border-radius: 0px;
+}
+
+.drawer-checkbox-item input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.drawer-checkbox-item input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: bold;
+}
+
+.drawer-checkbox-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}
+
+.drawer-checkbox-item.disabled input[type="checkbox"] {
+  cursor: not-allowed !important;
+  background: #e2ded5;
+}
+
+
 
 
