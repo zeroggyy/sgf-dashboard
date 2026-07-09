@@ -18,6 +18,7 @@ let appState = {
   activeTimeFilter: 'current',   // 首頁預設時間篩選：當週焦點
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
   activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
+  timelineFilterMode: 'history', // 編輯抽屜時間軸篩選：'history' (歷程) 或 'all' (全部)
   searchQuery: '',
   expandedGroups: new Set()
 };
@@ -76,13 +77,7 @@ const drawerTitleText = document.getElementById('drawer-title-text');
 const drawerReadonlySection = document.getElementById('drawer-readonly-section');
 let isCreateMode = false; // 新建任務模式標記
 
-// Timeline Focus DOM
-const editFocusLastWeek = document.getElementById('edit-focus-last-week');
-const editFocusCurrentWeek = document.getElementById('edit-focus-current-week');
-const editFocusNextWeek = document.getElementById('edit-focus-next-week');
-const focusLastWeekHeader = document.getElementById('focus-last-week-header');
-const focusCurrentWeekHeader = document.getElementById('focus-current-week-header');
-const focusNextWeekHeader = document.getElementById('focus-next-week-header');
+
 
 
 // 初始化載入
@@ -296,60 +291,19 @@ function setupEventListeners() {
         if (arrow) arrow.textContent = '►';
       }
       toggleCoOwnersSection();
-      
-      // 3. 取得並清空週別編輯欄位
-      const timeWeeks = getTimelineWeeks();
-      if (timeWeeks.last) {
-        focusLastWeekHeader.textContent = `${timeWeeks.last.label} (${timeWeeks.last.date})`;
-        editFocusLastWeek.value = '';
-        editFocusLastWeek.setAttribute('data-week', timeWeeks.last.label);
-        editFocusLastWeek.disabled = false;
-        editFocusLastWeek.placeholder = '請輸入上週進度狀態...';
-      } else {
-        focusLastWeekHeader.textContent = '無上週資訊';
-        editFocusLastWeek.value = '';
-        editFocusLastWeek.removeAttribute('data-week');
-        editFocusLastWeek.disabled = true;
-        editFocusLastWeek.placeholder = '無此週別欄位';
-      }
-
-      if (timeWeeks.current) {
-        focusCurrentWeekHeader.textContent = `${timeWeeks.current.label} (${timeWeeks.current.date})`;
-        editFocusCurrentWeek.value = '';
-        editFocusCurrentWeek.setAttribute('data-week', timeWeeks.current.label);
-        editFocusCurrentWeek.disabled = false;
-        editFocusCurrentWeek.placeholder = '請輸入當週進度狀態...';
-      } else {
-        focusCurrentWeekHeader.textContent = '無當週資訊';
-        editFocusCurrentWeek.value = '';
-        editFocusCurrentWeek.removeAttribute('data-week');
-        editFocusCurrentWeek.disabled = true;
-      }
-
-      if (timeWeeks.next) {
-        focusNextWeekHeader.textContent = `${timeWeeks.next.label} (${timeWeeks.next.date})`;
-        editFocusNextWeek.value = '';
-        editFocusNextWeek.setAttribute('data-week', timeWeeks.next.label);
-        editFocusNextWeek.disabled = false;
-        editFocusNextWeek.placeholder = '請輸入下週進度狀態...';
-      } else {
-        focusNextWeekHeader.textContent = '無下週資訊';
-        editFocusNextWeek.value = '';
-        editFocusNextWeek.removeAttribute('data-week');
-        editFocusNextWeek.disabled = true;
-      }
+      resetDrawerTabs();
+      renderTimeline();
       
       // 4. 記錄開啟時的原始狀態 (用於髒數據防呆比對)
       drawerOriginalState = {
         taskName: '',
         taskId: '',
         owner: '',
+        coOwners: '[]',
         detail: '',
         taskLink: '',
         isDone: false,
-        focusLastWeek: '',
-        focusCurrentWeek: '',
-        focusNextWeek: ''
+        weeks: '{}'
       };
       
       // 5. 打開抽屜
@@ -494,6 +448,8 @@ function setupEventListeners() {
     }
   });
 
+
+
   // 前往專案連結按鈕
   btnOpenTaskLink.addEventListener('click', () => {
     if (btnOpenTaskLink.classList.contains('disabled')) return;
@@ -554,6 +510,26 @@ function setupEventListeners() {
       }
     });
   }
+
+
+
+  // 編輯抽屜左側時間軸內部篩選按鈕邏輯
+  const btnFilterHistory = document.getElementById('btn-timeline-filter-history');
+  const btnFilterAll = document.getElementById('btn-timeline-filter-all');
+  if (btnFilterHistory && btnFilterAll) {
+    btnFilterHistory.addEventListener('click', () => {
+      appState.timelineFilterMode = 'history';
+      btnFilterHistory.classList.add('active');
+      btnFilterAll.classList.remove('active');
+      applyTimelineFilter();
+    });
+    btnFilterAll.addEventListener('click', () => {
+      appState.timelineFilterMode = 'all';
+      btnFilterAll.classList.add('active');
+      btnFilterHistory.classList.remove('active');
+      applyTimelineFilter();
+    });
+  }
 }
 
 // 根據負責人是否選了「企劃」來切換顯示/隱藏支援區塊
@@ -567,6 +543,90 @@ function toggleCoOwnersSection() {
       coOwnersSection.style.display = 'block';
     }
   }
+}
+
+// 重設編輯抽屜時間軸篩選器至預設的「歷程」篩選
+function resetDrawerTabs() {
+  // 重置時間軸篩選器狀態為預設「歷程」
+  appState.timelineFilterMode = 'history';
+  const btnFilterHistory = document.getElementById('btn-timeline-filter-history');
+  const btnFilterAll = document.getElementById('btn-timeline-filter-all');
+  if (btnFilterHistory && btnFilterAll) {
+    btnFilterHistory.classList.add('active');
+    btnFilterAll.classList.remove('active');
+  }
+}
+
+// 根據目前篩選條件（歷程 / 全部）顯示或隱藏時間軸卡片
+function applyTimelineFilter() {
+  const container = document.getElementById('drawer-timeline-container');
+  if (!container) return;
+
+  const timeWeeks = getTimelineWeeks();
+  const lastWeekLabel = timeWeeks.last ? timeWeeks.last.label : null;
+  const currentWeekLabel = timeWeeks.current ? timeWeeks.current.label : null;
+  const nextWeekLabel = timeWeeks.next ? timeWeeks.next.label : null;
+  const showAll = (appState.timelineFilterMode === 'all');
+
+  container.querySelectorAll('.drawer-timeline-item').forEach(item => {
+    const weekLabel = item.getAttribute('data-week-card');
+    const textarea = item.querySelector('.timeline-textarea');
+    const val = textarea ? textarea.value.trim() : '';
+    const hasText = val !== '';
+    
+    // 判斷是否為核心三週（上週、當週、下週）之一
+    const isCoreWeek = (weekLabel === lastWeekLabel || weekLabel === currentWeekLabel || weekLabel === nextWeekLabel);
+
+    if (showAll || hasText || isCoreWeek) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+// 渲染左側全年歷史時間軸進度
+function renderTimeline(taskObj = null) {
+  const container = document.getElementById('drawer-timeline-container');
+  if (!container) return;
+
+  const timeWeeks = getTimelineWeeks();
+  const lastWeekLabel = timeWeeks.last ? timeWeeks.last.label : null;
+  const currentWeekLabel = timeWeeks.current ? timeWeeks.current.label : null;
+  const nextWeekLabel = timeWeeks.next ? timeWeeks.next.label : null;
+
+  container.innerHTML = appState.weeksList.map(week => {
+    const isCurrent = (week.label === currentWeekLabel);
+    const isLast = (week.label === lastWeekLabel);
+    const isNext = (week.label === nextWeekLabel);
+
+    let itemClass = 'drawer-timeline-item';
+    let badgeHtml = '';
+
+    if (isCurrent) {
+      itemClass = 'drawer-timeline-item current-week';
+      badgeHtml = '<span class="timeline-badge">當週焦點</span>';
+    } else if (isLast) {
+      badgeHtml = '<span class="timeline-badge" style="background-color: var(--text-muted);">上週進度</span>';
+    } else if (isNext) {
+      badgeHtml = '<span class="timeline-badge" style="background-color: var(--text-secondary);">下週預期</span>';
+    }
+
+    const val = (taskObj && taskObj.weeks) ? (taskObj.weeks[week.label] || '') : '';
+    
+    return `
+      <div class="${itemClass}" data-week-card="${week.label}">
+        <div class="timeline-header">
+          <span>${week.label} (${week.date})</span>
+          ${badgeHtml}
+        </div>
+        <textarea class="timeline-textarea" data-week="${week.label}" placeholder="輸入進度狀態...">${val}</textarea>
+      </div>
+    `;
+  }).join('');
+  
+  // 渲染完畢後，立即套用當前的時間軸篩選條件（預設歷程，強制包含當週）
+  applyTimelineFilter();
 }
 
 // 顯示設定視窗 (預填已存參數)
@@ -597,14 +657,24 @@ function saveConfiguration() {
 }
 
 // 從 API 載入資料
-async function loadData() {
+// 從 API 載入資料 (支援 background 背景靜態同步，避免畫面卡住)
+async function loadData(isBackground = false) {
   if (!appState.gasUrl) return;
 
-  taskAccordion.innerHTML = `
-    <div class="loading-state">
-      <i class="fa-solid fa-circle-notch fa-spin"></i> 正在安全讀取 Google Sheet 進度...
-    </div>
-  `;
+  const sortIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
+  const originalIconClass = sortIcon ? sortIcon.className : 'fa-solid fa-arrow-down-short-wide';
+
+  if (!isBackground) {
+    taskAccordion.innerHTML = `
+      <div class="loading-state">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> 正在安全讀取 Google Sheet 進度...
+      </div>
+    `;
+  } else {
+    if (sortIcon) {
+      sortIcon.className = 'fa-solid fa-circle-notch fa-spin';
+    }
+  }
 
   try {
     const fetchUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
@@ -638,6 +708,10 @@ async function loadData() {
     console.error(err);
     showToast('連線失敗，請檢查 API 網址或網路狀態。', 'error');
     showSetupModal();
+  } finally {
+    if (sortIcon) {
+      sortIcon.className = originalIconClass;
+    }
   }
 }
 
@@ -719,10 +793,10 @@ function renderOwnerChips() {
     }
   });
   
-  const owners = ['all', ...new Set(allNames)];
+  const owners = ['all', 'unassigned', ...new Set(allNames)];
   
   ownerChips.innerHTML = owners.map(owner => {
-    const label = owner === 'all' ? '全部' : owner;
+    const label = owner === 'all' ? '全部' : (owner === 'unassigned' ? '未分派' : owner);
     let isActive = false;
     if (owner === 'all') {
       isActive = appState.activeOwnerFilters.length === 0;
@@ -743,7 +817,12 @@ function renderOwnerChips() {
       const owner = targetChip.getAttribute('data-owner');
       if (owner === 'all') {
         appState.activeOwnerFilters = [];
+      } else if (owner === 'unassigned') {
+        appState.activeOwnerFilters = ['unassigned'];
+      } else if (owner === '企劃') {
+        appState.activeOwnerFilters = ['企劃'];
       } else {
+        appState.activeOwnerFilters = appState.activeOwnerFilters.filter(o => o !== 'unassigned' && o !== '企劃');
         if (appState.activeOwnerFilters.includes(owner)) {
           appState.activeOwnerFilters = appState.activeOwnerFilters.filter(o => o !== owner);
         } else {
@@ -773,9 +852,18 @@ function renderTasks() {
   console.log("【除錯】包含 '!' 或群組有 'Andy' 的任務：", appState.tasks.filter(t => t.taskName.includes('!') || t.taskName.includes('Andy') || t.group.includes('Andy')));
   
   const filteredTasks = appState.tasks.filter(task => {
-    const matchesOwner = appState.activeOwnerFilters.length === 0 || 
-                         appState.activeOwnerFilters.includes(task.owner) ||
-                         (task.coOwners && task.coOwners.some(co => appState.activeOwnerFilters.includes(co)));
+    let matchesOwner = false;
+    if (appState.activeOwnerFilters.length === 0) {
+      matchesOwner = true;
+    } else {
+      const hasUnassignedFilter = appState.activeOwnerFilters.includes('unassigned');
+      if (hasUnassignedFilter) {
+        matchesOwner = !task.owner || task.owner === '未分配' || task.owner === '-' || task.owner.trim() === '';
+      } else {
+        const taskPeople = [task.owner, ...(task.coOwners || [])];
+        matchesOwner = appState.activeOwnerFilters.every(filterName => taskPeople.includes(filterName));
+      }
+    }
     
     const matchesSearch = task.taskName.toLowerCase().includes(appState.searchQuery) || 
                           task.detail.toLowerCase().includes(appState.searchQuery);
@@ -1170,51 +1258,8 @@ function openDrawer(rowNum) {
   }
   editIsDone.checked = task.isDone;
 
-  // 1. 取得上週、當週、下週資訊並渲染
-  const timeWeeks = getTimelineWeeks();
-  
-  // 上週
-  if (timeWeeks.last) {
-    focusLastWeekHeader.textContent = `${timeWeeks.last.label} (${timeWeeks.last.date})`;
-    editFocusLastWeek.value = task.weeks[timeWeeks.last.label] || '';
-    editFocusLastWeek.setAttribute('data-week', timeWeeks.last.label);
-    editFocusLastWeek.disabled = false;
-    editFocusLastWeek.placeholder = "輸入狀態...";
-  } else {
-    focusLastWeekHeader.textContent = '無上週資訊';
-    editFocusLastWeek.value = '';
-    editFocusLastWeek.removeAttribute('data-week');
-    editFocusLastWeek.disabled = true;
-    editFocusLastWeek.placeholder = "無此週別欄位";
-  }
-
-  // 當週
-  if (timeWeeks.current) {
-    focusCurrentWeekHeader.textContent = `${timeWeeks.current.label} (${timeWeeks.current.date})`;
-    editFocusCurrentWeek.value = task.weeks[timeWeeks.current.label] || '';
-    editFocusCurrentWeek.setAttribute('data-week', timeWeeks.current.label);
-    editFocusCurrentWeek.disabled = false;
-    editFocusCurrentWeek.placeholder = "輸入當週進度狀態...";
-  } else {
-    focusCurrentWeekHeader.textContent = '無當週資訊';
-    editFocusCurrentWeek.value = '';
-    editFocusCurrentWeek.removeAttribute('data-week');
-    editFocusCurrentWeek.disabled = true;
-  }
-
-  // 下週
-  if (timeWeeks.next) {
-    focusNextWeekHeader.textContent = `${timeWeeks.next.label} (${timeWeeks.next.date})`;
-    editFocusNextWeek.value = task.weeks[timeWeeks.next.label] || '';
-    editFocusNextWeek.setAttribute('data-week', timeWeeks.next.label);
-    editFocusNextWeek.disabled = false;
-    editFocusNextWeek.placeholder = "輸入下週進度狀態...";
-  } else {
-    focusNextWeekHeader.textContent = '無下週資訊';
-    editFocusNextWeek.value = '';
-    editFocusNextWeek.removeAttribute('data-week');
-    editFocusNextWeek.disabled = true;
-  }
+  resetDrawerTabs();
+  renderTimeline(task);
 
   // 記錄開啟時的原始狀態 (用於髒數據防呆比對)
   const currentCoOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
@@ -1226,9 +1271,7 @@ function openDrawer(rowNum) {
     detail: editDetail.value.trim(),
     taskLink: editTaskLink.value.trim(),
     isDone: editIsDone.checked,
-    focusLastWeek: editFocusLastWeek.value.trim(),
-    focusCurrentWeek: editFocusCurrentWeek.value.trim(),
-    focusNextWeek: editFocusNextWeek.value.trim()
+    weeks: JSON.stringify(task.weeks || {})
   };
 
   editDrawer.classList.add('open');
@@ -1245,6 +1288,16 @@ function isDrawerDirty() {
   if (!drawerOriginalState) return false;
 
   const currentCoOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
+  
+  // 收集目前左側時間軸中所有週別的輸入內容
+  const currentWeeks = {};
+  document.querySelectorAll('.timeline-textarea').forEach(textarea => {
+    const label = textarea.getAttribute('data-week');
+    if (label) {
+      currentWeeks[label] = textarea.value.trim();
+    }
+  });
+
   return (
     editTaskName.value.trim() !== drawerOriginalState.taskName ||
     editTaskId.value.trim() !== drawerOriginalState.taskId ||
@@ -1253,9 +1306,7 @@ function isDrawerDirty() {
     editDetail.value.trim() !== drawerOriginalState.detail ||
     editTaskLink.value.trim() !== drawerOriginalState.taskLink ||
     editIsDone.checked !== drawerOriginalState.isDone ||
-    editFocusLastWeek.value.trim() !== drawerOriginalState.focusLastWeek ||
-    editFocusCurrentWeek.value.trim() !== drawerOriginalState.focusCurrentWeek ||
-    editFocusNextWeek.value.trim() !== drawerOriginalState.focusNextWeek
+    JSON.stringify(currentWeeks) !== drawerOriginalState.weeks
   );
 }
 
@@ -1295,13 +1346,13 @@ async function handleFormSubmit(e) {
     return;
   }
 
-  // 1. 收集進度狀態
+  // 1. 收集進度狀態 (從左側全年歷史時間軸收集所有週別內容)
   const weeksPayload = {};
-  const timelineInputs = [editFocusLastWeek, editFocusCurrentWeek, editFocusNextWeek];
-  timelineInputs.forEach(input => {
-    const weekLabel = input.getAttribute('data-week');
+  const timelineTextareas = document.querySelectorAll('.timeline-textarea');
+  timelineTextareas.forEach(textarea => {
+    const weekLabel = textarea.getAttribute('data-week');
     if (weekLabel) {
-      weeksPayload[weekLabel] = input.value.trim();
+      weeksPayload[weekLabel] = textarea.value.trim();
     }
   });
 
@@ -1321,8 +1372,8 @@ async function handleFormSubmit(e) {
 
     const success = await syncTaskToGoogleSheet(null, payload);
     if (success) {
-      showToast('任務新建成功！正在重新讀取最新進度...', 'success');
-      loadData();
+      showToast('任務新建成功！正在背景讀取最新進度...', 'success');
+      loadData(true);
       closeDrawer();
     } else {
       showToast('新建任務失敗，請檢查 API 連線。', 'error');
@@ -1333,13 +1384,7 @@ async function handleFormSubmit(e) {
     const task = appState.tasks.find(t => t.rowNumber == rowNum);
     if (!task) return;
     
-    const updatedWeeks = { ...task.weeks };
-    timelineInputs.forEach(input => {
-      const weekLabel = input.getAttribute('data-week');
-      if (weekLabel) {
-        updatedWeeks[weekLabel] = input.value.trim();
-      }
-    });
+    const updatedWeeks = { ...task.weeks, ...weeksPayload };
 
     // 更新本地狀態
     updateLocalTask(rowNum, {
@@ -1375,11 +1420,11 @@ async function handleFormSubmit(e) {
 
     const success = await syncTaskToGoogleSheet(rowNum, payload);
     if (success) {
-      showToast('同步成功！正在更新公式連動後的最新狀態...', 'success');
-      loadData(); 
+      showToast('同步成功！正在背景更新最新狀態...', 'success');
+      loadData(true); 
     } else {
-      showToast('同步失敗，請檢查 API 設定後重新整理。', 'error');
-      loadData(); 
+      showToast('同步失敗，請檢查 API 設定並點擊手動同步。', 'error');
+      loadData(true); 
     }
   }
 }

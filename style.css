@@ -1908,6 +1908,114 @@ input[disabled] {
   background: #e2ded5;
 }
 
+/* 編輯抽屜：左側頁籤樣式 */
+.drawer-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.4rem;
+}
+
+.drawer-tab-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.88rem;
+  font-family: var(--font-main);
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+  border-radius: 0px;
+}
+
+.drawer-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.drawer-tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--primary);
+}
+
+/* 編輯抽屜：左側全年歷史時間軸樣式 */
+.drawer-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.2rem;
+}
+
+.drawer-timeline-item {
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  background-color: var(--bg-card);
+  transition: all 0.15s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* 當週高亮特殊樣式 */
+.drawer-timeline-item.current-week {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15);
+}
+
+.drawer-timeline-item .timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.drawer-timeline-item.current-week .timeline-header {
+  color: var(--primary);
+}
+
+.drawer-timeline-item .timeline-badge {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  font-weight: bold;
+}
+
+.drawer-timeline-item textarea {
+  width: 100%;
+  min-height: 48px;
+  height: 48px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.drawer-timeline-item textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* 1920x1080 實際瀏覽器高度優化：縮減抽屜上下 padding 與 header 間距 */
+#edit-drawer .drawer-content {
+  padding: 1.25rem 2rem !important;
+}
+
+#edit-drawer .drawer-header {
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+
 
 
 

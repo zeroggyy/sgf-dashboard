@@ -107,9 +107,8 @@ function doGet(e) {
           if (match) taskLink = match[1];
         }
       }
-      // 判斷是否為「大分類/分組」 (例如：02 // 02_角色動作編輯)
-      // 特徵：主、目標欄位可能為空，或者任務名稱包含 //
-      if (taskName.includes("//") || (!row[ownerIdx] && !row[progressIdx] && taskName.match(/^\d+/))) {
+      // 判斷是否為「大分類/分組」 (只要任務名稱中包含 // 即判定為大分類群組)
+      if (taskName.includes("//")) {
         currentGroup = taskName;
         continue;
       }
@@ -281,6 +280,13 @@ function doPost(e) {
       sheet.appendRow(newRowValues);
       const lastRowNum = sheet.getLastRow();
       
+      // 強制將 B 欄 (ID 欄) 設為純文字格式，避免數字排序混亂
+      if (idIdx !== -1 && postData.taskId !== undefined) {
+        const idCell = sheet.getRange(lastRowNum, idIdx + 1);
+        idCell.setNumberFormat("@");
+        idCell.setValue(postData.taskId.toString());
+      }
+      
       // A欄 (完成欄) 統一加上核取方塊
       if (doneIdx !== -1) {
         const doneCell = sheet.getRange(lastRowNum, doneIdx + 1);
@@ -414,7 +420,9 @@ function doPost(e) {
       const taskIdx = headers.indexOf("專案項目") + 1;
       const idIdx = headers.indexOf("ID") !== -1 ? headers.indexOf("ID") + 1 : (taskIdx > 1 ? taskIdx - 1 : 2);
       if (idIdx > 0) {
-        sheet.getRange(rowNumber, idIdx).setValue(postData.taskId);
+        const idCell = sheet.getRange(rowNumber, idIdx);
+        idCell.setNumberFormat("@"); // 強制設為純文字格式，避免數字排序混亂
+        idCell.setValue(postData.taskId.toString());
       }
     }
     // 更新主負責人 (C 欄)
