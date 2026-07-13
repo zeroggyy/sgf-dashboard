@@ -334,8 +334,25 @@ function setupEventListeners() {
         return;
       }
       
-      const markdown = tasks.map(task => {
-        const name = task.taskName || '';
+      // 根據篩選條件決定 Markdown 標題
+      let header = '';
+      if (appState.activeSpecialFilter === 'priority') {
+        header = '## 優先解決\n';
+      } else if (appState.activeSpecialFilter === 'andy') {
+        header = '## 跟Andy確認\n';
+      } else if (appState.activeTimeFilter === 'last') {
+        header = '## 上週追蹤\n';
+      } else if (appState.activeTimeFilter === 'current') {
+        header = '## 本週進度\n';
+      }
+
+      const listContent = tasks.map(task => {
+        let name = task.taskName || '';
+        // 移除 Emoji，避免 markdown 在部分通訊或協作軟體上解譯失效
+        name = name.replace(/\p{Extended_Pictographic}/gu, '').trim();
+        // 將多個連續空格整理為單個空格
+        name = name.replace(/\s+/g, ' ');
+        
         const link = task.taskLink || '';
         if (link && link.trim() !== '') {
           return `- [${name}](${link.trim()})`;
@@ -343,13 +360,15 @@ function setupEventListeners() {
           return `- ${name}`;
         }
       }).join('\n');
+
+      const finalMarkdown = header + listContent;
       
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(markdown);
+          await navigator.clipboard.writeText(finalMarkdown);
         } else {
           const textarea = document.createElement('textarea');
-          textarea.value = markdown;
+          textarea.value = finalMarkdown;
           textarea.style.position = 'fixed';
           textarea.style.opacity = '0';
           document.body.appendChild(textarea);
