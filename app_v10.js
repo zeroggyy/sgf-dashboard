@@ -20,7 +20,8 @@ let appState = {
   activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
   timelineFilterMode: 'history', // 編輯抽屜時間軸篩選：'history' (歷程) 或 'all' (全部)
   searchQuery: '',
-  expandedGroups: new Set()
+  expandedGroups: new Set(),
+  filteredTasks: []
 };
 
 let drawerOriginalState = null;
@@ -320,6 +321,47 @@ function setupEventListeners() {
       const uniqueGroups = [...new Set(appState.tasks.map(t => t.group))];
       uniqueGroups.forEach(groupName => appState.expandedGroups.add(groupName));
       renderTasks();
+    });
+  }
+
+  // 複製篩選結果 (Markdown 格式)
+  const copyTasksBtn = document.getElementById('copy-tasks-btn');
+  if (copyTasksBtn) {
+    copyTasksBtn.addEventListener('click', async () => {
+      const tasks = appState.filteredTasks || [];
+      if (tasks.length === 0) {
+        showToast('目前沒有可複製的任務！', 'error');
+        return;
+      }
+      
+      const markdown = tasks.map(task => {
+        const name = task.taskName || '';
+        const link = task.taskLink || '';
+        if (link && link.trim() !== '') {
+          return `- [${name}](${link.trim()})`;
+        } else {
+          return `- ${name}`;
+        }
+      }).join('\n');
+      
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(markdown);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = markdown;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        showToast(`已複製 ${tasks.length} 項任務到剪貼簿 (Markdown)！`, 'success');
+      } catch (err) {
+        console.error('複製失敗：', err);
+        showToast('複製到剪貼簿失敗，請重新嘗試！', 'error');
+      }
     });
   }
 
@@ -936,6 +978,7 @@ function renderTasks() {
     return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial && matchesGroup;
   });
 
+  appState.filteredTasks = filteredTasks;
   filteredCount.textContent = `共 ${filteredTasks.length} 項`;
 
   // 2. 依照 group 分組
