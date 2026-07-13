@@ -1121,6 +1121,18 @@ body.body-scroll-lock {
   background-color: #b71c1c !important; /* 深硃砂紅 */
 }
 
+#save-milestone-modal-btn {
+  background-color: var(--accent-red) !important;
+  color: #f2efe7 !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+#save-milestone-modal-btn:hover {
+  background-color: #b71c1c !important;
+  color: #ffffff !important;
+}
+
 .form-group-inline {
   display: flex;
   gap: 0.5rem;

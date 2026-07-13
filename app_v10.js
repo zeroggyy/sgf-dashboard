@@ -14,8 +14,9 @@ let appState = {
   milestones: [], // 新增：專案時程里程碑
   weeksList: [],
   activeOwnerFilters: [], // 負責人篩選名單，空陣列代表「全部 (all)」
+  activeRoles: ['primary'], // 負責權限篩選，預設為「主要負責」
   activeStatusFilter: 'pending', // 首頁預設顯示狀態：進行中
-  activeTimeFilter: 'current',   // 首頁預設時間篩選：當週焦點
+  activeTimeFilters: ['current'],   // 首頁預設時間篩選：當週焦點 (支援複選)
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
   activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
   timelineFilterMode: 'history', // 編輯抽屜時間軸篩選：'history' (歷程) 或 'all' (全部)
@@ -45,6 +46,7 @@ const scheduleYearSelect = document.getElementById('schedule-year-select');
 const scheduleMonthSelect = document.getElementById('schedule-month-select');
 const scheduleWeekSelect = document.getElementById('schedule-week-select');
 const ownerChips = document.getElementById('owner-chips');
+const roleChips = document.getElementById('role-chips');
 const statusChips = document.getElementById('status-chips');
 const timeChips = document.getElementById('time-chips');
 const specialChips = document.getElementById('special-chips');
@@ -334,33 +336,60 @@ function setupEventListeners() {
         return;
       }
       
-      // 根據篩選條件決定 Markdown 標題
+      // 根據篩選條件決定 Markdown 標題 (複選時間區間時顯示「待辦項目」)
+      const selectedTimeFiltersCount = appState.activeTimeFilters.filter(f => f !== 'all').length;
       let header = '';
       if (appState.activeSpecialFilter === 'priority') {
         header = '## 優先解決\n';
       } else if (appState.activeSpecialFilter === 'andy') {
         header = '## 跟Andy確認\n';
-      } else if (appState.activeTimeFilter === 'last') {
+      } else if (selectedTimeFiltersCount > 1) {
+        header = '## 待辦項目\n';
+      } else if (appState.activeTimeFilters.includes('last')) {
         header = '## 上週追蹤\n';
-      } else if (appState.activeTimeFilter === 'current') {
+      } else if (appState.activeTimeFilters.includes('current')) {
         header = '## 本週進度\n';
       }
-
-      const listContent = tasks.map(task => {
+      
+      const sortedTasks = [...tasks].sort((a, b) => {
+        const aPriority = (a.taskName || '').trim().startsWith('>');
+        const bPriority = (b.taskName || '').trim().startsWith('>');
+        if (aPriority && !bPriority) return -1;
+        if (!aPriority && bPriority) return 1;
+        return 0;
+      });
+      
+      const listContent = sortedTasks.map(task => {
+        const isPriority = (task.taskName || '').trim().startsWith('>');
         let name = task.taskName || '';
+        
+        if (isPriority) {
+          name = name.replace(/^>\s*/, '');
+        }
+        
         // 移除 Emoji，避免 markdown 在部分通訊或協作軟體上解譯失效
         name = name.replace(/\p{Extended_Pictographic}/gu, '').trim();
         // 將多個連續空格整理為單個空格
         name = name.replace(/\s+/g, ' ');
         
         const link = task.taskLink || '';
-        if (link && link.trim() !== '') {
-          return `- [${name}](${link.trim()})`;
+        const hasLink = link && link.trim() !== '';
+        
+        if (isPriority) {
+          if (hasLink) {
+            return `- **【優先】** [**${name}**](${link.trim()})`;
+          } else {
+            return `- **【優先】** **${name}**`;
+          }
         } else {
-          return `- ${name}`;
+          if (hasLink) {
+            return `- [${name}](${link.trim()})`;
+          } else {
+            return `- ${name}`;
+          }
         }
       }).join('\n');
-
+      
       const finalMarkdown = header + listContent;
       
       try {
@@ -416,14 +445,61 @@ function setupEventListeners() {
     });
   }
 
+  // 負責權限篩選切換 (支援複選，至少保留一個)
+  if (roleChips) {
+    roleChips.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        if (e.target.classList.contains('disabled')) return;
+        
+        const clickedVal = e.target.getAttribute('data-role');
+        
+        if (appState.activeRoles.includes(clickedVal)) {
+          if (appState.activeRoles.length > 1) {
+            appState.activeRoles = appState.activeRoles.filter(r => r !== clickedVal);
+            e.target.classList.remove('active');
+          }
+        } else {
+          appState.activeRoles.push(clickedVal);
+          e.target.classList.add('active');
+        }
+        
+        renderTasks();
+      });
+    });
+  }
+
   // 任務時間區間篩選切換
   if (timeChips) {
     timeChips.querySelectorAll('.chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         if (e.target.classList.contains('disabled')) return; 
-        timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        e.target.classList.add('active');
-        appState.activeTimeFilter = e.target.getAttribute('data-time');
+        
+        const clickedVal = e.target.getAttribute('data-time');
+        
+        if (clickedVal === 'all') {
+          appState.activeTimeFilters = ['all'];
+          timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          e.target.classList.add('active');
+        } else {
+          const allChip = timeChips.querySelector('.chip[data-time="all"]');
+          if (allChip) allChip.classList.remove('active');
+          
+          appState.activeTimeFilters = appState.activeTimeFilters.filter(f => f !== 'all');
+          
+          if (appState.activeTimeFilters.includes(clickedVal)) {
+            appState.activeTimeFilters = appState.activeTimeFilters.filter(f => f !== clickedVal);
+            e.target.classList.remove('active');
+          } else {
+            appState.activeTimeFilters.push(clickedVal);
+            e.target.classList.add('active');
+          }
+          
+          if (appState.activeTimeFilters.length === 0) {
+            appState.activeTimeFilters = ['all'];
+            if (allChip) allChip.classList.add('active');
+          }
+        }
+        
         renderTasks();
       });
     });
@@ -450,8 +526,7 @@ function setupEventListeners() {
         const isForceAllFilter = (appState.activeSpecialFilter === 'priority' || appState.activeSpecialFilter === 'andy');
 
         if (isForceAllFilter) {
-          // A. 強制時間篩選切換為「全部週別」
-          appState.activeTimeFilter = 'all';
+          appState.activeTimeFilters = ['all'];
           if (timeChips) {
             timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
           }
@@ -472,7 +547,7 @@ function setupEventListeners() {
 
           // 僅當切換回「無特殊篩選 (all)」時，才強制恢復預設的「當週焦點」和「進行中」
           if (appState.activeSpecialFilter === 'all') {
-            appState.activeTimeFilter = 'current';
+            appState.activeTimeFilters = ['current'];
             if (timeChips) {
               timeChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
               const currentChip = timeChips.querySelector('.chip[data-time="current"]');
@@ -494,11 +569,71 @@ function setupEventListeners() {
   }
 
   // 點擊半透明暗化背景 (editDrawer 本身) 時，安全觸發關閉與髒數據檢測
+  let drawerMousedownTarget = null;
+  editDrawer.addEventListener('mousedown', (e) => {
+    drawerMousedownTarget = e.target;
+  });
+
   editDrawer.addEventListener('click', (e) => {
-    if (e.target === editDrawer) {
+    if (e.target === editDrawer && drawerMousedownTarget === editDrawer) {
       attemptCloseDrawer(false);
     }
   });
+
+  // 恢復預設篩選條件
+  const resetFiltersBtn = document.getElementById('reset-filters-btn');
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', () => {
+      appState.activeOwnerFilters = [];
+      appState.activeRoles = ['primary'];
+      appState.activeStatusFilter = 'pending';
+      appState.activeTimeFilters = ['current'];
+      appState.activeSpecialFilter = 'all';
+      appState.searchQuery = '';
+      
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.value = '';
+      
+      if (ownerChips) {
+        ownerChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        const allOwnerChip = ownerChips.querySelector('.chip[data-owner="all"]');
+        if (allOwnerChip) allOwnerChip.classList.add('active');
+      }
+      
+      if (roleChips) {
+        roleChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        const primaryRoleChip = roleChips.querySelector('.chip[data-role="primary"]');
+        if (primaryRoleChip) primaryRoleChip.classList.add('active');
+      }
+      
+      if (statusChips) {
+        statusChips.querySelectorAll('.chip').forEach(c => {
+          c.classList.remove('active');
+          c.classList.remove('disabled');
+        });
+        const pendingStatusChip = statusChips.querySelector('.chip[data-status="pending"]');
+        if (pendingStatusChip) pendingStatusChip.classList.add('active');
+      }
+      
+      if (timeChips) {
+        timeChips.querySelectorAll('.chip').forEach(c => {
+          c.classList.remove('active');
+          c.classList.remove('disabled');
+        });
+        const currentTimeChip = timeChips.querySelector('.chip[data-time="current"]');
+        if (currentTimeChip) currentTimeChip.classList.add('active');
+      }
+      
+      if (specialChips) {
+        specialChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        const allSpecialChip = specialChips.querySelector('.chip[data-special="all"]');
+        if (allSpecialChip) allSpecialChip.classList.add('active');
+      }
+      
+      renderTasks();
+      showToast('已恢復預設篩選條件！', 'success');
+    });
+  }
 
   // 監聽專案連結輸入框的變更，動態切換前往按鈕狀態
   editTaskLink.addEventListener('input', (e) => {
@@ -914,15 +1049,30 @@ function renderTasks() {
   
   const filteredTasks = appState.tasks.filter(task => {
     let matchesOwner = false;
+    const activeRoles = appState.activeRoles || ['primary'];
     if (appState.activeOwnerFilters.length === 0) {
-      matchesOwner = true;
+      if (activeRoles.includes('primary') && activeRoles.includes('support')) {
+        matchesOwner = true;
+      } else if (activeRoles.includes('support')) {
+        matchesOwner = task.coOwners && task.coOwners.length > 0;
+      } else {
+        matchesOwner = true;
+      }
     } else {
       const hasUnassignedFilter = appState.activeOwnerFilters.includes('unassigned');
       if (hasUnassignedFilter) {
         matchesOwner = !task.owner || task.owner === '未分配' || task.owner === '-' || task.owner.trim() === '';
       } else {
-        const taskPeople = [task.owner, ...(task.coOwners || [])];
-        matchesOwner = appState.activeOwnerFilters.every(filterName => taskPeople.includes(filterName));
+        matchesOwner = appState.activeOwnerFilters.every(filterName => {
+          let matched = false;
+          if (activeRoles.includes('primary') && task.owner === filterName) {
+            matched = true;
+          }
+          if (activeRoles.includes('support') && task.coOwners && task.coOwners.includes(filterName)) {
+            matched = true;
+          }
+          return matched;
+        });
       }
     }
     
@@ -949,12 +1099,20 @@ function renderTasks() {
     // 時間週別過濾 (當有啟用限制繞過之「特殊篩選」時，自動繞過時間區間限制，顯示全域符合項目)
     let matchesTime = true;
     if (!isSpecialActive) {
-      if (appState.activeTimeFilter === 'current' && currentWeekLabel) {
-        matchesTime = task.weeks[currentWeekLabel] && task.weeks[currentWeekLabel].toString().trim() !== "";
-      } else if (appState.activeTimeFilter === 'last' && lastWeekLabel) {
-        matchesTime = task.weeks[lastWeekLabel] && task.weeks[lastWeekLabel].toString().trim() !== "";
-      } else if (appState.activeTimeFilter === 'next' && nextWeekLabel) {
-        matchesTime = task.weeks[nextWeekLabel] && task.weeks[nextWeekLabel].toString().trim() !== "";
+      const hasAll = appState.activeTimeFilters.includes('all');
+      if (!hasAll && appState.activeTimeFilters.length > 0) {
+        matchesTime = appState.activeTimeFilters.some(filter => {
+          if (filter === 'last' && lastWeekLabel) {
+            return task.weeks[lastWeekLabel] && task.weeks[lastWeekLabel].toString().trim() !== "";
+          }
+          if (filter === 'current' && currentWeekLabel) {
+            return task.weeks[currentWeekLabel] && task.weeks[currentWeekLabel].toString().trim() !== "";
+          }
+          if (filter === 'next' && nextWeekLabel) {
+            return task.weeks[nextWeekLabel] && task.weeks[nextWeekLabel].toString().trim() !== "";
+          }
+          return false;
+        });
       }
     }
 
@@ -969,14 +1127,20 @@ function renderTasks() {
     } else if (isDashFilter) {
       // 動態抓取當前時間篩選下，該任務所顯示的進度內容（排除週別標籤前綴）
       let currentProgressText = '';
-      if (appState.activeTimeFilter === 'current' && currentWeekLabel) {
-        currentProgressText = task.weeks[currentWeekLabel] || '';
-      } else if (appState.activeTimeFilter === 'last' && lastWeekLabel) {
-        currentProgressText = task.weeks[lastWeekLabel] || '';
-      } else if (appState.activeTimeFilter === 'next' && nextWeekLabel) {
-        currentProgressText = task.weeks[nextWeekLabel] || '';
+      const activeFilters = appState.activeTimeFilters.filter(f => f !== 'all');
+      if (activeFilters.length > 0) {
+        const texts = [];
+        if (activeFilters.includes('current') && currentWeekLabel && task.weeks[currentWeekLabel]) {
+          texts.push(task.weeks[currentWeekLabel]);
+        }
+        if (activeFilters.includes('last') && lastWeekLabel && task.weeks[lastWeekLabel]) {
+          texts.push(task.weeks[lastWeekLabel]);
+        }
+        if (activeFilters.includes('next') && nextWeekLabel && task.weeks[nextWeekLabel]) {
+          texts.push(task.weeks[nextWeekLabel]);
+        }
+        currentProgressText = texts.join('\n');
       } else {
-        // 全部週別時，尋找有填資料的最後一週的純值
         const nonEmptyWeeks = Object.entries(task.weeks).filter(([_, val]) => val !== '');
         if (nonEmptyWeeks.length > 0) {
           const [_, lastVal] = nonEmptyWeeks[nonEmptyWeeks.length - 1];
@@ -1055,12 +1219,26 @@ function renderTasks() {
        // 動態抓取對應週別的進度內容 (與當前時間過濾連動)
        let currentProgressText = '';
        
-       if (appState.activeTimeFilter === 'current' && currentWeekLabel) {
-         currentProgressText = task.weeks[currentWeekLabel] || '';
-       } else if (appState.activeTimeFilter === 'last' && lastWeekLabel) {
-         currentProgressText = task.weeks[lastWeekLabel] || '';
-       } else if (appState.activeTimeFilter === 'next' && nextWeekLabel) {
-         currentProgressText = task.weeks[nextWeekLabel] || '';
+       const activeFilters = appState.activeTimeFilters.filter(f => f !== 'all');
+       if (activeFilters.length > 0) {
+         const texts = [];
+         if (activeFilters.length === 1) {
+           const filter = activeFilters[0];
+           if (filter === 'last' && lastWeekLabel) currentProgressText = task.weeks[lastWeekLabel] || '';
+           if (filter === 'current' && currentWeekLabel) currentProgressText = task.weeks[currentWeekLabel] || '';
+           if (filter === 'next' && nextWeekLabel) currentProgressText = task.weeks[nextWeekLabel] || '';
+         } else {
+           if (activeFilters.includes('last') && lastWeekLabel && task.weeks[lastWeekLabel]) {
+             texts.push(`${lastWeekLabel}: ${task.weeks[lastWeekLabel]}`);
+           }
+           if (activeFilters.includes('current') && currentWeekLabel && task.weeks[currentWeekLabel]) {
+             texts.push(`${currentWeekLabel}: ${task.weeks[currentWeekLabel]}`);
+           }
+           if (activeFilters.includes('next') && nextWeekLabel && task.weeks[nextWeekLabel]) {
+             texts.push(`${nextWeekLabel}: ${task.weeks[nextWeekLabel]}`);
+           }
+           currentProgressText = texts.join('\n');
+         }
        } else {
          // 全部週別時，尋找有填資料的最後一週
          const nonEmptyWeeks = Object.entries(task.weeks).filter(([_, val]) => val !== '');
