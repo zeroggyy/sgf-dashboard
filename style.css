@@ -2285,17 +2285,20 @@ input[disabled] {
 .quality-note i { margin-right: 0.25rem; color: var(--accent-red); }
 .theme2-module-table { padding: 0.35rem 1rem 0.7rem; }
 .theme2-flow-map { padding: 1rem; overflow-x: auto; }
-.ui-flow-map { display: grid; grid-template-columns: 155px 34px minmax(0, 1fr); gap: 0.75rem; align-items: start; min-width: 720px; }
-.ui-flow-start { position: sticky; left: 0; display: flex; flex-direction: column; gap: 0.2rem; padding: 0.8rem; border: 2px solid var(--theme-accent); background: var(--theme-accent-soft); }
+.ui-flow-map { position: relative; display: grid; grid-template-columns: 155px 34px minmax(0, 1fr); gap: 0.75rem; align-items: start; min-width: 720px; }
+.ui-flow-connections { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.ui-flow-line { fill: none; stroke-linecap: square; stroke-linejoin: round; }
+.ui-flow-line-main { stroke: #8EAFC1; stroke-width: 1.5; opacity: 0.78; }
+.ui-flow-line-secondary { stroke: #C3D2DA; stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.9; }
+.ui-flow-start { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 0.2rem; padding: 0.8rem; border: 2px solid var(--theme-accent); background: var(--theme-accent-soft); }
 .ui-flow-start-icon { color: var(--theme-accent); font-size: 1.1rem; }
 .ui-flow-start strong, .ui-flow-branch-node strong { font-size: 0.8rem; }
 .ui-flow-start small, .ui-flow-branch-node small { color: var(--text-secondary); font-size: 0.64rem; line-height: 1.4; }
 .ui-flow-start p { margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.62rem; }
-.ui-flow-connector { align-self: start; padding-top: 1.2rem; color: var(--theme-accent); font-size: 1.25rem; text-align: center; }
-.ui-flow-branches { display: grid; gap: 0.8rem; }
+.ui-flow-connector { visibility: hidden; align-self: start; padding-top: 1.2rem; color: var(--theme-accent); font-size: 1.25rem; text-align: center; }
+.ui-flow-branches { position: relative; z-index: 1; display: grid; gap: 0.8rem; }
 .ui-flow-branch { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 0.75rem; align-items: start; position: relative; }
-.ui-flow-branch::before { content: ''; position: absolute; left: -2.1rem; top: 1.55rem; width: 2.1rem; border-top: 1px solid var(--theme-accent); }
-.ui-flow-branch-node { display: flex; justify-content: space-between; align-items: center; gap: 0.55rem; width: 100%; min-height: 54px; padding: 0.7rem; border: 1px solid var(--theme-accent); background: var(--panel-bg); color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.ui-flow-branch-node { display: flex; justify-content: space-between; align-items: center; gap: 0.55rem; width: 100%; min-height: 54px; padding: 0.7rem; border: 1px solid #8EAFC1; background: var(--panel-bg); color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
 .ui-flow-branch-node:hover { background: var(--theme-accent-soft); }
 .ui-flow-branch-node > span { display: flex; flex-direction: column; gap: 0.2rem; }
 .ui-flow-branch-node em, .ui-flow-category-toggle em { color: var(--theme-accent); font-size: 0.9rem; font-style: normal; transition: transform 0.18s ease; }
@@ -2304,7 +2307,9 @@ input[disabled] {
 .ui-flow-branch.is-open .ui-flow-branch-body { display: block; }
 .ui-flow-description { margin: 0 0 0.55rem; color: var(--text-muted); font-size: 0.68rem; line-height: 1.45; }
 .ui-flow-category-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 0.55rem; }
-.ui-flow-category { min-width: 0; padding: 0.65rem; border: 1px solid var(--theme2-line); background: rgba(255,255,255,0.12); }
+.ui-flow-category { position: relative; z-index: 1; min-width: 0; padding: 0.65rem; border: 1px solid var(--theme2-line); border-left: 3px solid #C3D2DA; background: var(--panel-bg); }
+.ui-flow-category.is-complete { border-left-color: var(--theme-success); }
+.ui-flow-category.has-missing { border-left-color: var(--theme-warning); }
 .ui-flow-category-toggle { display: flex; justify-content: space-between; align-items: start; gap: 0.5rem; width: 100%; padding: 0; border: 0; background: transparent; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
 .ui-flow-category-toggle:hover { color: var(--theme-accent); }
 .ui-flow-category-toggle > span { display: flex; flex-direction: column; gap: 0.18rem; min-width: 0; }
@@ -2314,18 +2319,24 @@ input[disabled] {
 .ui-flow-category-body { display: none; }
 .ui-flow-category.is-open .ui-flow-category-body { display: block; }
 .ui-flow-progress { height: 5px; margin: 0.5rem 0 0.35rem; border: 1px solid var(--border-color); }
-.ui-flow-progress i { display: block; height: 100%; background: var(--theme-accent); }
+.ui-flow-progress i { display: block; height: 100%; background: #8EAFC1; }
+.ui-flow-category.is-complete .ui-flow-progress i { background: var(--theme-success); }
+.ui-flow-category.has-missing .ui-flow-progress i { background: var(--theme-warning); }
 .ui-flow-category-meta { display: flex; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.35rem; }
 .ui-flow-category-meta .has-missing { color: var(--theme-warning); font-weight: 700; }
-.ui-flow-items { display: grid; gap: 0.25rem; }
-.ui-flow-item { display: grid; grid-template-columns: minmax(0, 1fr) 70px 16px; gap: 0.35rem; align-items: center; width: 100%; padding: 0.38rem 0; border: 0; border-top: 1px dashed var(--theme2-line); background: transparent; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.ui-flow-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+.ui-flow-item { position: relative; display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto; gap: 0.28rem; align-items: center; width: 100%; min-height: 170px; padding: 0.45rem; border: 1px solid #CAD3D8; border-left: 3px solid #C3D2DA; background: #FFFFFF; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.ui-flow-item.is-complete { border-left-color: var(--theme-success); }
+.ui-flow-item.has-missing { border-left-color: var(--theme-warning); }
 .ui-flow-item:hover { color: var(--theme-accent); }
 .ui-flow-item > span:first-child { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
 .ui-flow-item strong { overflow: hidden; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
 .ui-flow-item small { color: var(--text-muted); font-size: 0.59rem; }
 .ui-flow-item-progress { display: flex; align-items: center; gap: 0.25rem; }
 .ui-flow-item-progress i { display: block; flex: 1; height: 4px; border: 1px solid var(--border-color); }
-.ui-flow-item-progress em { display: block; height: 100%; background: var(--theme-accent); }
+.ui-flow-item-progress em { display: block; height: 100%; background: #8EAFC1; }
+.ui-flow-item.is-complete .ui-flow-item-progress em { background: var(--theme-success); }
+.ui-flow-item.has-missing .ui-flow-item-progress em { background: var(--theme-warning); }
 .ui-flow-item-progress b { color: var(--text-muted); font-size: 0.58rem; font-weight: 400; }
 .ui-flow-arrow { color: var(--theme-accent); font-size: 0.75rem; text-align: right; }
 .ui-structure-group { border-bottom: 1px dashed var(--theme2-line); }
@@ -2393,6 +2404,71 @@ input[disabled] {
 .stage-definition-list article { padding: 0.7rem 0.75rem; border: 1px solid var(--theme2-line); background: var(--bg-color); }
 .stage-definition-list b { display: block; font-size: 0.82rem; }
 .stage-definition-list p { margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.74rem; line-height: 1.5; }
+
+/* Theme 2 flow-map prototype: Mermaid-like nodes and grouped mechanisms. */
+.theme2-flow-map { padding: 1.1rem 1.2rem 1.35rem; background: #F7F8F8; }
+.ui-flow-map { grid-template-columns: 166px 32px minmax(620px, 1fr); gap: 0.8rem; min-width: 850px; padding: 0.35rem 0.1rem 2.25rem; }
+.ui-flow-start { min-height: 104px; justify-content: center; border: 2px solid var(--theme-accent); border-radius: 2px; background: #EEF5F8; box-shadow: 3px 3px 0 rgba(47,111,149,.1); }
+.ui-flow-start-icon { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border: 1px solid var(--theme-accent); border-radius: 50%; background: #fff; }
+.ui-flow-branches { gap: 0.95rem; }
+.ui-flow-branch { grid-template-columns: 164px minmax(0, 1fr); gap: 0.9rem; }
+.ui-flow-branch-node { min-height: 92px; padding: 0.8rem 0.75rem; border: 1.5px solid #7A8790; border-radius: 2px; background: #FFFFFF; box-shadow: 2px 2px 0 rgba(53,65,72,.08); }
+.ui-flow-branch-node:hover { border-color: var(--theme-accent); background: var(--theme-accent-soft); }
+.ui-flow-branch-mechanism .ui-flow-branch-node { border-color: #2F6F95; background: #EAF2F6; }
+.ui-flow-branch-system .ui-flow-branch-node { border-color: #5E8294; background: #F0F6F8; }
+.ui-flow-branch-shared .ui-flow-branch-node { border-color: #4C8B73; background: #F0F7F3; }
+.ui-flow-branch-unassigned .ui-flow-branch-node { border-style: dashed; }
+.ui-flow-node-shape { display: flex; flex-direction: column; gap: 0.18rem; min-width: 0; }
+.ui-flow-node-mechanism { position: relative; padding-left: 1.45rem; }
+.ui-flow-node-mechanism > i { position: absolute; left: 0; top: 0.04rem; color: var(--theme-accent); font-size: 0.9rem; font-style: normal; }
+.ui-flow-branch-shared .ui-flow-node-mechanism > i { color: #4C8B73; }
+.ui-flow-branch-node strong { font-size: 0.9rem; letter-spacing: .01em; line-height: 1.25; }
+.ui-flow-branch-node small { font-size: 0.66rem; line-height: 1.35; }
+.ui-flow-branch-node .ui-flow-branch-progress { color: var(--theme-accent); font-weight: 700; }
+.ui-flow-branch-body { min-height: 76px; padding: 0.72rem 0.8rem 0.8rem; border: 1px solid #C7D0D5; border-radius: 2px; background: rgba(255,255,255,.62); }
+.ui-flow-description { margin-bottom: 0.65rem; padding-left: 0.15rem; }
+.ui-flow-category-list { grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.6rem; }
+.ui-flow-category { padding: 0.65rem 0.7rem; border: 1px solid #CAD3D8; border-left: 0; border-top: 3px solid #A9B8C0; background: #FFFFFF; box-shadow: 1px 1px 0 rgba(53,65,72,.05); }
+.ui-flow-category.is-complete { border-top-color: var(--theme-success); border-left-color: transparent; }
+.ui-flow-category.has-missing { border-top-color: var(--theme-warning); border-left-color: transparent; }
+.ui-flow-node-screen { padding: 0.05rem 0 0.05rem 0.65rem; border-left: 3px solid #A9B8C0; }
+.ui-flow-category.is-complete .ui-flow-node-screen { border-left-color: var(--theme-success); }
+.ui-flow-category.has-missing .ui-flow-node-screen { border-left-color: var(--theme-warning); }
+.ui-flow-category-toggle strong { font-size: 0.76rem; }
+.ui-flow-category-body { margin-top: 0.15rem; }
+/* 合併 B／C 後，右側展開內容不再重複顯示群組標題與完成度摘要。 */
+.ui-flow-branch.is-open .ui-flow-category-toggle { display: none; }
+.ui-flow-branch.is-open .ui-flow-category { padding: 0; border: 0; box-shadow: none; background: transparent; }
+.ui-flow-branch.is-open .ui-flow-category-body { display: block; margin-top: 0; }
+.ui-flow-branch.is-open .ui-flow-category-body > .ui-flow-progress { display: none; }
+.ui-flow-item-thumb { display: inline-flex; grid-column: 1 / -1; width: 100%; height: 128px; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #CAD3D8; background: #EEF2F4; color: var(--text-muted); font-size: 0.55rem; }
+.ui-flow-item-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ui-flow-item-thumb.is-empty { border-style: dashed; }
+.ui-flow-item { align-items: center; }
+.ui-flow-item > span:nth-child(2) { grid-column: 1 / -1; min-width: 0; }
+.ui-flow-item > span:nth-child(2) strong { display: block; font-size: 0.82rem; line-height: 1.25; }
+.ui-flow-item > span:nth-child(2) small { display: block; margin-top: 0.18rem; font-size: 0.68rem; }
+.ui-flow-item-thumb img { cursor: inherit; }
+.ui-flow-item-stage { grid-column: 1 / -1; justify-self: start; align-self: start; color: var(--theme-accent); font-size: 0.72rem; line-height: 1.2; font-weight: 700; white-space: nowrap; }
+.ui-flow-item-open { position: absolute; right: 0.25rem; bottom: 0.2rem; display: inline-flex; width: 2rem; height: 2.35rem; align-items: center; justify-content: center; color: var(--theme-accent); font-size: 1rem; cursor: zoom-in; pointer-events: auto; }
+.ui-flow-item-open:hover, .ui-flow-item-open:focus-visible { color: #245A79; background: rgba(234,242,246,.55); outline: none; }
+.ui-flow-legend { position: absolute; left: 0; bottom: 0; display: flex; flex-wrap: wrap; gap: 0.85rem; color: var(--text-muted); font-size: 0.62rem; }
+.ui-flow-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.ui-flow-legend i { display: inline-block; width: 12px; height: 9px; border: 1px solid #A9B8C0; background: #fff; }
+.ui-flow-legend .legend-mechanism { border-color: #2F6F95; background: #EAF2F6; }
+.ui-flow-legend .legend-screen { border-top: 3px solid #A9B8C0; }
+.ui-flow-legend .legend-shared { border-color: #4C8B73; background: #F0F7F3; }
+.ui-flow-legend .legend-progress { border-color: var(--theme-success); background: var(--theme-success); }
+
+/* 第二層都是同一種「主要機制」節點；只有尚未歸類的資料保留特殊虛線。 */
+.theme2-view .ui-flow-branch-node { border-color: #2F6F95; background: #EAF2F6; }
+.theme2-view .ui-flow-branch-node:hover { border-color: #245A79; background: #DDECF3; }
+.theme2-view .ui-flow-node-mechanism > i { color: #2F6F95; }
+.theme2-view .ui-flow-branch-unassigned .ui-flow-branch-node { border-color: #93A2AA; background: #FAFAF9; }
+.ui-flow-preview { display: block; margin: 0.65rem 0 0.55rem; border: 1px solid #CAD3D8; background: #F4F6F6; color: var(--text-muted); text-decoration: none; overflow: hidden; }
+.ui-flow-preview:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.ui-flow-preview img { display: block; width: 100%; height: 128px; object-fit: cover; object-position: center; background: #E5EAEC; }
+.ui-flow-preview span { display: block; padding: 0.32rem 0.45rem; font-size: 0.58rem; line-height: 1.2; }
 
 /* 主題二色彩覆寫：藍圖藍作為主識別色，紅色只保留給真正的錯誤狀態。 */
 .theme2-view {
@@ -2497,4 +2573,7 @@ input[disabled] {
   .demo-task-card { grid-template-columns: 1fr 64px; }
   .demo-task-meta { grid-column: 1 / 2; }
   .demo-task-progress { grid-column: 2; grid-row: 1 / span 2; }
+  .ui-flow-items { grid-template-columns: 1fr; }
+  .ui-flow-item { grid-template-columns: 1fr; min-height: 150px; }
+  .ui-flow-item-thumb { width: 100%; height: 108px; }
 }
