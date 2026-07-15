@@ -434,9 +434,9 @@
       </div>
       <div class="header-right-meta theme2-header-meta">
         <div class="newspaper-meta-box">
-          <span class="meta-val">2026年</span>
-          <span class="meta-val">UI 專案</span>
-          <span class="meta-val">交付進度控制台</span>
+          <span class="meta-val" id="theme2-meta-year">2026年</span>
+          <span class="meta-val" id="theme2-meta-current-week">W--</span>
+          <span class="meta-val" id="theme2-meta-today-date">--月--日 (星期-)</span>
         </div>
         <div class="header-control-grid theme2-header-control-grid">
           <button id="theme2-schedule-btn" class="btn" type="button" title="專案時程里程碑"><i class="fa-regular fa-calendar-days"></i></button>
@@ -458,15 +458,15 @@
     </section>
 
     <section class="theme2-pipeline-panel">
-      <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦流程地圖</span></div>
-      <div class="theme2-pipeline"><button data-theme2-stage="企劃"><span>企劃需求</span><strong>4</strong></button><i>→</i><button data-theme2-stage="功能"><span>程式施工</span><strong>5</strong></button><i>→</i><button data-theme2-stage="代圖操作"><span>功能驗證</span><strong>0</strong></button><i>→</i><button data-theme2-stage="拆圖"><span>美術拆圖</span><strong>24</strong></button><i>→</i><button data-theme2-stage="編輯"><span>介面換皮</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>待驗收</span><strong>23</strong></button><i>→</i><button data-theme2-stage="completed"><span>已完成</span><strong>0</strong></button></div>
+      <div class="demo-section-heading"><div><span class="theme2-kicker">PRODUCTION FLOW</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 製作流程 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看製作階段定義" data-tooltip="查看各階段完成定義">?</button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦介面項目</span></div>
+      <div class="theme2-pipeline"><button data-theme2-stage="企劃"><i class="fa-solid fa-clipboard-list pipeline-icon" aria-hidden="true"></i><span>企劃需求</span><strong>4</strong></button><i>→</i><button data-theme2-stage="功能"><i class="fa-solid fa-code pipeline-icon" aria-hidden="true"></i><span>程式施工</span><strong>5</strong></button><i>→</i><button data-theme2-stage="代圖操作"><i class="fa-solid fa-flask pipeline-icon" aria-hidden="true"></i><span>功能驗證</span><strong>0</strong></button><i>→</i><button data-theme2-stage="拆圖"><i class="fa-solid fa-crop-simple pipeline-icon" aria-hidden="true"></i><span>美術拆圖</span><strong>24</strong></button><i>→</i><button data-theme2-stage="編輯"><i class="fa-solid fa-palette pipeline-icon" aria-hidden="true"></i><span>介面換皮</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><i class="fa-solid fa-magnifying-glass pipeline-icon" aria-hidden="true"></i><span>待驗收</span><strong>23</strong></button><i>→</i><button data-theme2-stage="completed"><i class="fa-solid fa-circle-check pipeline-icon" aria-hidden="true"></i><span>已完成</span><strong>0</strong></button></div>
     </section>
 
-    <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI FLOW MAP</span><h2><i class="fa-solid fa-diagram-project"></i> UI 流程地圖</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 專案名稱 → 功能分類 → UI 項目 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
+    <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">INTERFACE ITEMS</span><h2><i class="fa-solid fa-diagram-project"></i> 介面項目</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 專案名稱 → 功能分類 → UI 項目 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
     </main>
     <div id="theme2-detail-modal" class="theme2-detail-modal" aria-hidden="true">
       <div class="theme2-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-detail-modal-heading">
-        <div class="theme2-detail-dialog-header"><span class="theme2-kicker">SELECTED ITEM</span><button id="theme2-detail-close" type="button" aria-label="關閉項目詳情">&times;</button></div>
+        <div class="theme2-detail-dialog-header"><span class="theme2-kicker">UI 項目詳情</span><button id="theme2-detail-close" type="button" aria-label="關閉項目詳情">&times;</button></div>
         <div id="theme2-detail-modal-body"></div>
       </div>
     </div>
@@ -510,10 +510,10 @@
     </div>
   </main>
 
-  <main id="theme-view-theme3" class="page-container theme-view theme-view-demo" hidden>
+  <main id="theme-view-theme3" class="page-container theme-view theme-view-demo theme3-view" hidden>
     <header class="demo-theme-header demo-theme-header-timeline">
-      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>追蹤主題三</strong></span></button>
-      <div><span class="theme-drawer-kicker">DELIVERY MILESTONES · DEMO</span><h1>追蹤主題三｜交付里程碑</h1><p>用階段與節點掌握產品交付節奏。</p></div>
+      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 音樂音效控制台</strong></span></button>
+      <div><span class="theme-drawer-kicker">AUDIO PRODUCTION · DEMO</span><h1>SGF 音樂音效控制台</h1><p>追蹤音樂、音效編輯與交付進度。</p></div>
       <span class="demo-theme-status"><i class="fa-solid fa-flask"></i> 展示模式</span>
     </header>
     <section class="demo-stats-grid"><div><span>里程碑總數</span><strong>8</strong></div><div><span>已交付</span><strong>3</strong></div><div><span>本月節點</span><strong>2</strong></div><div><span>完成度</span><strong>46%</strong></div></section>
@@ -543,7 +543,7 @@
       </button>
       <button class="theme-option" type="button" data-theme="theme3">
         <span class="theme-option-mark"><i class="fa-solid fa-route"></i></span>
-        <span><strong>追蹤主題三</strong><small>展示：里程碑與交付階段</small></span>
+        <span><strong>SGF 音樂音效控制台</strong><small>音樂音效編輯與交付追蹤</small></span>
         <em>預覽</em>
       </button>
     </div>

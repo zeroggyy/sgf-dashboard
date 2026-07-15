@@ -1717,6 +1717,13 @@ function updateNewspaperMeta() {
   const dayName = weekdays[today.getDay()];
   
   document.getElementById('meta-today-date').textContent = `${mm}月${dd}日 (${dayName})`;
+
+  const theme2Year = document.getElementById('theme2-meta-year');
+  const theme2Week = document.getElementById('theme2-meta-current-week');
+  const theme2Date = document.getElementById('theme2-meta-today-date');
+  if (theme2Year) theme2Year.textContent = `${today.getFullYear()}年`;
+  if (theme2Week) theme2Week.textContent = currentWeek;
+  if (theme2Date) theme2Date.textContent = `${mm}月${dd}日 (${dayName})`;
 }
 
 // 50 句精選網路流行廢話文學 (Nonsense Quotes)
@@ -2317,7 +2324,7 @@ function setupGlobalScrollLockObserver() {
       ]
     },
     theme3: {
-      title: '追蹤主題三｜交付里程碑',
+      title: 'SGF 音樂音效控制台',
       adLabel: '交付節點追蹤系統',
       stats: ['8', '3', '2', '46%'],
       labels: ['里程碑總數', '已交付', '本月節點', '完成度'],
@@ -2356,7 +2363,7 @@ function setupGlobalScrollLockObserver() {
     if (!demo || !filterBar || !taskAccordionEl) return;
     document.querySelector('.header-center-title h1').textContent = demo.title;
     document.querySelector('.ad-label').textContent = demo.adLabel;
-    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? 'SGF 介面進度控制台' : '追蹤主題三';
+    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? 'SGF 介面進度控制台' : 'SGF 音樂音效控制台';
     document.getElementById('filtered-count').textContent = `共 ${demo.tasks.length} 項`;
     document.querySelectorAll('.stat-card h3').forEach((el, index) => { el.textContent = demo.labels[index]; });
     ['stat-total-tasks', 'stat-completed-tasks', 'stat-pending-tasks', 'stat-overall-progress'].forEach((id, index) => {
@@ -2420,6 +2427,14 @@ function setupGlobalScrollLockObserver() {
     2: '第二批',
     3: '第三批'
   };
+  function normalizePriority(value) {
+    const match = String(value ?? '').match(/\d+/);
+    const priority = Number(match?.[0]);
+    return Number.isFinite(priority) && priority > 0 ? priority : 3;
+  }
+  function getRequirementBatchLabel(value) {
+    return REQUIREMENT_BATCH_LABELS[value] || `第${value}批`;
+  }
   let items = [];
   let theme2ProjectName = 'SGF 專案';
 
@@ -2443,11 +2458,13 @@ function setupGlobalScrollLockObserver() {
     const gyazoUrl = row['截圖'] || row['圖片網址'] || row['Gyazo'] || row['P'] || '';
     return {
       rowIndex: index + 2,
+      rowNumber: Number(row['rowNumber']) || index + 2,
       id: `${category}-${name}-${index}`,
       name,
       category,
       mechanism: row['機制'] || row['第二層節點'] || row['機制分類'] || '',
-      priority: Number(row['優先']) || 3,
+      flowGroup: [row['機制'] || row['第二層節點'] || row['機制分類'] || '', category].filter(Boolean).join(' · ') || '未分類',
+      priority: normalizePriority(row['優先']),
       stage: firstStage(row),
       stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
       plannedDate: row['企劃開表'],
@@ -2456,6 +2473,7 @@ function setupGlobalScrollLockObserver() {
       screenshotPath: row['介面截圖路徑'],
       artUploadPath: row['美術上傳路徑'],
       archivePath: row['拆圖歸檔路徑'],
+      note: row['備註'] || row['工作記錄'] || row['記錄'] || row['說明'] || '',
       gyazoUrl,
       checklist: Object.fromEntries(STAGES.map(stage => [stage, isTrue(row[stage])])),
       missingFields
@@ -2471,6 +2489,7 @@ function setupGlobalScrollLockObserver() {
     const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
     const stageCounts = Object.fromEntries(PIPELINE_STAGES.map(stage => [stage, filteredItems.filter(item => item.stage === stage).length]));
     const maxCount = Math.max(0, ...Object.values(stageCounts));
+    const selectedStage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
     buttons.forEach(button => {
       const stage = button.dataset.theme2Stage;
       const stageCount = stageCounts[stage];
@@ -2478,6 +2497,7 @@ function setupGlobalScrollLockObserver() {
       if (strong) strong.textContent = stageCount;
       button.classList.toggle('is-bottleneck', maxCount > 0 && stageCount === maxCount);
       button.classList.toggle('is-empty', stageCount === 0);
+      button.classList.toggle('is-selected', selectedStage !== '全部階段' && stage === selectedStage);
     });
   }
 
@@ -2539,7 +2559,8 @@ function setupGlobalScrollLockObserver() {
           ? `<span class="ui-flow-item-thumb"><img src="${escapeHtml(itemPreviewUrl)}" data-gyazo-id="${escapeHtml(itemGyazoId)}" data-original-url="${escapeHtml(item.gyazoUrl)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
           : '<span class="ui-flow-item-thumb is-empty">無預覽</span>';
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span><strong>${escapeHtml(item.name || category)}</strong></span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
+        const itemCardState = itemGyazoId ? itemState : `${itemState} no-preview`;
+        return `<button class="ui-flow-item ${itemCardState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span><strong>${escapeHtml(item.name || category)}</strong></span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
       const preview = '';
@@ -2556,7 +2577,7 @@ function setupGlobalScrollLockObserver() {
     const uncategorized = [];
     const extra = uncategorized.map(category => `<section class="ui-flow-branch ui-flow-branch-unassigned"><button class="ui-flow-branch-node ui-flow-branch-toggle" type="button" aria-expanded="false"><span class="ui-flow-node-shape ui-flow-node-mechanism"><i>?</i><strong>其他流程</strong><small>目前資料尚未歸類</small></span><em>⌄</em></button><div class="ui-flow-branch-body"><p class="ui-flow-description">這些資料目前尚未設定所屬的主要機制，後續可透過流程欄位重新歸類。</p><div class="ui-flow-category-list">${getCategoryCard(category, categoryMap.get(category))}</div></div></section>`).join('');
     const totalProgress = filteredItems.length ? Math.round(filteredItems.reduce((sum, item) => sum + STAGES.filter(stage => item.checklist[stage]).length, 0) / (filteredItems.length * STAGES.length) * 100) : 0;
-    container.innerHTML = filteredItems.length ? `<div class="ui-flow-map"><svg class="ui-flow-connections" aria-hidden="true"></svg><div class="ui-flow-start ui-flow-root-node"><span class="ui-flow-start-icon">⌂</span><strong>${projectName}</strong><small>${filteredItems.length} 個相關畫面 · 完成度 ${totalProgress}%</small><p>所有 UI 流程的起點</p></div><div class="ui-flow-connector" aria-hidden="true">→</div><div class="ui-flow-branches">${branches}${extra}</div><div class="ui-flow-legend"><span><i class="legend-mechanism"></i>主要機制</span><span><i class="legend-screen"></i>畫面分類</span><span><i class="legend-shared"></i>共用 / 外部</span><span><i class="legend-progress"></i>完成度</span></div></div>` : '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
+    container.innerHTML = filteredItems.length ? `<div class="ui-flow-map"><svg class="ui-flow-connections" aria-hidden="true"></svg><div class="ui-flow-start ui-flow-root-node"><span class="ui-flow-start-icon">⌂</span><strong>${projectName}</strong><small>${filteredItems.length} 個相關畫面 · 完成度 ${totalProgress}%</small><p>所有 UI 流程的起點</p></div><div class="ui-flow-connector" aria-hidden="true">→</div><div class="ui-flow-branches">${branches}${extra}</div><div class="ui-flow-legend"><span><i class="legend-project"></i>專案名稱</span><span><i class="legend-category"></i>功能分類</span><span><i class="legend-item"></i>UI 項目</span><span><i class="legend-progress"></i>完成度</span></div></div>` : '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
     container.querySelectorAll('img[data-gyazo-id]').forEach(image => {
       const id = image.dataset.gyazoId;
       const extensions = ['jpg', 'png', 'gif'];
@@ -2641,7 +2662,35 @@ function setupGlobalScrollLockObserver() {
       const hasPath = Boolean(path);
       return `<div class="detail-path-row"><span><b>${label}：</b>${escapeHtml(path || '待補')}</span><button class="detail-copy-path" type="button" ${hasPath ? `data-copy-path="${escapeHtml(path)}"` : 'disabled'} title="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}" aria-label="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}"><i class="fa-regular fa-copy"></i></button></div>`;
     };
-    detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM · SHEET ROW ${item.rowIndex}</span><h2 id="theme2-detail-modal-heading">${escapeHtml(item.name)}</h2><div class="detail-meta-grid"><div><span>功能分類</span><strong>${escapeHtml(item.category)}</strong></div><div><span>批次</span><strong>${REQUIREMENT_BATCH_LABELS[item.priority] || `P${item.priority}`}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${completeness}<div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
+      const noteValue = escapeHtml(item.note || '');
+      detail.innerHTML = `<div class="theme2-detail-content"><h2 id="theme2-detail-modal-heading">${escapeHtml(item.name)}</h2><div class="theme2-detail-tags"><span class="detail-tag detail-tag-category">${escapeHtml(item.flowGroup || [item.mechanism, item.category].filter(Boolean).join(' · ') || item.category)}</span><span class="detail-tag">${escapeHtml(getRequirementBatchLabel(item.priority))}</span><span class="detail-tag">${escapeHtml(item.stageLabel)}</span></div><div class="detail-meta-grid"><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${completeness}<section class="detail-note-panel"><div class="detail-note-heading"><b>工作記錄</b><button id="theme2-note-save" class="detail-note-save" type="button"><i class="fa-solid fa-floppy-disk"></i> 儲存記錄</button></div><textarea id="theme2-note-input" class="detail-note-input" placeholder="記錄目前進度、問題或需要確認的內容……">${noteValue}</textarea></section><div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
+      detail.querySelector('#theme2-note-save')?.addEventListener('click', async event => {
+        const button = event.currentTarget;
+        const input = detail.querySelector('#theme2-note-input');
+        if (!input) return;
+        button.disabled = true;
+        button.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中';
+        try {
+          const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'updateNote', rowNumber: item.rowNumber || item.rowIndex, note: input.value })
+          });
+          const result = await response.json();
+          if (result.error) throw new Error(result.error);
+          item.note = input.value;
+          button.innerHTML = '<i class="fa-solid fa-check"></i> 已儲存';
+          showToast('工作記錄已寫回 Google Sheet', 'success');
+          setTimeout(() => { button.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 儲存記錄'; }, 1600);
+        } catch (error) {
+          console.error('Theme 2 note update failed', error);
+          button.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 儲存記錄';
+          showToast(`工作記錄儲存失敗：${error.message}`, 'error');
+        } finally {
+          button.disabled = false;
+        }
+      });
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
       const path = button.dataset.copyPath;
       try {
@@ -2716,12 +2765,13 @@ function setupGlobalScrollLockObserver() {
 
   function bindTheme2Controls() {
     const categories = [...new Set(items.map(item => [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類'))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+    const batchValues = [...new Set(items.map(item => item.priority).filter(Number.isFinite))].sort((a, b) => a - b);
     const categorySelect = document.getElementById('theme2-category-filter');
     if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
     if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
     const prioritySelect = document.getElementById('theme2-priority-filter');
-    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + batchValues.map(value => `<option value="${value}">${getRequirementBatchLabel(value)}</option>`).join('');
 
     function renderChipGroup(containerId, values, selectId) {
       const container = document.getElementById(containerId);
@@ -2747,7 +2797,7 @@ function setupGlobalScrollLockObserver() {
     ], 'theme2-category-filter');
     renderChipGroup('theme2-priority-chips', [
       { label: '全部', value: 'all', index: 0, count: items.length },
-      ...Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label], index) => ({ label, value, index: index + 1, count: count(item => item.priority === Number(value)) }))
+      ...batchValues.map((value, index) => ({ label: getRequirementBatchLabel(value), value, index: index + 1, count: count(item => item.priority === value) }))
     ], 'theme2-priority-filter');
 
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
@@ -2766,7 +2816,12 @@ function setupGlobalScrollLockObserver() {
     });
     theme2View.querySelectorAll('[data-theme2-stage]').forEach(button => button.addEventListener('click', () => {
       const stageSelect = document.getElementById('theme2-stage-filter');
-      if (stageSelect) { stageSelect.value = button.dataset.theme2Stage; theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all')); applyFilters(); }
+      if (stageSelect) {
+        const nextStage = stageSelect.value === button.dataset.theme2Stage ? '全部階段' : button.dataset.theme2Stage;
+        stageSelect.value = nextStage;
+        theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
+        applyFilters();
+      }
     }));
   }
 

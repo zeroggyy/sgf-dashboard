@@ -12,7 +12,7 @@
  * - 分頁名稱固定為 SGF_UI_DataBase
  * - 第一列為欄位名稱
  * - 目前建議欄位包含：專案名稱、第一層節點、第二層節點、第三層節點、
- *   第四層項目、節點類型、流程順序、截圖，以及原本的進度欄位。
+ *   第四層項目、節點類型、流程順序、截圖、備註，以及原本的進度欄位。
  */
 
 const SPREADSHEET_ID = '請填入主題二 Google Sheet ID';
@@ -55,6 +55,50 @@ function doGet(e) {
       items,
       updatedAt: new Date().toISOString()
     });
+  } catch (error) {
+    return jsonResponse({ error: String(error) }, 500);
+  }
+}
+
+/**
+ * 接收主題二的工作記錄更新，寫入欄名為「備註」的欄位（目前為 Q 欄）。
+ * 前端使用 text/plain 傳送 JSON，避免觸發瀏覽器的 CORS preflight。
+ */
+function doPost(e) {
+  try {
+    if (!isAuthorized(e)) {
+      return jsonResponse({ error: 'Unauthorized: Invalid API Key' }, 401);
+    }
+
+    const payload = JSON.parse(e && e.postData ? e.postData.contents || '{}' : '{}');
+    if (payload.action !== 'updateNote') {
+      return jsonResponse({ error: '不支援的操作' }, 400);
+    }
+
+    const rowNumber = Number(payload.rowNumber);
+    const note = String(payload.note ?? '');
+    if (!Number.isInteger(rowNumber) || rowNumber < 2) {
+      return jsonResponse({ error: '缺少有效的資料列編號' }, 400);
+    }
+
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      return jsonResponse({ error: `找不到分頁：${SHEET_NAME}` }, 404);
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0]
+      .map(value => String(value || '').trim());
+    const noteColumn = headers.findIndex(header => ['備註', '工作記錄', '記錄'].includes(header)) + 1;
+    if (!noteColumn) {
+      return jsonResponse({ error: '找不到「備註」欄位，請確認 Q 欄標題為「備註」' }, 400);
+    }
+    if (rowNumber > sheet.getLastRow()) {
+      return jsonResponse({ error: '資料列不存在' }, 404);
+    }
+
+    sheet.getRange(rowNumber, noteColumn).setValue(note);
+    return jsonResponse({ ok: true, rowNumber, noteColumn, updatedAt: new Date().toISOString() });
   } catch (error) {
     return jsonResponse({ error: String(error) }, 500);
   }
