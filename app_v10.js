@@ -2300,7 +2300,7 @@ function setupGlobalScrollLockObserver() {
 
   const demos = {
     theme2: {
-      title: '追蹤主題二｜部門任務雷達',
+      title: 'SGF 介面進度控制台',
       adLabel: '部門協作追蹤系統',
       stats: ['24', '11', '13', '67%'],
       labels: ['總項目', '已完成', '進行中', '平均進度'],
@@ -2356,7 +2356,7 @@ function setupGlobalScrollLockObserver() {
     if (!demo || !filterBar || !taskAccordionEl) return;
     document.querySelector('.header-center-title h1').textContent = demo.title;
     document.querySelector('.ad-label').textContent = demo.adLabel;
-    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? '追蹤主題二' : '追蹤主題三';
+    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? 'SGF 介面進度控制台' : '追蹤主題三';
     document.getElementById('filtered-count').textContent = `共 ${demo.tasks.length} 項`;
     document.querySelectorAll('.stat-card h3').forEach((el, index) => { el.textContent = demo.labels[index]; });
     ['stat-total-tasks', 'stat-completed-tasks', 'stat-pending-tasks', 'stat-overall-progress'].forEach((id, index) => {
@@ -2395,60 +2395,38 @@ function setupGlobalScrollLockObserver() {
   }));
 })();
 
-// 主題二資料來源：優先使用 Google Sheet API，API 無法連線時回退到 CSV。
-(function setupTheme2CsvDataSource() {
+// 主題二資料來源：僅使用 Google Sheet API。
+(function setupTheme2DataSource() {
   const theme2View = document.getElementById('theme-view-theme2');
   if (!theme2View) return;
 
-  const CSV_PATH = '正式版 UI 開發進度表 - _2026_ 介面需求.csv';
-  const THEME2_API_URL = 'https://script.google.com/macros/s/AKfycbyLKI1sjAIOYpUV13bfb-jLly46ASHi3bZjSYztYZJsKL3y0VxK3d5Dyl8eQrhSpsApyw/exec';
-  const THEME2_API_KEY = 'SGF_THEME2_2026_UI_FLOW_8fK2mP7x';
+  const DEFAULT_THEME2_API_URL = 'https://script.google.com/macros/s/AKfycbyLKI1sjAIOYpUV13bfb-jLly46ASHi3bZjSYztYZJsKL3y0VxK3d5Dyl8eQrhSpsApyw/exec';
+  const DEFAULT_THEME2_API_KEY = 'SGF_THEME2_2026_UI_FLOW_8fK2mP7x';
+  let theme2ApiUrl = localStorage.getItem('sgf_theme2_gas_url') || DEFAULT_THEME2_API_URL;
+  let theme2ApiKey = localStorage.getItem('sgf_theme2_api_key') || DEFAULT_THEME2_API_KEY;
   const STAGES = ['企劃', '功能', '代圖操作', '拆圖', '編輯', 'final'];
+  const PIPELINE_STAGES = [...STAGES, 'completed'];
   const STAGE_LABELS = {
     企劃: '企劃需求',
     功能: '程式施工',
     代圖操作: '功能驗證',
     拆圖: '美術拆圖',
     編輯: '介面換皮',
-    final: '驗收'
+    final: '待驗收',
+    completed: '已完成'
+  };
+  const REQUIREMENT_BATCH_LABELS = {
+    1: '第一批',
+    2: '第二批',
+    3: '第三批'
   };
   let items = [];
-  let activeQuickFilter = 'all';
   let theme2ProjectName = 'SGF 專案';
-
-  function parseCsv(text) {
-    const rows = [];
-    let row = [], cell = '', quoted = false;
-    for (let i = 0; i < text.length; i += 1) {
-      const char = text[i];
-      const next = text[i + 1];
-      if (char === '"' && quoted && next === '"') { cell += '"'; i += 1; continue; }
-      if (char === '"') { quoted = !quoted; continue; }
-      if (char === ',' && !quoted) { row.push(cell.trim()); cell = ''; continue; }
-      if ((char === '\n' || char === '\r') && !quoted) {
-        if (char === '\r' && next === '\n') i += 1;
-        row.push(cell.trim());
-        if (row.some(value => value !== '')) rows.push(row);
-        row = []; cell = ''; continue;
-      }
-      cell += char;
-    }
-    if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
-    const headers = rows.shift() || [];
-    return rows.map(values => headers.reduce((record, header, index) => {
-      record[header] = (values[index] || '').trim();
-      return record;
-    }, {}));
-  }
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
   function firstStage(row) {
     const firstIncomplete = STAGES.find(stage => !isTrue(row[stage]));
     return firstIncomplete || 'completed';
-  }
-  function parseMonth(value) {
-    const match = String(value || '').match(/^(\d{4})[./-](\d{1,2})/);
-    return match ? new Date(Number(match[1]), Number(match[2]) - 1, 1) : null;
   }
   function normalizeRow(row, index) {
     const hasWorkflow = STAGES.some(stage => row[stage] !== '');
@@ -2462,7 +2440,6 @@ function setupGlobalScrollLockObserver() {
       ['拆圖歸檔路徑', '拆圖歸檔路徑']
     ];
     const missingFields = criticalFields.filter(([key]) => !row[key]).map(([, label]) => label);
-    const deadline = parseMonth(row['期望完成']);
     const gyazoUrl = row['截圖'] || row['圖片網址'] || row['Gyazo'] || row['P'] || '';
     return {
       rowIndex: index + 2,
@@ -2473,7 +2450,6 @@ function setupGlobalScrollLockObserver() {
       priority: Number(row['優先']) || 3,
       stage: firstStage(row),
       stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
-      deadline,
       plannedDate: row['企劃開表'],
       expectedDate: row['期望完成'],
       artSubmitDate: row['美術提交'],
@@ -2482,30 +2458,33 @@ function setupGlobalScrollLockObserver() {
       archivePath: row['拆圖歸檔路徑'],
       gyazoUrl,
       checklist: Object.fromEntries(STAGES.map(stage => [stage, isTrue(row[stage])])),
-      missingFields,
-      isOverdue: Boolean(deadline && deadline < new Date()),
-      isReady: STAGES.slice(0, 5).every(stage => isTrue(row[stage])) && !isTrue(row.final)
+      missingFields
     };
   }
 
   function count(predicate) { return items.filter(predicate).length; }
   function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
-  function pct(value, total) { return total ? `${Math.round((value / total) * 100)}%` : '0%'; }
-
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+  }
   function renderPipeline(filteredItems = items) {
-    theme2View.querySelectorAll('[data-theme2-stage]').forEach(button => {
+    const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
+    const stageCounts = Object.fromEntries(PIPELINE_STAGES.map(stage => [stage, filteredItems.filter(item => item.stage === stage).length]));
+    const maxCount = Math.max(0, ...Object.values(stageCounts));
+    buttons.forEach(button => {
       const stage = button.dataset.theme2Stage;
-      const stageCount = filteredItems.filter(item => item.stage === stage).length;
+      const stageCount = stageCounts[stage];
       const strong = button.querySelector('strong');
-      const small = button.querySelector('small');
       if (strong) strong.textContent = stageCount;
-      if (small) small.textContent = pct(stageCount, filteredItems.length);
+      button.classList.toggle('is-bottleneck', maxCount > 0 && stageCount === maxCount);
+      button.classList.toggle('is-empty', stageCount === 0);
     });
   }
 
   function renderFlowMap(filteredItems = items) {
     const container = document.getElementById('theme2-flow-map');
     if (!container) return;
+    setText('theme2-flow-count', `目前顯示 ${filteredItems.length} / ${items.length} 項`);
     // 流程圖根節點先以專案名稱呈現；未來可改由設定或 Google Sheet 欄位帶入。
     const projectName = theme2ProjectName;
     const fallbackFlowBranches = [
@@ -2514,7 +2493,6 @@ function setupGlobalScrollLockObserver() {
       { label: '對戰流程', kind: 'mechanism', icon: '◇', description: '從配對、選擇、戰鬥到結算的主要遊玩路徑。', categories: ['對戰撮合', '戰鬥選擇', '對戰介面', '結算', '對戰重播', '練習模式'] },
       { label: '資訊瀏覽', kind: 'shared', icon: '▣', description: '玩家查找武將、招式、排行榜與房間資訊的相關畫面。', categories: ['招式表(標題調整)', '武將快速選擇', '武將圖鑑 武將列表', '排行榜', '建立房間'] }
     ];
-    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
     const categoryMap = new Map();
     filteredItems.forEach(item => {
       const category = item.category || '未分類';
@@ -2540,7 +2518,7 @@ function setupGlobalScrollLockObserver() {
         categoryGroups: new Map([[label, branchItems]])
       };
     }) : fallbackFlowBranches;
-    // 縮圖欄位尚未加入 CSV 前，先用一張 Gyazo 圖片預覽卡片版面。
+    // 依 Google Sheet 的截圖欄位建立 Gyazo 圖片預覽。
     const getGyazoId = value => {
       const match = String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i);
       return match ? match[1] : '';
@@ -2561,7 +2539,7 @@ function setupGlobalScrollLockObserver() {
           ? `<span class="ui-flow-item-thumb"><img src="${escapeHtml(itemPreviewUrl)}" data-gyazo-id="${escapeHtml(itemGyazoId)}" data-original-url="${escapeHtml(item.gyazoUrl)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
           : '<span class="ui-flow-item-thumb is-empty">無預覽</span>';
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-        return `<button class="ui-flow-item ${itemState}" data-csv-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span><strong>${escapeHtml(item.name || category)}</strong></span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
+        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span><strong>${escapeHtml(item.name || category)}</strong></span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
       const preview = '';
@@ -2645,8 +2623,8 @@ function setupGlobalScrollLockObserver() {
     if (window.__theme2FlowResizeHandler) window.removeEventListener('resize', window.__theme2FlowResizeHandler);
     window.__theme2FlowResizeHandler = drawConnections;
     window.addEventListener('resize', drawConnections, { passive: true });
-    container.querySelectorAll('[data-csv-item-id]').forEach(card => card.addEventListener('click', () => {
-      const item = items.find(candidate => candidate.id === card.dataset.csvItemId);
+    container.querySelectorAll('[data-theme2-item-id]').forEach(card => card.addEventListener('click', () => {
+      const item = items.find(candidate => candidate.id === card.dataset.theme2ItemId);
       if (item) renderDetail(item);
     }));
   }
@@ -2656,78 +2634,101 @@ function setupGlobalScrollLockObserver() {
     const detail = document.getElementById('theme2-detail-modal-body');
     if (!modal || !detail) return;
     const missing = [...item.missingFields];
-    detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM · CSV ROW ${item.rowIndex}</span><h2>${item.name}</h2><div class="detail-meta-grid"><div><span>分類</span><strong>${item.category}</strong></div><div><span>優先</span><strong>P${item.priority}</strong></div><div><span>目前階段</span><strong>${item.stageLabel}</strong></div><div><span>期望完成</span><strong>${item.expectedDate || '待補'}</strong></div><div><span>美術提交</span><strong>${item.artSubmitDate || '待補'}</strong></div></div><div class="detail-missing"><i class="fa-solid fa-triangle-exclamation"></i> 建議補齊：${missing.join('、')}</div><div class="detail-paths"><span>介面截圖：${item.screenshotPath || '待補'}</span><span>美術上傳：${item.artUploadPath || '待補'}</span><span>拆圖歸檔：${item.archivePath || '待補'}</span></div></div>`;
+    const completeness = missing.length
+      ? `<div class="detail-missing"><i class="fa-solid fa-triangle-exclamation"></i> 建議補齊：${missing.join('、')}</div>`
+      : '<div class="detail-complete"><i class="fa-solid fa-circle-check"></i> 資料完整</div>';
+    const pathRow = (label, path) => {
+      const hasPath = Boolean(path);
+      return `<div class="detail-path-row"><span><b>${label}：</b>${escapeHtml(path || '待補')}</span><button class="detail-copy-path" type="button" ${hasPath ? `data-copy-path="${escapeHtml(path)}"` : 'disabled'} title="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}" aria-label="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}"><i class="fa-regular fa-copy"></i></button></div>`;
+    };
+    detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM · SHEET ROW ${item.rowIndex}</span><h2 id="theme2-detail-modal-heading">${escapeHtml(item.name)}</h2><div class="detail-meta-grid"><div><span>功能分類</span><strong>${escapeHtml(item.category)}</strong></div><div><span>批次</span><strong>${REQUIREMENT_BATCH_LABELS[item.priority] || `P${item.priority}`}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${completeness}<div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
+    detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
+      const path = button.dataset.copyPath;
+      try {
+        await navigator.clipboard.writeText(path);
+      } catch (error) {
+        const textarea = document.createElement('textarea');
+        textarea.value = path;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      }
+      button.classList.add('is-copied');
+      button.innerHTML = '<i class="fa-solid fa-check"></i>';
+      showToast('路徑已複製', 'success');
+      setTimeout(() => {
+        button.classList.remove('is-copied');
+        button.innerHTML = '<i class="fa-regular fa-copy"></i>';
+      }, 1400);
+    }));
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('body-scroll-lock');
   }
 
-  function renderQueue(filteredItems) {
-    const queue = document.getElementById('theme2-queue-list');
-    const queueCount = document.getElementById('theme2-queue-count');
-    if (!queue) return;
-    const visible = [...filteredItems].sort((a, b) => a.priority - b.priority || (a.deadline || Infinity) - (b.deadline || Infinity)).slice(0, 8);
-    if (queueCount) queueCount.textContent = `顯示 ${visible.length} / ${filteredItems.length}`;
-    queue.innerHTML = visible.length ? visible.map(item => `<button class="theme2-queue-card" data-csv-item-id="${item.id}"><span class="priority-tag priority-${item.priority}">P${item.priority}</span><div><strong>${item.name}</strong><small>${item.category} · ${item.expectedDate ? `期望 ${item.expectedDate}` : '日期待補'}</small></div><b class="stage-tag">${item.stageLabel}</b><em>→</em></button>`).join('') : '<div class="detail-empty"><strong>沒有符合條件的項目</strong><span>請調整篩選條件</span></div>';
-    queue.querySelectorAll('[data-csv-item-id]').forEach(card => card.addEventListener('click', () => {
-      const item = items.find(candidate => candidate.id === card.dataset.csvItemId);
-      if (item) renderDetail(item);
-    }));
-  }
-
   function applyFilters() {
-    const category = document.getElementById('theme2-category-filter')?.value || '全部機制分類';
+    const category = document.getElementById('theme2-category-filter')?.value || '全部功能分類';
     const stage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
-    const priority = document.getElementById('theme2-priority-filter')?.value || '全部優先';
+    const requirementBatch = document.getElementById('theme2-priority-filter')?.value || 'all';
     const query = (document.getElementById('theme2-search-input')?.value || '').trim().toLowerCase();
     const filtered = items.filter(item => {
-      const quickMatch = activeQuickFilter === 'all' || (activeQuickFilter === 'priority1' && item.priority === 1) || (activeQuickFilter === 'slicing' && item.stage === '拆圖') || (activeQuickFilter === 'ready' && item.isReady) || (activeQuickFilter === 'missing' && item.missingFields.length > 0) || (activeQuickFilter === 'overdue' && item.isOverdue);
       const itemGroup = [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類';
-      const categoryMatch = category === '全部機制分類' || itemGroup === category;
+      const categoryMatch = category === '全部功能分類' || itemGroup === category;
       const stageMatch = stage === '全部階段' || item.stage === stage;
-      const priorityMatch = priority === '全部優先' || `優先 ${item.priority}` === priority;
+      const priorityMatch = requirementBatch === 'all' || Number(requirementBatch) === item.priority;
       const searchMatch = !query || `${item.name} ${item.mechanism || ''} ${item.category || ''}`.toLowerCase().includes(query);
-      return quickMatch && categoryMatch && stageMatch && priorityMatch && searchMatch;
+      return categoryMatch && stageMatch && priorityMatch && searchMatch;
     });
+    updateDimensionCounts({ category, stage, requirementBatch, query });
+    const specialCount = theme2View.querySelector('[data-theme2-count="all"]');
+    if (specialCount) specialCount.textContent = filtered.length;
     renderPipeline(filtered);
-    renderQueue(filtered);
     renderFlowMap(filtered);
   }
 
-  function updateDashboard() {
-    setText('theme2-total-count', items.length);
-    setText('theme2-priority-count', count(item => item.priority === 1));
-    setText('theme2-slicing-count', count(item => item.stage === '拆圖'));
-    setText('theme2-ready-count', count(item => item.isReady));
-    setText('theme2-missing-count', count(item => item.missingFields.length > 0));
-    setText('theme2-plan-quality', `${count(item => item.plannedDate && item.expectedDate)} / ${items.length}`);
-    setText('theme2-art-date-quality', `${count(item => item.artSubmitDate)} / ${items.length}`);
-    setText('theme2-art-path-quality', `${count(item => item.artUploadPath)} / ${items.length}`);
-    setText('theme2-archive-quality', `${count(item => item.archivePath)} / ${items.length}`);
-    theme2View.querySelectorAll('[data-theme2-count]').forEach(el => {
-      const filter = el.dataset.theme2Count;
-      const value = filter === 'all' ? items.length : filter === 'priority1' ? count(item => item.priority === 1) : filter === 'slicing' ? count(item => item.stage === '拆圖') : filter === 'ready' ? count(item => item.isReady) : filter === 'missing' ? count(item => item.missingFields.length > 0) : count(item => item.isOverdue);
-      el.textContent = value;
+  function updateDimensionCounts({ category, stage, requirementBatch, query }) {
+    const matchesStage = item => stage === '全部階段' || item.stage === stage;
+    const matchesQuery = item => !query || `${item.name} ${item.mechanism || ''} ${item.category || ''}`.toLowerCase().includes(query);
+    const itemGroup = item => [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類';
+    theme2View.querySelectorAll('#theme2-category-chips .theme2-dimension-chip').forEach(chip => {
+      const value = chip.dataset.selectValue;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (requirementBatch === 'all' || Number(requirementBatch) === item.priority) && (value === '全部功能分類' || itemGroup(item) === value)).length;
+      const countEl = chip.querySelector('.theme2-chip-count');
+      if (countEl) countEl.textContent = total;
     });
-    renderPipeline();
+    theme2View.querySelectorAll('#theme2-priority-chips .theme2-dimension-chip').forEach(chip => {
+      const value = chip.dataset.selectValue;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (category === '全部功能分類' || itemGroup(item) === category) && (value === 'all' || item.priority === Number(value))).length;
+      const countEl = chip.querySelector('.theme2-chip-count');
+      if (countEl) countEl.textContent = total;
+    });
+  }
+
+  function updateDashboard() {
+    theme2View.querySelectorAll('[data-theme2-count]').forEach(el => {
+      el.textContent = items.length;
+    });
     applyFilters();
   }
 
-  function bindCsvControls() {
+  function bindTheme2Controls() {
     const categories = [...new Set(items.map(item => [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類'))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
     const categorySelect = document.getElementById('theme2-category-filter');
-    if (categorySelect) categorySelect.innerHTML = '<option>全部機制分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
+    if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
-    if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
+    if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
     const prioritySelect = document.getElementById('theme2-priority-filter');
-    if (prioritySelect) prioritySelect.innerHTML = '<option>全部優先</option><option>優先 1</option><option>優先 2</option><option>優先 3</option>';
+    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
 
     function renderChipGroup(containerId, values, selectId) {
       const container = document.getElementById(containerId);
       const select = document.getElementById(selectId);
       if (!container || !select) return;
       const labels = values.map(value => {
-        const countText = value.count === undefined ? '' : `（${value.count}）`;
+        const countText = value.count === undefined ? '' : `（<b class="theme2-chip-count">${value.count}</b>）`;
         return `<button class="chip theme2-dimension-chip ${value.index === 0 ? 'active' : ''}" data-select-target="${selectId}" data-select-value="${value.value}" type="button">${value.label}${countText}</button>`;
       }).join('');
       container.innerHTML = labels;
@@ -2735,34 +2736,27 @@ function setupGlobalScrollLockObserver() {
         select.value = chip.dataset.selectValue;
         container.querySelectorAll('.theme2-dimension-chip').forEach(item => item.classList.remove('active'));
         chip.classList.add('active');
-        activeQuickFilter = 'all';
         theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
         applyFilters();
       }));
     }
 
     renderChipGroup('theme2-category-chips', [
-      { label: '全部', value: '全部機制分類', index: 0, count: items.length },
+      { label: '全部', value: '全部功能分類', index: 0, count: items.length },
       ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => ([item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類') === category) }))
     ], 'theme2-category-filter');
-    renderChipGroup('theme2-stage-chips', [
-      { label: '全部', value: '全部階段', index: 0, count: items.length },
-      ...STAGES.map((stage, index) => ({ label: STAGE_LABELS[stage], value: stage, index: index + 1, count: count(item => item.stage === stage) }))
-    ], 'theme2-stage-filter');
     renderChipGroup('theme2-priority-chips', [
-      { label: '全部', value: '全部優先', index: 0, count: items.length },
-      ...['優先 1', '優先 2', '優先 3'].map((priority, index) => ({ label: priority, value: priority, index: index + 1, count: count(item => item.priority === Number(priority.replace(/\D/g, ''))) }))
+      { label: '全部', value: 'all', index: 0, count: items.length },
+      ...Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label], index) => ({ label, value, index: index + 1, count: count(item => item.priority === Number(value)) }))
     ], 'theme2-priority-filter');
 
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.remove('active'));
       chip.classList.add('active');
-      activeQuickFilter = chip.dataset.theme2Filter;
       applyFilters();
     }));
     ['theme2-category-filter', 'theme2-stage-filter', 'theme2-priority-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
     theme2View.querySelector('.demo-reset-btn')?.addEventListener('click', () => {
-      activeQuickFilter = 'all';
       ['theme2-category-filter', 'theme2-stage-filter', 'theme2-priority-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
@@ -2772,33 +2766,29 @@ function setupGlobalScrollLockObserver() {
     });
     theme2View.querySelectorAll('[data-theme2-stage]').forEach(button => button.addEventListener('click', () => {
       const stageSelect = document.getElementById('theme2-stage-filter');
-      const stageContainer = document.getElementById('theme2-stage-chips');
-      if (stageSelect) { stageSelect.value = button.dataset.theme2Stage; activeQuickFilter = 'all'; theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all')); stageContainer?.querySelectorAll('.theme2-dimension-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.selectValue === stageSelect.value)); applyFilters(); }
+      if (stageSelect) { stageSelect.value = button.dataset.theme2Stage; theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all')); applyFilters(); }
     }));
   }
 
   function finishTheme2Load(statusText, statusIcon = 'fa-database') {
-    bindCsvControls();
+    bindTheme2Controls();
     updateDashboard();
-    const status = theme2View.querySelector('.demo-theme-status');
-    if (status) status.innerHTML = `<i class="fa-solid ${statusIcon}"></i> ${statusText}`;
+    setTheme2ApiStatus(statusText, statusIcon, 'connected');
   }
 
-  async function loadCsv() {
-    try {
-      const response = await fetch(CSV_PATH, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`CSV ${response.status}`);
-      items = parseCsv(await response.text()).map(normalizeRow).filter(Boolean);
-      finishTheme2Load('CSV 暫代資料');
-    } catch (error) {
-      console.error('Theme 2 CSV load failed', error);
-      const queue = document.getElementById('theme2-queue-list');
-      if (queue) queue.innerHTML = '<div class="detail-empty"><i class="fa-solid fa-triangle-exclamation"></i><strong>暫時無法讀取 CSV</strong><span>請使用 HTTP 靜態伺服器開啟此頁面，避免 file:// 跨來源限制。</span></div>';
-    }
+  function setTheme2ApiStatus(text, icon, state) {
+    const status = theme2View.querySelector('.theme2-api-status');
+    if (!status) return;
+    status.classList.remove('is-loading', 'is-connected', 'is-error');
+    status.classList.add(`is-${state}`);
+    status.setAttribute('title', `主題二 API 設定・${text}`);
+    status.setAttribute('aria-label', `主題二 API 設定，${text}`);
+    const label = status.querySelector('.theme2-api-status-label');
+    if (label) label.textContent = text;
   }
 
   async function loadTheme2Api() {
-    const response = await fetch(`${THEME2_API_URL}?key=${encodeURIComponent(THEME2_API_KEY)}`, { cache: 'no-store' });
+    const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
     const payload = await response.json();
     if (payload.error || !Array.isArray(payload.items)) throw new Error(payload.error || 'Theme 2 API 回傳格式不正確');
@@ -2824,12 +2814,15 @@ function setupGlobalScrollLockObserver() {
   }
 
   const stageHelpModal = document.getElementById('theme2-stage-help-modal');
-  document.getElementById('theme2-stage-help-btn')?.addEventListener('click', () => {
+  const openTheme2Help = () => {
     if (!stageHelpModal) return;
     stageHelpModal.classList.add('open');
     stageHelpModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('body-scroll-lock');
-  });
+  };
+  document.getElementById('theme2-stage-help-btn')?.addEventListener('click', openTheme2Help);
+  document.getElementById('theme2-help-btn')?.addEventListener('click', openTheme2Help);
+  document.getElementById('theme2-schedule-btn')?.addEventListener('click', () => scheduleBtn?.click());
   document.getElementById('theme2-stage-help-close')?.addEventListener('click', closeStageHelpModal);
   stageHelpModal?.addEventListener('click', event => {
     if (event.target.id === 'theme2-stage-help-modal') closeStageHelpModal();
@@ -2846,9 +2839,42 @@ function setupGlobalScrollLockObserver() {
     }
   });
 
+  const theme2SetupModal = document.getElementById('theme2-setup-modal');
+  const theme2UrlInput = document.getElementById('theme2-gas-url');
+  const theme2KeyInput = document.getElementById('theme2-api-key');
+  const closeTheme2Config = () => theme2SetupModal?.classList.remove('open');
+  document.getElementById('theme2-config-btn')?.addEventListener('click', () => {
+    if (!theme2SetupModal) return;
+    if (theme2UrlInput) theme2UrlInput.value = theme2ApiUrl;
+    if (theme2KeyInput) theme2KeyInput.value = theme2ApiKey;
+    theme2SetupModal.classList.add('open');
+  });
+  document.getElementById('theme2-close-config-btn')?.addEventListener('click', closeTheme2Config);
+  document.getElementById('theme2-cancel-config-btn')?.addEventListener('click', closeTheme2Config);
+  theme2SetupModal?.addEventListener('click', event => {
+    if (event.target === theme2SetupModal) closeTheme2Config();
+  });
+  document.getElementById('theme2-save-config-btn')?.addEventListener('click', () => {
+    const url = theme2UrlInput?.value.trim() || '';
+    const key = theme2KeyInput?.value.trim() || '';
+    if (!url || !key) {
+      showToast('請完整填寫主題二 API 網址與金鑰', 'error');
+      return;
+    }
+    localStorage.setItem('sgf_theme2_gas_url', url);
+    localStorage.setItem('sgf_theme2_api_key', key);
+    theme2ApiUrl = url;
+    theme2ApiKey = key;
+    showToast('主題二 API 設定已儲存，正在重新連線', 'success');
+    sessionStorage.setItem('sgf_active_theme_once', 'theme2');
+    window.location.reload();
+  });
+
   loadTheme2Api().catch(error => {
-    console.warn('Theme 2 API load failed, fallback to CSV', error);
-    loadCsv();
+    console.error('Theme 2 Google Sheet API load failed', error);
+    setTheme2ApiStatus('API 連線失敗', 'fa-triangle-exclamation', 'error');
+    const flowMap = document.getElementById('theme2-flow-map');
+    if (flowMap) flowMap.innerHTML = '<div class="detail-empty"><i class="fa-solid fa-triangle-exclamation"></i><strong>無法連接 Google Sheet API</strong><span>請確認 Apps Script 部署、API 網址與存取金鑰。</span></div>';
   });
 })();
 
@@ -2883,7 +2909,7 @@ function setupGlobalScrollLockObserver() {
     });
     options.forEach(option => option.classList.toggle('active', option.dataset.theme === themeKey));
     const sgfLabel = document.getElementById('current-theme-label');
-    if (sgfLabel) sgfLabel.textContent = themeKey === 'sgf' ? 'SGF 專案' : themeKey === 'theme2' ? '追蹤主題二' : '追蹤主題三';
+    if (sgfLabel) sgfLabel.textContent = themeKey === 'sgf' ? 'SGF 企劃進度控制台' : themeKey === 'theme2' ? 'SGF 介面進度控制台' : '追蹤主題三';
     document.documentElement.dataset.activeTheme = themeKey;
     setDrawerOpen(false);
     if (themeKey === 'theme2') {
@@ -2897,7 +2923,7 @@ function setupGlobalScrollLockObserver() {
   document.addEventListener('keydown', event => { if (event.key === 'Escape') setDrawerOpen(false); });
   options.forEach(option => option.addEventListener('click', () => setActiveTheme(option.dataset.theme)));
 
-  document.querySelectorAll('.theme-view-demo').forEach(view => {
+  document.querySelectorAll('#theme-view-theme3').forEach(view => {
     view.querySelectorAll('.demo-reset-btn').forEach(button => button.addEventListener('click', () => {
       view.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
       view.querySelectorAll('.theme2-filter-chip').forEach((chip, index) => chip.classList.toggle('active', index === 0));
@@ -2905,24 +2931,7 @@ function setupGlobalScrollLockObserver() {
     }));
   });
 
-  const theme2View = views.theme2;
-  const theme2Detail = document.getElementById('theme2-detail-panel');
-  const theme2Details = {
-    戰鬥_online: { stage: '待 Final', category: '對戰介面', priority: 'P1', due: '2026.03', art: '2026.04.07', missing: 'Final 驗收結果' },
-    戰鬥_雙人單人: { stage: '待 Final', category: '對戰介面', priority: 'P1', due: '2026.03', art: '2026.04.07', missing: 'Final 驗收結果' },
-    個人_基本資訊: { stage: '拆圖', category: '個人資訊', priority: 'P1', due: '2026.03', art: '—', missing: '美術提交日期、美術上傳路徑、負責人、卡關原因' },
-    排行榜: { stage: '待 Final', category: '排行榜', priority: 'P1', due: '—', art: '—', missing: '期望完成、Final 驗收結果、下一步' }
-  };
-  theme2View?.querySelectorAll('.theme2-queue-card').forEach(card => card.addEventListener('click', () => {
-    const item = theme2Details[card.dataset.theme2Item];
-    if (!item || !theme2Detail) return;
-    theme2Detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM</span><h2>${card.dataset.theme2Item}</h2><div class="detail-meta-grid"><div><span>分類</span><strong>${item.category}</strong></div><div><span>優先</span><strong>${item.priority}</strong></div><div><span>目前階段</span><strong>${item.stage}</strong></div><div><span>期望完成</span><strong>${item.due}</strong></div><div><span>美術提交</span><strong>${item.art}</strong></div></div><div class="detail-missing"><i class="fa-solid fa-triangle-exclamation"></i> 建議補齊：${item.missing}</div></div>`;
-    theme2Detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }));
-  theme2View?.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
-    theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.remove('active'));
-    chip.classList.add('active');
-  }));
-
-  setActiveTheme('sgf');
+  const initialTheme = sessionStorage.getItem('sgf_active_theme_once') || 'sgf';
+  sessionStorage.removeItem('sgf_active_theme_once');
+  setActiveTheme(views[initialTheme] ? initialTheme : 'sgf');
 })();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SGF 專案進度控制台</title>
+  <title>SGF 企劃進度控制台</title>
   
   <!-- 導入 Google Fonts 美化字型 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <i class="fa-solid fa-circle-question" style="color: var(--accent-red);"></i> 控制台使用說明
       </h3>
       <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-primary); max-height: 380px; overflow-y: auto; padding-right: 0.5rem; text-align: left;">
-        <p style="margin-top: 0; font-weight: 700;">歡迎使用 SGF 專案進度控制台！以下是網頁操作功能說明：</p>
+        <p style="margin-top: 0; font-weight: 700;">歡迎使用 SGF 企劃進度控制台！以下是網頁操作功能說明：</p>
         <ul style="padding-left: 1.2rem; margin-bottom: 1.2rem;">
           <li style="margin-bottom: 0.6rem;">
             <strong>任務編輯</strong>：點擊列表最右側的 <strong>🖊️ 編輯</strong> 按鈕，可拉出右側編輯抽屜。
@@ -222,7 +222,7 @@
           <span class="theme-toggle-icon" aria-hidden="true"><i class="fa-solid fa-bars"></i></span>
           <span class="theme-toggle-copy">
             <span class="theme-toggle-label">目前主題</span>
-            <strong id="current-theme-label">SGF 專案</strong>
+            <strong id="current-theme-label">SGF 企劃進度控制台</strong>
           </span>
         </button>
         <span class="ad-label">SGF 規格同步系統</span>
@@ -232,7 +232,7 @@
       
       <!-- 中央：巨幅報名標題 -->
       <div class="header-center-title">
-        <h1>SGF 專案進度控制台</h1>
+        <h1>SGF 企劃進度控制台</h1>
       </div>
     
       <!-- 右側：發行日期與號外按鈕 -->
@@ -422,53 +422,50 @@
 
   <!-- 主題二與主題三使用獨立視圖容器，未來可替換成完全不同的版面。 -->
   <main id="theme-view-theme2" class="page-container theme-view theme-view-demo theme2-view" hidden>
-    <header class="demo-theme-header">
-      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>追蹤主題二</strong></span></button>
-      <div><span class="theme-drawer-kicker">FORMAL UI DELIVERY · DEMO</span><h1>正式版 UI 交付追蹤</h1><p>從企劃到 Final，掌握每個介面目前卡在哪一個交付階段。</p></div>
-      <span class="demo-theme-status"><i class="fa-solid fa-flask"></i> 展示模式</span>
+    <header class="app-header theme2-app-header">
+      <div class="header-ad-box">
+        <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 介面進度控制台</strong></span></button>
+        <span class="ad-label">SGF 介面進度系統</span>
+        <span class="ad-phone">2026-UI-DELIVERY</span>
+        <span class="ad-url">追蹤範圍：企劃至完成</span>
+      </div>
+      <div class="header-center-title">
+        <h1>SGF 介面進度控制台</h1>
+      </div>
+      <div class="header-right-meta theme2-header-meta">
+        <div class="newspaper-meta-box">
+          <span class="meta-val">2026年</span>
+          <span class="meta-val">UI 專案</span>
+          <span class="meta-val">交付進度控制台</span>
+        </div>
+        <div class="header-control-grid theme2-header-control-grid">
+          <button id="theme2-schedule-btn" class="btn" type="button" title="專案時程里程碑"><i class="fa-regular fa-calendar-days"></i></button>
+          <button id="theme2-help-btn" class="btn" type="button" title="主題二使用說明"><i class="fa-solid fa-circle-question"></i></button>
+          <button id="theme2-sort-btn" class="btn theme2-placeholder-control" type="button" title="功能尚未設定" disabled><i class="fa-solid fa-arrow-down-short-wide"></i></button>
+          <button id="theme2-config-btn" class="btn demo-theme-status theme2-api-status is-loading" type="button" aria-live="polite" aria-label="主題二 API 設定，資料載入中" title="主題二 API 設定・資料載入中"><i class="fa-solid fa-gear"></i><span class="theme2-api-status-label">資料載入中</span></button>
+        </div>
+      </div>
     </header>
 
-    <section class="theme2-stat-grid">
-      <div><span>總追蹤項目</span><strong id="theme2-total-count">56</strong><small>含模組與介面項目</small></div>
-      <div><span>優先項目</span><strong id="theme2-priority-count">20</strong><small>優先等級 1</small></div>
-      <div class="is-alert"><span>拆圖中</span><strong id="theme2-slicing-count">24</strong><small>目前最大工作佇列</small></div>
-      <div><span>待 Final</span><strong id="theme2-ready-count">23</strong><small>前置流程已完成</small></div>
-      <div class="is-warning"><span>資料缺漏</span><strong id="theme2-missing-count">11</strong><small>日期或路徑待補</small></div>
-    </section>
-
+    <main class="dashboard-layout theme2-dashboard-layout">
     <section class="theme2-filter-panel">
-      <div class="demo-section-heading"><div><span class="theme2-kicker">FILTERS</span><h2>快速篩選</h2></div><button class="demo-reset-btn" type="button">重設篩選</button></div>
+      <div class="demo-section-heading"><div><span class="theme2-kicker">FILTERS</span><h2><i class="fa-solid fa-filter"></i> 快速篩選</h2></div><button class="demo-reset-btn" type="button">重設篩選</button></div>
       <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-magnifying-glass"></i> 搜尋：</div><div class="theme2-filter-content theme2-search-content"><input id="theme2-search-input" type="search" placeholder="搜尋介面名稱或分類..." /></div></div>
-      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-layer-group"></i> 機制分類：</div><div id="theme2-category-chips" class="theme2-filter-content"></div></div>
-      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-list-check"></i> 目前階段：</div><div id="theme2-stage-chips" class="theme2-filter-content"></div></div>
-      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-flag"></i> 優先等級：</div><div id="theme2-priority-chips" class="theme2-filter-content"></div></div>
-      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">無（<b data-theme2-count="all">56</b>）</button><button class="theme2-filter-chip" data-theme2-filter="priority1" type="button">優先 1（<b data-theme2-count="priority1">20</b>）</button><button class="theme2-filter-chip" data-theme2-filter="slicing" type="button">卡在拆圖（<b data-theme2-count="slicing">24</b>）</button><button class="theme2-filter-chip" data-theme2-filter="ready" type="button">可進 Final（<b data-theme2-count="ready">23</b>）</button><button class="theme2-filter-chip" data-theme2-filter="missing" type="button">資料缺漏（<b data-theme2-count="missing">11</b>）</button><button class="theme2-filter-chip" data-theme2-filter="overdue" type="button">已逾期（<b data-theme2-count="overdue">45</b>）</button></div></div>
-      <select id="theme2-category-filter" hidden><option>全部機制分類</option></select><select id="theme2-stage-filter" hidden><option>全部階段</option></select><select id="theme2-priority-filter" hidden><option>全部優先</option></select>
+      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-layer-group"></i> 功能分類：</div><div id="theme2-category-chips" class="theme2-filter-content"></div></div>
+      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-flag"></i> 批次：</div><div id="theme2-priority-chips" class="theme2-filter-content"></div></div>
+      <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">無（<b data-theme2-count="all">56</b>）</button></div></div>
+      <select id="theme2-category-filter" hidden><option>全部功能分類</option></select><select id="theme2-stage-filter" hidden><option>全部階段</option></select><select id="theme2-priority-filter" hidden><option value="all">全部批次</option></select>
     </section>
 
     <section class="theme2-pipeline-panel">
-      <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2>交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦工作佇列</span></div>
-      <div class="theme2-pipeline"><button data-theme2-stage="企劃"><span>企劃需求</span><strong>4</strong><small>7%</small></button><i>→</i><button data-theme2-stage="功能"><span>程式施工</span><strong>5</strong><small>9%</small></button><i>→</i><button data-theme2-stage="代圖操作"><span>功能驗證</span><strong>0</strong><small>0%</small></button><i>→</i><button data-theme2-stage="拆圖"><span>美術拆圖</span><strong>24</strong><small>43%</small></button><i>→</i><button data-theme2-stage="編輯"><span>介面換皮</span><strong>0</strong><small>0%</small></button><i>→</i><button data-theme2-stage="final"><span>驗收</span><strong>23</strong><small>41%</small></button></div>
+      <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦流程地圖</span></div>
+      <div class="theme2-pipeline"><button data-theme2-stage="企劃"><span>企劃需求</span><strong>4</strong></button><i>→</i><button data-theme2-stage="功能"><span>程式施工</span><strong>5</strong></button><i>→</i><button data-theme2-stage="代圖操作"><span>功能驗證</span><strong>0</strong></button><i>→</i><button data-theme2-stage="拆圖"><span>美術拆圖</span><strong>24</strong></button><i>→</i><button data-theme2-stage="編輯"><span>介面換皮</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>待驗收</span><strong>23</strong></button><i>→</i><button data-theme2-stage="completed"><span>已完成</span><strong>0</strong></button></div>
     </section>
 
-    <div class="theme2-main-grid">
-      <section class="theme2-queue-panel">
-        <div class="demo-section-heading"><div><span class="theme2-kicker">NEXT ACTIONS</span><h2>目前工作佇列</h2></div><span id="theme2-queue-count" class="theme2-muted">顯示 4 / 56</span></div>
-        <div id="theme2-queue-list" class="theme2-queue-list">
-          <button class="theme2-queue-card" data-theme2-item="戰鬥_online"><span class="priority-tag priority-1">P1</span><div><strong>戰鬥_online</strong><small>對戰介面 · 期望完成 2026.03</small></div><b class="stage-tag stage-final">待 Final</b><em>→</em></button>
-          <button class="theme2-queue-card" data-theme2-item="戰鬥_雙人單人"><span class="priority-tag priority-1">P1</span><div><strong>戰鬥_雙人單人</strong><small>對戰介面 · 美術提交 2026.04.07</small></div><b class="stage-tag stage-final">待 Final</b><em>→</em></button>
-          <button class="theme2-queue-card" data-theme2-item="個人_基本資訊"><span class="priority-tag priority-1">P1</span><div><strong>個人_基本資訊</strong><small>個人資訊 · 尚未完成拆圖</small></div><b class="stage-tag stage-hot">拆圖</b><em>→</em></button>
-          <button class="theme2-queue-card" data-theme2-item="排行榜"><span class="priority-tag priority-1">P1</span><div><strong>排行榜</strong><small>排行榜 · 可進入 Final 驗收</small></div><b class="stage-tag stage-final">待 Final</b><em>→</em></button>
-        </div>
-      </section>
-
-    </div>
-
-    <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI FLOW MAP</span><h2>UI 流程地圖</h2></div><span class="theme2-muted">專案名稱 → 機制分類 → 畫面操作 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
-
-    <section id="theme2-detail-panel" class="theme2-detail-panel" hidden></section>
+    <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI FLOW MAP</span><h2><i class="fa-solid fa-diagram-project"></i> UI 流程地圖</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 專案名稱 → 功能分類 → UI 項目 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
+    </main>
     <div id="theme2-detail-modal" class="theme2-detail-modal" aria-hidden="true">
-      <div class="theme2-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-detail-modal-title">
+      <div class="theme2-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-detail-modal-heading">
         <div class="theme2-detail-dialog-header"><span class="theme2-kicker">SELECTED ITEM</span><button id="theme2-detail-close" type="button" aria-label="關閉項目詳情">&times;</button></div>
         <div id="theme2-detail-modal-body"></div>
       </div>
@@ -476,13 +473,38 @@
     <div id="theme2-stage-help-modal" class="theme2-stage-help-modal" aria-hidden="true">
       <div class="theme2-stage-help-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-stage-help-title">
         <div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">DELIVERY DEFINITIONS</span><h2 id="theme2-stage-help-title">交付階段定義</h2></div><button id="theme2-stage-help-close" type="button" aria-label="關閉階段定義">&times;</button></div>
+        <div class="theme2-help-intro">
+          <p><b>快速篩選：</b>依功能分類與批次縮小項目範圍，重設篩選可回到完整資料。</p>
+          <p><b>交付流程：</b>點擊任一階段，直接聚焦該階段的 UI 項目。</p>
+          <p><b>流程地圖：</b>展開功能分類後點擊 UI 項目，可查看進度、資料完整度與檔案路徑。</p>
+        </div>
         <div class="stage-definition-list">
-          <article><b>01 · 企劃需求</b><p>需求範圍、製作項目、優先等級與完成條件已確認。</p></article>
+          <article><b>01 · 企劃需求</b><p>需求範圍、製作項目、批次與完成條件已確認。</p></article>
           <article><b>02 · 程式施工</b><p>程式功能與畫面框架完成，進入可測試狀態。</p></article>
           <article><b>03 · 功能驗證</b><p>使用暫代圖跑過流程，確認功能可以正常操作與遊玩。</p></article>
           <article><b>04 · 美術拆圖</b><p>正式美術素材完成拆圖、命名、尺寸與輸出整理。</p></article>
           <article><b>05 · 介面換皮</b><p>正式素材已整合進程式，完成畫面替換與初步檢查。</p></article>
-          <article><b>06 · 驗收</b><p>功能、畫面、流程、尺寸與細節全部確認完成。</p></article>
+          <article><b>06 · 待驗收</b><p>正式素材已整合完成，正在等待功能、畫面、流程、尺寸與細節的最終確認。</p></article>
+          <article><b>07 · 已完成</b><p>最終驗收已通過，功能、畫面與相關素材皆確認完成。</p></article>
+        </div>
+      </div>
+    </div>
+    <div id="theme2-setup-modal" class="modal">
+      <div class="modal-content glass-card" style="position: relative; width: 450px; max-width: 90vw; padding: 2rem;">
+        <button id="theme2-close-config-btn" class="modal-close-btn" title="關閉">&times;</button>
+        <h2><i class="fa-solid fa-gears"></i> 主題二 API 設定</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 1.2rem;">此設定僅供 SGF 介面進度控制台使用，不會影響主題一。</p>
+        <div class="input-group">
+          <label for="theme2-gas-url">Google Apps Script Web App URL</label>
+          <input type="text" id="theme2-gas-url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label for="theme2-api-key">金鑰 (API Key)</label>
+          <input type="password" id="theme2-api-key" placeholder="請輸入主題二 Apps Script 金鑰" autocomplete="off">
+        </div>
+        <div class="modal-actions" style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+          <button id="theme2-save-config-btn" class="btn btn-gouga" style="flex: 1; justify-content: center; font-size: 0.95rem; padding: 0.6rem 0;">儲存並重新連線</button>
+          <button id="theme2-cancel-config-btn" class="btn btn-config-gear" style="flex: 1; justify-content: center; font-size: 0.95rem; padding: 0.6rem 0;">取消</button>
         </div>
       </div>
     </div>
@@ -512,12 +534,12 @@
     <div id="theme-options" class="theme-options">
       <button class="theme-option active" type="button" data-theme="sgf">
         <span class="theme-option-mark"><i class="fa-solid fa-check"></i></span>
-        <span><strong>SGF 專案</strong><small>目前連線中的進度控制台</small></span>
+        <span><strong>SGF 企劃進度控制台</strong><small>企劃任務與每週進度追蹤</small></span>
       </button>
       <button class="theme-option" type="button" data-theme="theme2">
         <span class="theme-option-mark"><i class="fa-solid fa-arrow-trend-up"></i></span>
-        <span><strong>追蹤主題二</strong><small>展示：部門任務與截止日期</small></span>
-        <em>預覽</em>
+        <span><strong>SGF 介面進度控制台</strong><small>正式版 UI 製作與交付流程</small></span>
+        <em>已連線</em>
       </button>
       <button class="theme-option" type="button" data-theme="theme3">
         <span class="theme-option-mark"><i class="fa-solid fa-route"></i></span>
@@ -525,7 +547,7 @@
         <em>預覽</em>
       </button>
     </div>
-    <div class="theme-drawer-note"><i class="fa-solid fa-circle-info"></i> 主題二、三目前使用展示資料，尚未連結 Google Sheet。</div>
+    <div class="theme-drawer-note"><i class="fa-solid fa-circle-info"></i> 主題二僅使用 Google Sheet API；主題三目前為展示資料。</div>
   </aside>
   <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div>
 
