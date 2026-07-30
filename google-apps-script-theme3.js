@@ -16,11 +16,13 @@ const MASTER_SHEET_NAME = '確認總表';
 const DISCUSSION_SHEET_NAME = '音效討論紀錄';
 const ROSTER_SHEET_NAME = '角色清單';
 const VOICE_SHEET_NAME = '角色語音進度';
+const UPDATE_LOG_SHEET_NAME = '更新紀錄';
 const DATA_START_ROW = 3;
 const STATUS_VALUES = ['未開始', '待製作', '已製作', '待修改', '已確認', '不需製作'];
 const DISCUSSION_HEADERS = ['武器名稱', '動作編號', '日期', '留言人', '討論內容', '討論類型', '角色 ID', '角色名稱'];
 const ROSTER_HEADERS = ['角色 ID', '角色名稱', '啟用'];
 const VOICE_HEADERS = ['唯一鍵', '武器名稱', '動作編號', '指令', '角色 ID', '角色名稱', '語音狀態', '目前語音', '備註', '更新時間'];
+const UPDATE_LOG_HEADERS = ['更新時間', '類型', '武器名稱', '動作編號', '角色 ID', '角色名稱', '異動欄位'];
 
 function doGet(e) {
   try {
@@ -42,6 +44,7 @@ function doPost(e) {
     if (payload.action === 'syncVoiceMatrix') result = syncVoiceMatrix(spreadsheet);
     else if (payload.action === 'updateAction') result = updateSoundAction(spreadsheet, payload);
     else if (payload.action === 'updateVoiceRecord') result = updateVoiceRecord(spreadsheet, payload);
+    else if (payload.action === 'updateWeaponStyle') result = updateWeaponStyle(spreadsheet, payload);
     else throw new Error('Unsupported action');
     return jsonResponse({ ok: true, ...result });
   } catch (error) {
@@ -53,6 +56,7 @@ function getDashboardSummary(spreadsheet) {
   const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
   if (!masterSheet) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
   const voiceRows = getVoiceRows(spreadsheet);
+  const updates = getLatestUpdates(spreadsheet);
   const voiceByWeapon = groupBy(voiceRows, row => row.weaponName);
   const weapons = getMasterWeapons(masterSheet).map(weapon => {
     const actions = getWeaponActions(spreadsheet, weapon.name);
@@ -64,7 +68,10 @@ function getDashboardSummary(spreadsheet) {
       soundCounts: countStatuses(actions, 'soundStatus'),
       voiceCounts: countStatuses(voices, 'voiceStatus'),
       voiceCharacterCount: new Set(voices.map(row => row.characterId).filter(Boolean)).size,
-      voiceRecordCount: voices.length
+      voiceRecordCount: voices.length,
+      soundUpdatedAt: updates[weapon.name]?.sound || '',
+      voiceUpdatedAt: updates[weapon.name]?.voice || '',
+      lastUpdatedAt: latestTimestamp(updates[weapon.name]?.sound, updates[weapon.name]?.voice)
     };
   });
   const roster = getRoster(spreadsheet);
@@ -82,13 +89,15 @@ function getWeaponDetail(spreadsheet, weaponName) {
   const weapon = getMasterWeapons(masterSheet).find(item => item.name === weaponName);
   if (!weapon) throw new Error(`確認總表沒有武器：${weaponName}`);
   const discussions = getDiscussions(spreadsheet);
-  const voiceByAction = groupBy(getVoiceRows(spreadsheet).filter(row => row.weaponName === weaponName), row => row.actionId);
+  const allVoiceRows = getVoiceRows(spreadsheet);
+  const voiceByAction = groupBy(allVoiceRows.filter(row => row.weaponName === weaponName), row => row.actionId);
+  const updates = getLatestUpdates(spreadsheet);
   const actions = getWeaponActions(spreadsheet, weaponName).map(action => ({
     ...action,
     discussions: discussions[discussionKey(weaponName, action.id)] || [],
     voiceEntries: voiceByAction[action.id] || []
   }));
-  return { weapon: { ...weapon, hasContent: actions.length > 0, actions }, updatedAt: new Date().toISOString() };
+  return { weapon: { ...weapon, hasContent: actions.length > 0, actions, soundUpdatedAt: updates[weaponName]?.sound || '', voiceUpdatedAt: updates[weaponName]?.voice || '', lastUpdatedAt: latestTimestamp(updates[weaponName]?.sound, updates[weaponName]?.voice) }, updatedAt: new Date().toISOString() };
 }
 
 function getMasterWeapons(masterSheet) {
@@ -129,7 +138,7 @@ function getVoiceRows(spreadsheet) {
     .map((row, index) => ({
       key: String(row[0] || '').trim(), weaponName: String(row[1] || '').trim(), actionId: String(row[2] || '').trim(), command: String(row[3] || '').trim(),
       characterId: String(row[4] || '').trim(), characterName: String(row[5] || '').trim(), voiceStatus: normalizeStatus(row[6]),
-      currentVoice: String(row[7] || '').trim(), note: String(row[8] || '').trim(), rowNumber: index + 2
+      currentVoice: String(row[7] || '').trim(), note: String(row[8] || '').trim(), updatedAt: String(row[9] || '').trim(), rowNumber: index + 2
     })).filter(row => row.weaponName && row.actionId && row.characterId);
 }
 
@@ -169,9 +178,24 @@ function updateSoundAction(spreadsheet, payload) {
   const sheet = spreadsheet.getSheetByName(weaponName);
   if (!sheet || !actionId || !Number.isInteger(rowNumber) || rowNumber < DATA_START_ROW || rowNumber > sheet.getLastRow()) throw new Error('音效動作資料不正確');
   if (String(sheet.getRange(rowNumber, 1).getDisplayValue() || '').trim() !== actionId) throw new Error('動作編號與指定列不一致');
-  sheet.getRange(rowNumber, 7, 1, 2).setValues([[normalizeStatus(payload.soundStatus), String(payload.soundNote || '').trim()]]);
+  sheet.getRange(rowNumber, 7).setValue(normalizeStatus(payload.soundStatus));
+  appendUpdateLog(spreadsheet, { type: '音效', weaponName, actionId, fields: '音效狀態' });
   appendDiscussionFromPayload(spreadsheet, weaponName, actionId, payload.discussion);
   return { actionId, rowNumber };
+}
+
+function updateWeaponStyle(spreadsheet, payload) {
+  const weaponName = String(payload.weaponName || '').trim();
+  if (!weaponName) throw new Error('缺少武器名稱');
+  const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet || masterSheet.getLastRow() < DATA_START_ROW) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
+  const names = masterSheet.getRange(DATA_START_ROW, 1, masterSheet.getLastRow() - DATA_START_ROW + 1, 1).getDisplayValues();
+  const offset = names.findIndex(([name]) => String(name || '').trim() === weaponName);
+  if (offset < 0) throw new Error(`確認總表沒有武器：${weaponName}`);
+  const rowNumber = DATA_START_ROW + offset;
+  const style = String(payload.style || '').trim();
+  masterSheet.getRange(rowNumber, 4).setValue(style);
+  return { weaponName, rowNumber, style };
 }
 
 function updateVoiceRecord(spreadsheet, payload) {
@@ -180,7 +204,9 @@ function updateVoiceRecord(spreadsheet, payload) {
   const key = String(payload.voiceKey || '').trim();
   if (!sheet || !key || !Number.isInteger(rowNumber) || rowNumber < 2 || rowNumber > sheet.getLastRow()) throw new Error('角色語音資料不正確');
   if (String(sheet.getRange(rowNumber, 1).getDisplayValue() || '').trim() !== key) throw new Error('角色語音唯一鍵與指定列不一致');
-  sheet.getRange(rowNumber, 7, 1, 4).setValues([[normalizeStatus(payload.voiceStatus), String(payload.currentVoice || '').trim(), String(payload.voiceNote || '').trim(), Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm')]]);
+  sheet.getRange(rowNumber, 7).setValue(normalizeStatus(payload.voiceStatus));
+  sheet.getRange(rowNumber, 10).setValue(Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm'));
+  appendUpdateLog(spreadsheet, { type: '語音', weaponName: String(payload.weaponName || '').trim(), actionId: String(payload.actionId || '').trim(), characterId: String(sheet.getRange(rowNumber, 5).getDisplayValue() || '').trim(), characterName: String(sheet.getRange(rowNumber, 6).getDisplayValue() || '').trim(), fields: '語音狀態' });
   appendDiscussionFromPayload(spreadsheet, String(payload.weaponName || '').trim(), String(payload.actionId || '').trim(), payload.discussion);
   return { key, rowNumber };
 }
@@ -209,6 +235,63 @@ function getDiscussions(spreadsheet) {
     result[key].push({ date: String(row[2] || '').trim(), author: String(row[3] || '').trim(), text: String(row[4] || '').trim(), type: String(row[5] || '共用').trim(), characterId: String(row[6] || '').trim(), characterName: String(row[7] || '').trim() });
     return result;
   }, {});
+}
+
+function getLatestUpdates(spreadsheet) {
+  const result = {};
+  const setLatest = (weaponName, type, timestamp) => {
+    if (!weaponName || !timestamp) return;
+    result[weaponName] = result[weaponName] || {};
+    if (!result[weaponName][type] || timestamp > result[weaponName][type]) result[weaponName][type] = timestamp;
+  };
+  const sheet = spreadsheet.getSheetByName(UPDATE_LOG_SHEET_NAME);
+  if (sheet && sheet.getLastRow() >= 2) sheet.getRange(2, 1, sheet.getLastRow() - 1, UPDATE_LOG_HEADERS.length).getDisplayValues().forEach(row => {
+    setLatest(String(row[2] || '').trim(), String(row[1] || '').trim() === '語音' ? 'voice' : 'sound', String(row[0] || '').trim());
+  });
+  return result;
+}
+
+function latestTimestamp(...timestamps) { return timestamps.filter(Boolean).sort().pop() || ''; }
+
+function appendUpdateLog(spreadsheet, details) {
+  let sheet = spreadsheet.getSheetByName(UPDATE_LOG_SHEET_NAME);
+  if (!sheet) {
+    sheet = ensureSheet(spreadsheet, UPDATE_LOG_SHEET_NAME, UPDATE_LOG_HEADERS);
+    sheet.hideSheet();
+  }
+  const timestamp = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm:ss');
+  sheet.appendRow([timestamp, details.type || '', details.weaponName || '', details.actionId || '', details.characterId || '', details.characterName || '', details.fields || '手動編輯']);
+}
+
+// 使用者直接在 Sheet 修改狀態／內容時，同樣寫入隱藏的更新紀錄。
+function onEdit(e) {
+  const range = e && e.range;
+  if (!range) return;
+  const sheet = range.getSheet();
+  const spreadsheet = sheet.getParent();
+  const sheetName = sheet.getName();
+  const firstColumn = range.getColumn();
+  const lastColumn = firstColumn + range.getNumColumns() - 1;
+  const overlaps = (start, end) => firstColumn <= end && lastColumn >= start;
+  if (sheetName === UPDATE_LOG_SHEET_NAME || sheetName === MASTER_SHEET_NAME) return;
+  if (sheetName === VOICE_SHEET_NAME && range.getLastRow() >= 2 && overlaps(7, 9)) {
+    const startRow = Math.max(2, range.getRow());
+    const rows = sheet.getRange(startRow, 1, range.getLastRow() - startRow + 1, 9).getDisplayValues();
+    rows.forEach(row => appendUpdateLog(spreadsheet, { type: '語音', weaponName: String(row[1] || '').trim(), actionId: String(row[2] || '').trim(), characterId: String(row[4] || '').trim(), characterName: String(row[5] || '').trim(), fields: '手動編輯語音資料' }));
+    return;
+  }
+  const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet || !getMasterWeapons(masterSheet).some(weapon => weapon.name === sheetName) || range.getLastRow() < DATA_START_ROW || !overlaps(7, 8)) return;
+  const startRow = Math.max(DATA_START_ROW, range.getRow());
+  sheet.getRange(startRow, 1, range.getLastRow() - startRow + 1, 8).getDisplayValues().forEach(row => {
+    appendUpdateLog(spreadsheet, { type: '音效', weaponName: sheetName, actionId: String(row[0] || '').trim(), fields: '手動編輯音效資料' });
+  });
+}
+
+// 若此專案不是綁定在試算表上的 Apps Script，請手動執行一次此函式以建立編輯監聽。
+function createEditTrigger() {
+  ScriptApp.getProjectTriggers().filter(trigger => trigger.getHandlerFunction() === 'onEdit').forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  ScriptApp.newTrigger('onEdit').forSpreadsheet(SPREADSHEET_ID).onEdit().create();
 }
 
 function countStatuses(items, property) {
