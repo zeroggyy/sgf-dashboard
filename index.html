@@ -512,14 +512,14 @@
 
   <main id="theme-view-theme3" class="page-container theme-view theme-view-demo theme3-view" hidden>
     <header class="demo-theme-header theme3-app-header">
-      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 武器音效進度控制台</strong></span></button>
-      <div><span class="theme-drawer-kicker">WEAPON SOUND TRACKING</span><h1>SGF 武器音效進度控制台</h1><p>以武器為單位，整合音效與語音的製作、確認與最終驗收。</p></div>
+      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 音效語音進度控制台</strong></span></button>
+      <div><span class="theme-drawer-kicker">SOUND &amp; VOICE TRACKING</span><h1>SGF 音效語音進度控制台</h1><p>以武器為單位，整合音效與語音的製作、確認與最終驗收。</p></div>
       <div class="theme3-header-tools"><button id="theme3-sync-voice-btn" class="theme3-sync-voice-btn" type="button"><i class="fa-solid fa-users-gear"></i> 同步角色語音項目</button><span id="theme3-api-status" class="demo-theme-status"><i class="fa-solid fa-circle-notch fa-spin"></i> 資料載入中</span></div>
     </header>
     <main class="theme3-dashboard-layout">
       <section id="theme3-stats" class="theme3-stats-grid" aria-label="武器進度摘要"></section>
       <section class="theme3-filter-panel">
-        <div class="demo-section-heading"><div><span class="theme3-kicker">WEAPON OVERVIEW</span><h2><i class="fa-solid fa-guitar"></i> 武器整體進度</h2></div><button id="theme3-reset-btn" type="button">重設篩選</button></div>
+        <div class="demo-section-heading"><div><span class="theme3-kicker">WEAPON OVERVIEW</span><h2><i class="fa-solid fa-guitar"></i> 武器整體進度</h2></div><div class="theme3-filter-actions"><button id="theme3-status-help-btn" class="theme3-status-help-btn" type="button" aria-haspopup="dialog"><i class="fa-solid fa-circle-question"></i> 篩選說明</button><button id="theme3-reset-btn" type="button">重設篩選</button></div></div>
         <div class="theme3-filter-body">
           <label class="theme3-search"><i class="fa-solid fa-magnifying-glass"></i><input id="theme3-search-input" type="search" placeholder="搜尋武器或動作..." autocomplete="off"></label>
           <div id="theme3-status-chips" class="theme3-status-chips" aria-label="依狀態篩選"></div>
@@ -546,35 +546,53 @@
         <div class="theme3-action-modal-actions"><label class="theme3-discussion-author-field">留言人<input id="theme3-discussion-author" type="text" placeholder="姓名" autocomplete="name"></label><button id="theme3-action-cancel" class="btn" type="button">取消</button><button id="theme3-action-save" class="btn" type="button">儲存全部變更</button></div>
       </div>
     </div>
+    <div id="theme3-status-help-modal" class="theme3-status-help-modal" aria-hidden="true">
+      <div class="theme3-status-help-dialog" role="dialog" aria-modal="true" aria-labelledby="theme3-status-help-title">
+        <div class="theme2-detail-dialog-header"><div><span class="theme3-kicker">STATUS DEFINITIONS</span><h2 id="theme3-status-help-title">音效語音狀態定義</h2></div><button id="theme3-status-help-close" type="button" aria-label="關閉狀態定義">&times;</button></div>
+        <div class="theme3-help-intro">
+          <p><b>篩選範圍：</b>以武器彙整音效與語音的目前狀態；點選武器可查看各動作與角色的明細。</p>
+          <p><b>完成度：</b>目前以「已確認」計入完成；不需製作不列入需要完成的項目。</p>
+        </div>
+        <div class="theme3-status-definition-list">
+          <article><b>01・不需製作</b><p>該項目不需製作，不納入需完成項目。</p></article>
+          <article><b>02・未開始</b><p>項目仍在待機，尚未進入製作安排。</p></article>
+          <article><b>03・待製作</b><p>企劃已可進行，可交由製作處理。</p></article>
+          <article><b>04・已製作</b><p>企劃已完成項目，等待製作人驗證。</p></article>
+          <article><b>05・待修改</b><p>製作人驗證後提供反饋，需回修處理。</p></article>
+          <article><b>06・已確認</b><p>已通過製作人確認，為最終完成階段。</p></article>
+          <article><b>07・無內容</b><p>找不到對應武器分頁或可讀取的動作資料，需補齊來源資料。</p></article>
+        </div>
+      </div>
+    </div>
   </main>
 
-  <!-- 主題切換選單：主題二、三先以展示資料預覽 UX -->
+  <!-- 控制台切換選單 -->
   <aside id="theme-drawer" class="theme-drawer" aria-hidden="true">
     <div class="theme-drawer-header">
       <div>
-        <span class="theme-drawer-kicker">TRACKING THEMES</span>
-        <h2>切換追蹤主題</h2>
+        <span class="theme-drawer-kicker">SGF CONTROL CENTERS</span>
+        <h2>選擇控制台</h2>
       </div>
       <button id="theme-drawer-close" class="theme-drawer-close" type="button" aria-label="關閉主題選單">&times;</button>
     </div>
-    <p class="theme-drawer-intro">保留同一套控制台框架，切換不同資料視角與篩選方式。</p>
+    <p class="theme-drawer-intro">依目前工作內容切換追蹤視角。</p>
     <div id="theme-options" class="theme-options">
       <button class="theme-option active" type="button" data-theme="sgf">
-        <span class="theme-option-mark"><i class="fa-solid fa-check"></i></span>
-        <span><strong>SGF 企劃進度控制台</strong><small>企劃任務與每週進度追蹤</small></span>
+        <span class="theme-option-icon" aria-hidden="true"><i class="fa-solid fa-clipboard-list"></i></span>
+        <span class="theme-option-copy"><strong>SGF 企劃進度控制台</strong><small>企劃任務與週進度</small></span>
+        <span class="theme-option-current">目前使用中</span>
       </button>
       <button class="theme-option" type="button" data-theme="theme2">
-        <span class="theme-option-mark"><i class="fa-solid fa-arrow-trend-up"></i></span>
-        <span><strong>SGF 介面進度控制台</strong><small>正式版 UI 製作與交付流程</small></span>
-        <em>已連線</em>
+        <span class="theme-option-icon" aria-hidden="true"><i class="fa-solid fa-display"></i></span>
+        <span class="theme-option-copy"><strong>SGF 介面進度控制台</strong><small>UI 製作與交付流程</small></span>
+        <span class="theme-option-current">目前使用中</span>
       </button>
       <button class="theme-option" type="button" data-theme="theme3">
-        <span class="theme-option-mark"><i class="fa-solid fa-route"></i></span>
-        <span><strong>SGF 武器音效進度控制台</strong><small>展示：以武器掌握音效與語音驗收</small></span>
-        <em>範例</em>
+        <span class="theme-option-icon" aria-hidden="true"><i class="fa-solid fa-volume-high"></i></span>
+        <span class="theme-option-copy"><strong>SGF 音效語音進度控制台</strong><small>武器音效與語音驗收</small></span>
+        <span class="theme-option-current">目前使用中</span>
       </button>
     </div>
-    <div class="theme-drawer-note"><i class="fa-solid fa-circle-info"></i> 主題二僅使用 Google Sheet API；主題三目前為展示資料。</div>
   </aside>
   <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div>
 

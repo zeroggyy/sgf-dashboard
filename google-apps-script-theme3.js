@@ -1,5 +1,5 @@
 /**
- * SGF 武器音效進度控制台：Google Apps Script API
+ * SGF 音效語音進度控制台：Google Apps Script API
  *
  * 規則：
  * - 確認總表：第 3 列起，A 欄武器名稱、D 欄音效風格。

@@ -2317,7 +2317,7 @@ function setupGlobalScrollLockObserver() {
       ]
     },
     theme3: {
-      title: '追蹤主題三｜交付里程碑',
+      title: 'SGF 音效語音進度控制台｜交付里程碑',
       adLabel: '交付節點追蹤系統',
       stats: ['8', '3', '2', '46%'],
       labels: ['里程碑總數', '已交付', '本月節點', '完成度'],
@@ -2356,7 +2356,7 @@ function setupGlobalScrollLockObserver() {
     if (!demo || !filterBar || !taskAccordionEl) return;
     document.querySelector('.header-center-title h1').textContent = demo.title;
     document.querySelector('.ad-label').textContent = demo.adLabel;
-    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? 'SGF 介面進度控制台' : '追蹤主題三';
+    document.getElementById('current-theme-label').textContent = themeKey === 'theme2' ? 'SGF 介面進度控制台' : 'SGF 音效語音進度控制台';
     document.getElementById('filtered-count').textContent = `共 ${demo.tasks.length} 項`;
     document.querySelectorAll('.stat-card h3').forEach((el, index) => { el.textContent = demo.labels[index]; });
     ['stat-total-tasks', 'stat-completed-tasks', 'stat-pending-tasks', 'stat-overall-progress'].forEach((id, index) => {
@@ -3260,6 +3260,21 @@ function setupGlobalScrollLockObserver() {
 
   document.getElementById('theme3-search-input')?.addEventListener('input', event => { state.query = event.target.value.trim().toLowerCase(); render(); });
   document.getElementById('theme3-reset-btn')?.addEventListener('click', () => { state.status = '全部'; state.query = ''; state.selected = null; const input = document.getElementById('theme3-search-input'); if (input) input.value = ''; renderFilters(); render(); });
+  const theme3StatusHelpModal = document.getElementById('theme3-status-help-modal');
+  const closeTheme3StatusHelp = () => {
+    if (!theme3StatusHelpModal) return;
+    theme3StatusHelpModal.classList.remove('open');
+    theme3StatusHelpModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('body-scroll-lock');
+  };
+  document.getElementById('theme3-status-help-btn')?.addEventListener('click', () => {
+    if (!theme3StatusHelpModal) return;
+    theme3StatusHelpModal.classList.add('open');
+    theme3StatusHelpModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('body-scroll-lock');
+  });
+  document.getElementById('theme3-status-help-close')?.addEventListener('click', closeTheme3StatusHelp);
+  theme3StatusHelpModal?.addEventListener('click', event => { if (event.target === theme3StatusHelpModal) closeTheme3StatusHelp(); });
   document.getElementById('theme3-sync-voice-btn')?.addEventListener('click', async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -3332,7 +3347,11 @@ function setupGlobalScrollLockObserver() {
       saveButton.textContent = '儲存全部變更';
     }
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionEditor(); });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    closeActionEditor();
+    closeTheme3StatusHelp();
+  });
   renderStats();
   renderFilters();
   render();
@@ -3370,7 +3389,7 @@ function setupGlobalScrollLockObserver() {
     });
     options.forEach(option => option.classList.toggle('active', option.dataset.theme === themeKey));
     const sgfLabel = document.getElementById('current-theme-label');
-    if (sgfLabel) sgfLabel.textContent = themeKey === 'sgf' ? 'SGF 企劃進度控制台' : themeKey === 'theme2' ? 'SGF 介面進度控制台' : '追蹤主題三';
+    if (sgfLabel) sgfLabel.textContent = themeKey === 'sgf' ? 'SGF 企劃進度控制台' : themeKey === 'theme2' ? 'SGF 介面進度控制台' : 'SGF 音效語音進度控制台';
     document.documentElement.dataset.activeTheme = themeKey;
     setDrawerOpen(false);
     if (themeKey === 'theme2') {

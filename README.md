@@ -2,7 +2,7 @@
 
 SGF 企劃進度控制台是一個以 Google Sheet 為資料來源的專案管理儀表板。使用者可在瀏覽器中查看任務進度、依條件篩選任務、編輯任務內容，並透過 Google Apps Script Web App 將變更同步回 Google Sheet；主題二則使用「SGF 介面進度控制台」追蹤 UI 製作與交付流程。
 
-## 目前進度筆記｜主題三：SGF 武器音效進度控制台
+## 目前進度筆記｜主題三：SGF 音效語音進度控制台
 
 ### 已完成（已串接主題三 Google Sheet API）
 
