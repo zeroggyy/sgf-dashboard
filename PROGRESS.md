@@ -61,8 +61,27 @@
 
 ## 主要檔案
 
-- `app_v10.js`：主題三前端、篩選、角色語音明細與編輯。
-- `index.html`：主題三版面與同步按鈕。
-- `style.css`：主題三樣式。
+- `app_v10.js`：SGF 企劃進度控制台前端。
+- `ui-progress.js`：SGF 介面進度控制台前端。
+- `sound-voice-progress.js`：主題三前端、篩選、角色語音明細與編輯。
+- `dashboard-shared.js`、`dashboard-navigation.js`：通知與跨頁控制台選單。
+- `index.html`：SGF 企劃進度控制台入口。
+- `ui-progress.html`：SGF 介面進度控制台獨立入口與版面。
+- `sound-voice-progress.html`：SGF 音效語音進度控制台獨立入口與版面。
+- `style.css`：三頁共用基礎版面與元件樣式。
+- `ui-progress.css`：主題二專屬樣式。
+- `sound-voice-progress.css`：主題三專屬樣式。
 - `google-apps-script-theme3.js`：主題三 Google Apps Script 後端，需手動貼上並部署。
 - `README.md`：完整使用與資料結構說明。
+
+## 2026-07-31 多頁架構進度
+
+- 三個控制台已可透過獨立網址開啟，控制台選單改為頁面導覽。
+- `ui-progress.html` 與 `sound-voice-progress.html` 已內含自己的完整 DOM，不再執行時讀取 `index.html`。
+- 三頁共用 `style.css` 的基礎樣式；主題二、三專屬樣式已拆至 `ui-progress.css` 與 `sound-voice-progress.css`。JavaScript 也已拆成 `app_v10.js`、`ui-progress.js`、`sound-voice-progress.js`；通知與跨頁導覽使用小型共用模組。
+- 靜態結構、重複 ID、JavaScript 語法與真實瀏覽器載入皆已檢查。
+- 主題二 Google Sheet 資料可載入；主題三已顯示 21 把武器並連線 Google Sheet。
+- 使用者已完成初步 Google Sheet 寫入測試，結果正常。
+- 已從 `index.html` 移除主題二、三的舊備援 DOM；企劃頁只保留自身介面與共用控制台選單。
+- 已完成 JavaScript 與頁面專屬 CSS 的第一階段拆分，並通過三頁載入、主要版面、說明彈窗與跨頁切換測試。
+- 已修正企劃頁與 `dashboard-navigation.js` 的 `DASHBOARD_PAGES` 重複宣告；三頁完整切換循環已重新驗證。
