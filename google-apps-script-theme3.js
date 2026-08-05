@@ -4,8 +4,8 @@
  * 規則：
  * - 確認總表：第 3 列起，A 欄武器名稱、D 欄音效風格。
  * - 同名武器分頁：第 3 列起，A 動作編號、D 指令、G 音效狀態、H 音效調整需求。
- * - 角色清單：角色 ID、角色名稱、是否啟用。
- * - 角色語音進度：由 syncVoiceMatrix 自動補齊「武器 × 動作 × 啟用角色」。
+ * - 角色清單：A:C 為角色 ID、角色名稱、是否啟用；D 欄後為各武器適用勾選。
+ * - 角色語音進度：由 syncVoiceMatrix 自動補齊「武器 × 動作 × 啟用且適用該武器的角色」。
  *
  * 讀取 API 分為摘要與單一武器明細，避免首頁下載所有角色語音資料。
  */
@@ -23,7 +23,7 @@ const DISCUSSION_HEADERS = ['武器名稱', '動作編號', '日期', '留言人
 const ROSTER_HEADERS = ['角色 ID', '角色名稱', '啟用'];
 const VOICE_HEADERS = ['唯一鍵', '武器名稱', '動作編號', '指令', '角色 ID', '角色名稱', '語音狀態', '目前語音', '備註', '更新時間'];
 const UPDATE_LOG_HEADERS = ['更新時間', '類型', '武器名稱', '動作編號', '角色 ID', '角色名稱', '異動欄位'];
-const SUMMARY_CACHE_KEY = 'theme3-dashboard-summary-v2';
+const SUMMARY_CACHE_KEY = 'theme3-dashboard-summary-v3';
 const SUMMARY_CACHE_SECONDS = 300;
 
 function doGet(e) {
@@ -46,6 +46,7 @@ function doPost(e) {
     if (payload.action === 'syncVoiceMatrix') result = syncVoiceMatrix(spreadsheet);
     else if (payload.action === 'updateAction') result = updateSoundAction(spreadsheet, payload);
     else if (payload.action === 'updateVoiceRecord') result = updateVoiceRecord(spreadsheet, payload);
+    else if (payload.action === 'batchUpdateStatuses') result = batchUpdateStatuses(spreadsheet, payload);
     else if (payload.action === 'updateWeaponStyle') result = updateWeaponStyle(spreadsheet, payload);
     else throw new Error('Unsupported action');
     clearDashboardSummaryCache();
@@ -79,7 +80,8 @@ function clearDashboardSummaryCache() {
 function getDashboardSummary(spreadsheet) {
   const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
   if (!masterSheet) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
-  const voiceRows = getVoiceSummaryRows(spreadsheet);
+  const applicableCharacterIds = getApplicableCharacterIdsByWeapon(spreadsheet);
+  const voiceRows = getVoiceSummaryRows(spreadsheet, applicableCharacterIds);
   const updates = getLatestUpdates(spreadsheet);
   const voiceByWeapon = groupBy(voiceRows, row => row.weaponName);
   const weapons = getMasterWeapons(masterSheet).map(weapon => {
@@ -113,7 +115,8 @@ function getWeaponDetail(spreadsheet, weaponName) {
   const weapon = getMasterWeapons(masterSheet).find(item => item.name === weaponName);
   if (!weapon) throw new Error(`確認總表沒有武器：${weaponName}`);
   const discussions = getDiscussionsForWeapon(spreadsheet, weaponName);
-  const voiceByAction = groupBy(getVoiceRowsForWeapon(spreadsheet, weaponName), row => row.actionId);
+  const applicableCharacterIds = getApplicableCharacterIdsByWeapon(spreadsheet);
+  const voiceByAction = groupBy(getVoiceRowsForWeapon(spreadsheet, weaponName, applicableCharacterIds), row => row.actionId);
   const updates = getLatestUpdatesForWeapon(spreadsheet, weaponName);
   const actions = getWeaponActions(spreadsheet, weaponName).map(action => ({
     ...action,
@@ -148,10 +151,50 @@ function getRoster(spreadsheet) {
   const sheet = spreadsheet.getSheetByName(ROSTER_SHEET_NAME);
   if (!sheet) return { exists: false, active: [] };
   if (sheet.getLastRow() < 2) return { exists: true, active: [] };
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, ROSTER_HEADERS.length).getDisplayValues();
-  const active = rows.map(row => ({ id: String(row[0] || '').trim(), name: String(row[1] || '').trim(), enabled: isEnabled(row[2]) }))
+  const columnCount = Math.max(sheet.getLastColumn(), ROSTER_HEADERS.length);
+  const weaponNames = columnCount > ROSTER_HEADERS.length
+    ? sheet.getRange(1, ROSTER_HEADERS.length + 1, 1, columnCount - ROSTER_HEADERS.length).getDisplayValues()[0].map(value => String(value || '').trim())
+    : [];
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, columnCount).getDisplayValues();
+  const active = rows.map(row => ({
+    id: String(row[0] || '').trim(),
+    name: String(row[1] || '').trim(),
+    enabled: isEnabled(row[2]),
+    applicableWeapons: new Set(weaponNames.filter((weaponName, index) => weaponName && isEnabled(row[index + ROSTER_HEADERS.length])))
+  }))
     .filter(character => character.id && character.name && character.enabled);
-  return { exists: true, active };
+  return { exists: true, active, weaponNames };
+}
+
+function ensureRosterWeaponColumns(rosterSheet, weapons) {
+  const firstWeaponColumn = ROSTER_HEADERS.length + 1;
+  const existingCount = Math.max(0, rosterSheet.getLastColumn() - ROSTER_HEADERS.length);
+  const existingHeaders = existingCount
+    ? rosterSheet.getRange(1, firstWeaponColumn, 1, existingCount).getDisplayValues()[0].map(value => String(value || '').trim())
+    : [];
+  const existingSet = new Set(existingHeaders.filter(Boolean));
+  const additions = weapons.map(weapon => weapon.name).filter(name => name && !existingSet.has(name));
+  if (additions.length) {
+    rosterSheet.getRange(1, firstWeaponColumn + existingHeaders.length, 1, additions.length).setValues([additions]);
+  }
+  const weaponColumnCount = existingHeaders.length + additions.length;
+  if (rosterSheet.getLastRow() >= 2 && weaponColumnCount) {
+    rosterSheet.getRange(2, firstWeaponColumn, rosterSheet.getLastRow() - 1, weaponColumnCount)
+      .setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().setAllowInvalid(false).build());
+  }
+  rosterSheet.setFrozenColumns(ROSTER_HEADERS.length);
+  return additions;
+}
+
+function getApplicableCharacterIdsByWeapon(spreadsheet) {
+  const result = {};
+  getRoster(spreadsheet).active.forEach(character => {
+    character.applicableWeapons.forEach(weaponName => {
+      if (!result[weaponName]) result[weaponName] = new Set();
+      result[weaponName].add(character.id);
+    });
+  });
+  return result;
 }
 
 function getVoiceRows(spreadsheet) {
@@ -165,24 +208,25 @@ function getVoiceRows(spreadsheet) {
     })).filter(row => row.weaponName && row.actionId && row.characterId);
 }
 
-function getVoiceSummaryRows(spreadsheet) {
+function getVoiceSummaryRows(spreadsheet, applicableCharacterIds) {
   const sheet = spreadsheet.getSheetByName(VOICE_SHEET_NAME);
   if (!sheet || sheet.getLastRow() < 2) return [];
   // 摘要只需要武器、角色與狀態，避免下載完整 10 欄資料。
   return sheet.getRange(2, 2, sheet.getLastRow() - 1, 6).getDisplayValues()
     .map(row => ({ weaponName: String(row[0] || '').trim(), characterId: String(row[3] || '').trim(), voiceStatus: normalizeStatus(row[5]) }))
-    .filter(row => row.weaponName && row.characterId);
+    .filter(row => row.weaponName && row.characterId && applicableCharacterIds[row.weaponName]?.has(row.characterId));
 }
 
-function getVoiceRowsForWeapon(spreadsheet, weaponName) {
+function getVoiceRowsForWeapon(spreadsheet, weaponName, applicableCharacterIds) {
   const sheet = spreadsheet.getSheetByName(VOICE_SHEET_NAME);
   if (!sheet || sheet.getLastRow() < 2) return [];
+  const allowedCharacterIds = applicableCharacterIds[weaponName] || new Set();
   const rowNumbers = findMatchingRows(sheet, 2, weaponName, 2);
   return readRowsBySegments(sheet, rowNumbers, VOICE_HEADERS.length).map((entry) => ({
     key: String(entry.values[0] || '').trim(), weaponName: String(entry.values[1] || '').trim(), actionId: String(entry.values[2] || '').trim(), command: String(entry.values[3] || '').trim(),
     characterId: String(entry.values[4] || '').trim(), characterName: String(entry.values[5] || '').trim(), voiceStatus: normalizeStatus(entry.values[6]),
     currentVoice: String(entry.values[7] || '').trim(), note: String(entry.values[8] || '').trim(), updatedAt: String(entry.values[9] || '').trim(), rowNumber: entry.rowNumber
-  })).filter(row => row.actionId && row.characterId);
+  })).filter(row => row.actionId && row.characterId && allowedCharacterIds.has(row.characterId));
 }
 
 function syncVoiceMatrix(spreadsheet) {
@@ -194,21 +238,45 @@ function syncVoiceMatrix(spreadsheet) {
     const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
     if (!masterSheet) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
     const migrated = migrateLegacyStatuses(spreadsheet, masterSheet, voiceSheet);
+    const weapons = getMasterWeapons(masterSheet);
+    const addedWeaponColumns = ensureRosterWeaponColumns(rosterSheet, weapons);
+    if (addedWeaponColumns.length) {
+      return {
+        created: 0,
+        migrated,
+        rosterCount: 0,
+        addedWeaponColumns: addedWeaponColumns.length,
+        message: `已在「${ROSTER_SHEET_NAME}」新增 ${addedWeaponColumns.length} 個武器欄位。請勾選適用角色後，再同步一次。`
+      };
+    }
     const roster = getRoster(spreadsheet);
     if (!roster.active.length) return { created: 0, migrated, rosterCount: 0, message: `已更新 ${migrated} 筆既有狀態；請在「${ROSTER_SHEET_NAME}」填入啟用角色後，再同步角色語音項目。` };
+    const applicablePairCount = roster.active.reduce((sum, character) => sum + character.applicableWeapons.size, 0);
+    if (!applicablePairCount) {
+      return { created: 0, migrated, rosterCount: roster.active.length, message: `尚未勾選任何角色適用武器；既有資料未變更。請先在「${ROSTER_SHEET_NAME}」D 欄之後勾選。` };
+    }
     const existingKeys = new Set(getVoiceRows(spreadsheet).map(row => row.key));
     const now = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm');
     const additions = [];
-    getMasterWeapons(masterSheet).forEach(weapon => {
+    weapons.forEach(weapon => {
       getWeaponActions(spreadsheet, weapon.name).forEach(action => {
-        roster.active.forEach(character => {
+        roster.active.filter(character => character.applicableWeapons.has(weapon.name)).forEach(character => {
           const key = voiceKey(weapon.name, action.id, character.id);
-          if (!existingKeys.has(key)) additions.push([key, weapon.name, action.id, action.command, character.id, character.name, '未開始', '', '', now]);
+          if (!existingKeys.has(key)) {
+            additions.push([key, weapon.name, action.id, action.command, character.id, character.name, '未開始', '', '', now]);
+            existingKeys.add(key);
+          }
         });
       });
     });
     if (additions.length) voiceSheet.getRange(voiceSheet.getLastRow() + 1, 1, additions.length, VOICE_HEADERS.length).setValues(additions);
-    return { created: additions.length, migrated, rosterCount: roster.active.length, message: additions.length ? `已新增 ${additions.length} 筆角色語音項目。` : migrated ? `已更新 ${migrated} 筆既有狀態。` : '沒有缺少的角色語音項目。' };
+    return {
+      created: additions.length,
+      migrated,
+      rosterCount: roster.active.length,
+      applicablePairCount,
+      message: additions.length ? `已新增 ${additions.length} 筆適用角色語音項目。` : migrated ? `已更新 ${migrated} 筆既有狀態。` : '沒有缺少的適用角色語音項目。'
+    };
   } finally {
     lock.releaseLock();
   }
@@ -252,6 +320,68 @@ function updateVoiceRecord(spreadsheet, payload) {
   appendUpdateLog(spreadsheet, { type: '語音', weaponName: String(payload.weaponName || '').trim(), actionId: String(payload.actionId || '').trim(), characterId: String(sheet.getRange(rowNumber, 5).getDisplayValue() || '').trim(), characterName: String(sheet.getRange(rowNumber, 6).getDisplayValue() || '').trim(), fields: '語音狀態' });
   appendDiscussionFromPayload(spreadsheet, String(payload.weaponName || '').trim(), String(payload.actionId || '').trim(), payload.discussion);
   return { key, rowNumber };
+}
+
+function batchUpdateStatuses(spreadsheet, payload) {
+  const type = String(payload.type || '').trim();
+  const weaponName = String(payload.weaponName || '').trim();
+  const status = normalizeStatus(payload.status);
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  if (!['sound', 'voice'].includes(type)) throw new Error('批次更新類型不正確');
+  if (!weaponName) throw new Error('缺少武器名稱');
+  if (!STATUS_VALUES.includes(status)) throw new Error('批次更新狀態不正確');
+  if (!items.length) throw new Error('尚未選取批次更新項目');
+  if (items.length > 1000) throw new Error('單次批次更新最多 1000 項');
+
+  const normalizedItems = items.map(item => ({
+    rowNumber: Number(item.rowNumber),
+    actionId: String(item.actionId || '').trim(),
+    key: String(item.key || '').trim()
+  }));
+  const rowNumbers = normalizedItems.map(item => item.rowNumber);
+  if (rowNumbers.some(rowNumber => !Number.isInteger(rowNumber))) throw new Error('批次更新列號不正確');
+  if (new Set(rowNumbers).size !== rowNumbers.length) throw new Error('批次更新包含重複項目');
+
+  const sheet = spreadsheet.getSheetByName(type === 'sound' ? weaponName : VOICE_SHEET_NAME);
+  const minimumRow = type === 'sound' ? DATA_START_ROW : 2;
+  if (!sheet || rowNumbers.some(rowNumber => rowNumber < minimumRow || rowNumber > sheet.getLastRow())) throw new Error('批次更新資料範圍不正確');
+
+  const firstRow = Math.min(...rowNumbers);
+  const lastRow = Math.max(...rowNumbers);
+  const verificationColumns = type === 'sound' ? 1 : 6;
+  const verificationRows = sheet.getRange(firstRow, 1, lastRow - firstRow + 1, verificationColumns).getDisplayValues();
+  const updateLogs = normalizedItems.map(item => {
+    const row = verificationRows[item.rowNumber - firstRow];
+    if (type === 'sound') {
+      if (!item.actionId || String(row[0] || '').trim() !== item.actionId) throw new Error(`音效動作 ${item.actionId || item.rowNumber} 與指定列不一致`);
+      return { type: '音效', weaponName, actionId: item.actionId, fields: `批次更新音效狀態為 ${status}` };
+    }
+    if (!item.key || String(row[0] || '').trim() !== item.key || String(row[1] || '').trim() !== weaponName) throw new Error(`角色語音 ${item.key || item.rowNumber} 與指定列不一致`);
+    return {
+      type: '語音',
+      weaponName,
+      actionId: String(row[2] || '').trim(),
+      characterId: String(row[4] || '').trim(),
+      characterName: String(row[5] || '').trim(),
+      fields: `批次更新語音狀態為 ${status}`
+    };
+  });
+
+  sheet.getRangeList(rowNumbers.map(rowNumber => `G${rowNumber}`)).setValue(status);
+  if (type === 'voice') {
+    const timestamp = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm');
+    sheet.getRangeList(rowNumbers.map(rowNumber => `J${rowNumber}`)).setValue(timestamp);
+  }
+  appendUpdateLogs(spreadsheet, updateLogs);
+  return { type, weaponName, status, updated: normalizedItems.length };
+}
+
+function appendUpdateLogs(spreadsheet, detailsList) {
+  if (!detailsList.length) return;
+  const sheet = ensureSheet(spreadsheet, UPDATE_LOG_SHEET_NAME, UPDATE_LOG_HEADERS);
+  const timestamp = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), 'yyyy/MM/dd HH:mm:ss');
+  const rows = detailsList.map(details => [timestamp, details.type || '', details.weaponName || '', details.actionId || '', details.characterId || '', details.characterName || '', details.fields || '批次編輯']);
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, UPDATE_LOG_HEADERS.length).setValues(rows);
 }
 
 function appendDiscussionFromPayload(spreadsheet, weaponName, actionId, discussion) {

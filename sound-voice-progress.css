@@ -142,6 +142,18 @@
 .theme3-detail-filter-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.35rem; }
 .theme3-detail-filter-chips .theme3-filter-chip { padding: 0.34rem 0.46rem; font-size: 0.66rem; }
 .theme3-detail-filter-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: end; gap: 0.45rem; }
+.theme3-batch-toggle { padding: 0.4rem 0.6rem; border: 1px solid var(--theme3-line); background: transparent; color: var(--text-secondary); font-family: var(--font-main); font-size: 0.68rem; font-weight: 800; cursor: pointer; }
+.theme3-batch-toggle:hover, .theme3-batch-toggle.active { border-color: var(--theme3-accent); background: var(--theme3-accent); color: #fff; }
+.theme3-batch-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 0.7rem; margin: 0.55rem 0; padding: 0.55rem 0.65rem; border: 1px solid var(--theme3-accent); background: rgba(96, 113, 78, 0.08); }
+.theme3-batch-toolbar > div:first-child { display: flex; flex-direction: column; gap: 0.08rem; white-space: nowrap; }
+.theme3-batch-toolbar > div:first-child b { font-size: 0.74rem; }
+.theme3-batch-toolbar > div:first-child span { color: var(--text-muted); font-size: 0.64rem; }
+.theme3-batch-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.35rem; }
+.theme3-batch-actions button, .theme3-batch-actions select { min-height: 32px; padding: 0.32rem 0.5rem; border: 1px solid var(--theme3-line); background: var(--panel-bg); color: var(--text-secondary); font-family: var(--font-main); font-size: 0.66rem; font-weight: 800; }
+.theme3-batch-actions button { cursor: pointer; }
+.theme3-batch-actions label { display: flex; align-items: center; gap: 0.3rem; color: var(--text-muted); font-size: 0.64rem; font-weight: 800; }
+.theme3-batch-actions #theme3-batch-save { border-color: var(--theme3-accent); background: var(--theme3-accent); color: #fff; }
+.theme3-batch-actions button:disabled { cursor: wait; opacity: 0.55; }
 .theme3-character-filter { display: flex; align-items: center; gap: 0.35rem; color: var(--text-secondary); font-size: 0.66rem; font-weight: 800; white-space: nowrap; }
 .theme3-character-filter select { min-width: 126px; height: 32px; padding: 0 0.35rem; border: 1px solid var(--theme3-line); background: var(--bg-color); color: var(--text-primary); font-family: var(--font-main); font-size: 0.68rem; }
 .theme3-character-overview-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.45rem; }
@@ -168,6 +180,12 @@
 .theme3-action-table.sound .theme3-action-row { grid-template-columns: 120px 1fr 100px; min-width: 460px; }
 .theme3-action-table.voice .theme3-action-row { grid-template-columns: 120px 1fr 100px; min-width: 460px; }
 .theme3-action-table.voice .theme3-action-row > :nth-child(4) { display: none; }
+.theme3-action-table.batch-mode.sound .theme3-action-row, .theme3-action-table.batch-mode.voice .theme3-action-row { grid-template-columns: 42px 120px 1fr 100px; }
+.theme3-action-table.batch-mode.voice .theme3-action-row > :nth-child(4) { display: block; }
+.theme3-action-table.batch-mode.voice .theme3-action-row > :nth-child(5) { display: none; }
+.theme3-action-selectable { cursor: pointer; transition: background 0.15s ease; }
+.theme3-action-selectable:hover, .theme3-action-selectable.selected { background: rgba(96, 113, 78, 0.1); }
+.theme3-action-selectable input { width: 18px; height: 18px; accent-color: var(--theme3-accent); cursor: pointer; }
 .theme3-action-row:first-child { border-top: 0; }
 .theme3-action-head { background: var(--theme3-soft); color: var(--text-secondary); font-size: 0.64rem; font-weight: 800; }
 .theme3-action-row strong { font-size: 0.76rem; }
@@ -276,6 +294,8 @@
   .theme3-detail-filter-groups > div > span { text-align: left; }
   .theme3-detail-filter-chips { justify-content: flex-start; }
   .theme3-detail-filter-controls { width: 100%; justify-content: flex-start; }
+  .theme3-batch-toolbar { align-items: flex-start; flex-direction: column; }
+  .theme3-batch-actions { justify-content: flex-start; }
   .theme3-character-overview-controls { width: 100%; justify-content: flex-start; }
   .demo-task-meta { grid-column: 1 / 2; }
   .demo-task-progress { grid-column: 2; grid-row: 1 / span 2; }

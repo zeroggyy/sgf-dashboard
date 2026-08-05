@@ -16,7 +16,7 @@
   const THEME3_POST_TIMEOUT_MS = 35000;
   let weapons = [];
 
-  const state = { status: '全部', query: '', selected: null, detailType: 'sound', detailStatus: '全部', detailCharacter: '全部', voiceView: 'overview', characterQuery: '', characterSort: 'id' };
+  const state = { status: '全部', query: '', selected: null, detailType: 'sound', detailStatus: '全部', detailCharacter: '全部', voiceView: 'overview', characterQuery: '', characterSort: 'id', batchMode: false, batchSelected: new Set(), batchStatus: '已確認', batchSaving: false };
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   const emptyCounts = () => STATUS_ORDER.reduce((result, status) => ({ ...result, [status]: 0 }), {});
   const countsFor = (actions, key) => STATUS_ORDER.reduce((result, status) => {
@@ -90,6 +90,13 @@
     const weapon = weapons.find(item => item.name === weaponName);
     return weapon ? { weapon, action: weapon.actions.find(item => item.id === actionId) } : {};
   };
+  const batchRowKey = (row, isSoundView) => isSoundView ? String(row.id) : String(row.key);
+  function resetBatchEdit() {
+    state.batchMode = false;
+    state.batchSelected.clear();
+    state.batchStatus = '已確認';
+    state.batchSaving = false;
+  }
 
   function renderStats() {
     const cards = [
@@ -153,20 +160,39 @@
       : [];
     const soundSummary = Object.entries(weaponCounts(weapon, 'sound')).filter(([, count]) => count).map(([status, count]) => `${status} ${count}`).join(' · ');
     const voiceSummary = Object.entries(weaponCounts(weapon, 'voice')).filter(([, count]) => count).map(([status, count]) => `${status} ${count}`).join(' · ');
+    const batchActive = state.batchMode && (isSoundView || state.voiceView === 'actions');
+    const detailRowsMarkup = detailRows.map(row => {
+      const rowKey = batchRowKey(row, isSoundView);
+      const rowContent = `<span>${esc(isSoundView ? row.id : row.actionId)}</span><strong>${esc(isSoundView ? row.command : `${row.command}｜${row.characterName}`)}</strong><span>${pill(row[isSoundView ? 'soundStatus' : 'voiceStatus'])}</span>${isSoundView ? '' : `<span class="theme3-action-note">${esc(row.currentVoice || '—')}</span>`}`;
+      return batchActive
+        ? `<label class="theme3-action-row theme3-action-selectable ${state.batchSelected.has(rowKey) ? 'selected' : ''}"><input data-theme3-batch-item="${esc(rowKey)}" type="checkbox" ${state.batchSelected.has(rowKey) ? 'checked' : ''}>${rowContent}</label>`
+        : `<button class="theme3-action-row theme3-action-trigger" data-theme3-action="${esc(isSoundView ? row.id : row.actionId)}" ${isSoundView ? '' : `data-theme3-voice="${esc(row.key)}"`} type="button" title="開啟編輯">${rowContent}</button>`;
+    }).join('');
+    const batchToolbar = batchActive ? `<div class="theme3-batch-toolbar"><div><b>快速編輯</b><span>已選 ${state.batchSelected.size} 項</span></div><div class="theme3-batch-actions"><button id="theme3-batch-select-visible" type="button">選取目前結果</button><button id="theme3-batch-clear" type="button">清除選取</button><label>變更為<select id="theme3-batch-status">${EDITABLE_STATUSES.map(status => `<option value="${status}" ${state.batchStatus === status ? 'selected' : ''}>${status}</option>`).join('')}</select></label><button id="theme3-batch-cancel" type="button">結束快速編輯</button><button id="theme3-batch-save" type="button" ${!state.batchSelected.size || state.batchSaving ? 'disabled' : ''}>${state.batchSaving ? '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中' : `套用至 ${state.batchSelected.size} 項`}</button></div></div>` : '';
     panel.hidden = false;
     panel.innerHTML = `<div class="theme3-detail-heading"><div><span class="theme3-kicker">WEAPON DETAIL</span><h2>${esc(weapon.name)} ${pill(aggregateStatus(weapon))}</h2></div><button id="theme3-detail-close" type="button" aria-label="關閉武器詳情">&times;</button></div>
       <div class="theme3-weapon-style"><div><span class="theme3-kicker">SOUND STYLE</span><p id="theme3-weapon-style-text">${esc(weapon.style || '尚未填寫音效風格。')}</p></div><button id="theme3-edit-weapon-style" type="button"><i class="fa-solid fa-pen"></i> 編輯風格</button></div>
       <div class="theme3-detail-summary"><div><span>音效狀態</span><strong>${esc(soundSummary || '尚無資料')}</strong><small>最後更新：${esc(weapon.soundUpdatedAt || '尚無紀錄')}</small></div><div><span>語音狀態</span><strong>${esc(voiceSummary || '尚未同步角色語音')}</strong><small>最後更新：${esc(weapon.voiceUpdatedAt || '尚無紀錄')}</small></div></div>
       <div class="theme3-detail-tabs" role="tablist" aria-label="選擇音效或語音明細"><button class="${isSoundView ? 'active' : ''}" data-theme3-detail-type="sound" type="button" role="tab" aria-selected="${isSoundView}"><i class="fa-solid fa-volume-high"></i> 音效</button><button class="${!isSoundView ? 'active' : ''}" data-theme3-detail-type="voice" type="button" role="tab" aria-selected="${!isSoundView}"><i class="fa-solid fa-microphone-lines"></i> 語音</button></div>
-      ${!isSoundView && state.voiceView === 'overview' ? `<div class="theme3-character-overview"><div class="theme3-detail-filter"><div><span class="theme3-kicker">CHARACTER OVERVIEW</span><b>武將語音總覽</b><small>${characterSummaries.length} / ${characters.length} 位武將；點擊武將才顯示其動作明細。</small></div><div class="theme3-character-overview-controls"><input id="theme3-character-search" type="search" value="${esc(state.characterQuery)}" placeholder="搜尋武將名稱"><label>排序<select id="theme3-character-sort"><option value="revision" ${state.characterSort === 'revision' ? 'selected' : ''}>待修改最多</option><option value="progress" ${state.characterSort === 'progress' ? 'selected' : ''}>完成度最低</option><option value="id" ${state.characterSort === 'id' ? 'selected' : ''}>編號名稱</option></select></label></div></div><div class="theme3-character-grid">${characterSummaries.map(character => `<button class="theme3-character-card ${character.revision ? 'has-revision' : ''}" data-theme3-character="${esc(character.id)}" type="button"><div><b>${esc(character.name)}</b><small>${character.total} 項語音</small></div><strong>${character.percent === null ? '—' : `${character.percent}%`}</strong><div class="theme3-character-progress"><span style="width:${character.percent || 0}%"></span></div><footer><span>已確認 ${character.confirmed} / ${character.total}</span><span class="${character.revision ? 'is-revision' : ''}">${character.revision ? `待修改 ${character.revision}` : '目前無待修改'}</span></footer></button>`).join('') || '<div class="theme3-action-empty">找不到符合條件的武將。</div>'}</div></div>` : `<div class="theme3-detail-filter"><div><span class="theme3-kicker">${isSoundView ? 'SOUND' : 'VOICE'} FILTER</span><b>${detailLabel}${isSoundView ? '動作' : '角色語音'}明細</b><small>顯示 ${detailRows.length} / ${characterRows.length} 項${!isSoundView && state.detailCharacter !== '全部' ? ` · ${esc(characters.find(([id]) => id === state.detailCharacter)?.[1] || '')}` : ''}</small></div><div class="theme3-detail-filter-controls">${!isSoundView ? `<button class="theme3-back-overview" id="theme3-back-character-overview" type="button"><i class="fa-solid fa-arrow-left"></i> 武將總覽</button><label class="theme3-character-filter">角色<select id="theme3-character-filter">${characters.map(([id, name]) => `<option value="${esc(id)}" ${state.detailCharacter === id ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select></label>` : ''}<div class="theme3-detail-filter-chips">${['全部', ...EDITABLE_STATUSES].map(status => `<button class="theme3-filter-chip ${state.detailStatus === status ? 'active' : ''}" data-theme3-detail-status="${status}" type="button">${status}</button>`).join('')}</div></div></div>
-      <div class="theme3-action-table ${state.detailType}"><div class="theme3-action-row theme3-action-head"><span>動作編號</span><span>${isSoundView ? '指令' : '指令／角色'}</span><span>${detailLabel}狀態</span>${isSoundView ? '' : '<span>目前語音</span>'}</div>${detailRows.map(row => `<button class="theme3-action-row theme3-action-trigger" data-theme3-action="${esc(isSoundView ? row.id : row.actionId)}" ${isSoundView ? '' : `data-theme3-voice="${esc(row.key)}"`} type="button" title="開啟編輯"><span>${esc(isSoundView ? row.id : row.actionId)}</span><strong>${esc(isSoundView ? row.command : `${row.command}｜${row.characterName}`)}</strong><span>${pill(row[isSoundView ? 'soundStatus' : 'voiceStatus'])}</span>${isSoundView ? '' : `<span class="theme3-action-note">${esc(row.currentVoice || '—')}</span>`}</button>`).join('') || `<div class="theme3-action-empty">${isSoundView ? '此武器目前沒有符合此狀態的動作。' : '尚無角色語音資料。請先建立角色清單，再按「同步角色語音項目」。'}</div>`}</div>`}`;
-    panel.querySelector('#theme3-detail-close')?.addEventListener('click', () => { state.selected = null; renderDetail(); });
+      ${!isSoundView && state.voiceView === 'overview' ? `<div class="theme3-character-overview"><div class="theme3-detail-filter"><div><span class="theme3-kicker">CHARACTER OVERVIEW</span><b>武將語音總覽</b><small>${characterSummaries.length} / ${characters.length} 位武將；點擊武將才顯示其動作明細。</small></div><div class="theme3-character-overview-controls"><input id="theme3-character-search" type="search" value="${esc(state.characterQuery)}" placeholder="搜尋武將名稱"><label>排序<select id="theme3-character-sort"><option value="revision" ${state.characterSort === 'revision' ? 'selected' : ''}>待修改最多</option><option value="progress" ${state.characterSort === 'progress' ? 'selected' : ''}>完成度最低</option><option value="id" ${state.characterSort === 'id' ? 'selected' : ''}>編號名稱</option></select></label></div></div><div class="theme3-character-grid">${characterSummaries.map(character => `<button class="theme3-character-card ${character.revision ? 'has-revision' : ''}" data-theme3-character="${esc(character.id)}" type="button"><div><b>${esc(character.name)}</b><small>${character.total} 項語音</small></div><strong>${character.percent === null ? '—' : `${character.percent}%`}</strong><div class="theme3-character-progress"><span style="width:${character.percent || 0}%"></span></div><footer><span>已確認 ${character.confirmed} / ${character.total}</span><span class="${character.revision ? 'is-revision' : ''}">${character.revision ? `待修改 ${character.revision}` : '目前無待修改'}</span></footer></button>`).join('') || '<div class="theme3-action-empty">找不到符合條件的武將。</div>'}</div></div>` : `<div class="theme3-detail-filter"><div><span class="theme3-kicker">${isSoundView ? 'SOUND' : 'VOICE'} FILTER</span><b>${detailLabel}${isSoundView ? '動作' : '角色語音'}明細</b><small>顯示 ${detailRows.length} / ${characterRows.length} 項${!isSoundView && state.detailCharacter !== '全部' ? ` · ${esc(characters.find(([id]) => id === state.detailCharacter)?.[1] || '')}` : ''}</small></div><div class="theme3-detail-filter-controls"><button id="theme3-batch-toggle" class="theme3-batch-toggle ${batchActive ? 'active' : ''}" type="button"><i class="fa-solid fa-list-check"></i> ${batchActive ? '快速編輯中' : '快速編輯'}</button>${!isSoundView ? `<button class="theme3-back-overview" id="theme3-back-character-overview" type="button"><i class="fa-solid fa-arrow-left"></i> 武將總覽</button><label class="theme3-character-filter">角色<select id="theme3-character-filter">${characters.map(([id, name]) => `<option value="${esc(id)}" ${state.detailCharacter === id ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select></label>` : ''}<div class="theme3-detail-filter-chips">${['全部', ...EDITABLE_STATUSES].map(status => `<button class="theme3-filter-chip ${state.detailStatus === status ? 'active' : ''}" data-theme3-detail-status="${status}" type="button">${status}</button>`).join('')}</div></div></div>
+      ${batchToolbar}<div class="theme3-action-table ${state.detailType} ${batchActive ? 'batch-mode' : ''}"><div class="theme3-action-row theme3-action-head">${batchActive ? '<span>選取</span>' : ''}<span>動作編號</span><span>${isSoundView ? '指令' : '指令／角色'}</span><span>${detailLabel}狀態</span>${isSoundView ? '' : '<span>目前語音</span>'}</div>${detailRowsMarkup || `<div class="theme3-action-empty">${isSoundView ? '此武器目前沒有符合此狀態的動作。' : '尚無角色語音資料。請先建立角色清單，再按「同步角色語音項目」。'}</div>`}</div>`}`;
+    panel.querySelector('#theme3-detail-close')?.addEventListener('click', () => { resetBatchEdit(); state.selected = null; renderDetail(); });
     panel.querySelectorAll('[data-theme3-action]').forEach(button => button.addEventListener('click', () => openActionEditor(weapon.name, button.dataset.theme3Action, button.dataset.theme3Voice || '')));
-    panel.querySelectorAll('[data-theme3-detail-type]').forEach(button => button.addEventListener('click', () => { state.detailType = button.dataset.theme3DetailType; state.detailStatus = '全部'; state.detailCharacter = '全部'; state.voiceView = button.dataset.theme3DetailType === 'voice' ? 'overview' : 'actions'; renderDetail(); }));
+    panel.querySelector('#theme3-batch-toggle')?.addEventListener('click', () => { state.batchMode ? resetBatchEdit() : (state.batchMode = true); renderDetail(); });
+    panel.querySelectorAll('[data-theme3-batch-item]').forEach(input => input.addEventListener('change', () => {
+      input.checked ? state.batchSelected.add(input.dataset.theme3BatchItem) : state.batchSelected.delete(input.dataset.theme3BatchItem);
+      renderDetail();
+    }));
+    panel.querySelector('#theme3-batch-select-visible')?.addEventListener('click', () => { detailRows.forEach(row => state.batchSelected.add(batchRowKey(row, isSoundView))); renderDetail(); });
+    panel.querySelector('#theme3-batch-clear')?.addEventListener('click', () => { state.batchSelected.clear(); renderDetail(); });
+    panel.querySelector('#theme3-batch-cancel')?.addEventListener('click', () => { resetBatchEdit(); renderDetail(); });
+    panel.querySelector('#theme3-batch-status')?.addEventListener('change', event => { state.batchStatus = event.target.value; });
+    panel.querySelector('#theme3-batch-save')?.addEventListener('click', () => saveBatchStatuses(weapon, allRows, isSoundView));
+    panel.querySelectorAll('[data-theme3-detail-type]').forEach(button => button.addEventListener('click', () => { resetBatchEdit(); state.detailType = button.dataset.theme3DetailType; state.detailStatus = '全部'; state.detailCharacter = '全部'; state.voiceView = button.dataset.theme3DetailType === 'voice' ? 'overview' : 'actions'; renderDetail(); }));
     panel.querySelectorAll('[data-theme3-detail-status]').forEach(button => button.addEventListener('click', () => { state.detailStatus = button.dataset.theme3DetailStatus; renderDetail(); }));
     panel.querySelector('#theme3-character-filter')?.addEventListener('change', event => { state.detailCharacter = event.target.value; renderDetail(); });
-    panel.querySelectorAll('[data-theme3-character]').forEach(button => button.addEventListener('click', () => { state.detailCharacter = button.dataset.theme3Character; state.detailStatus = '全部'; state.voiceView = 'actions'; renderDetail(); }));
-    panel.querySelector('#theme3-back-character-overview')?.addEventListener('click', () => { state.voiceView = 'overview'; state.detailCharacter = '全部'; state.detailStatus = '全部'; renderDetail(); });
+    panel.querySelectorAll('[data-theme3-character]').forEach(button => button.addEventListener('click', () => { resetBatchEdit(); state.detailCharacter = button.dataset.theme3Character; state.detailStatus = '全部'; state.voiceView = 'actions'; renderDetail(); }));
+    panel.querySelector('#theme3-back-character-overview')?.addEventListener('click', () => { resetBatchEdit(); state.voiceView = 'overview'; state.detailCharacter = '全部'; state.detailStatus = '全部'; renderDetail(); });
     panel.querySelector('#theme3-character-search')?.addEventListener('input', event => {
       const cursor = event.target.selectionStart;
       state.characterQuery = event.target.value.trim();
@@ -293,7 +319,7 @@
       if (!weapon.hasContent) return `<button class="theme3-weapon-card ${STATUS_CLASS[status]}" data-weapon="${esc(weapon.name)}" type="button"><div class="theme3-card-heading"><span class="theme3-kicker">尚無動作資料</span>${pill(status)}</div><h3>${esc(weapon.name)}</h3><div class="theme3-card-ready"><i class="fa-solid fa-circle-info"></i> 找不到同名分頁或可讀取的動作資料</div></button>`;
       return `<button class="theme3-weapon-card ${STATUS_CLASS[status]}" data-weapon="${esc(weapon.name)}" type="button"><div class="theme3-card-heading"><span class="theme3-kicker">${weapon.actionCount || (weapon.actions || []).length} 個動作${weapon.voiceCharacterCount ? ` · ${weapon.voiceCharacterCount} 位角色` : ''}</span>${pill(status)}</div><h3>${esc(weapon.name)}</h3><div class="theme3-card-progress">${progressStack(weapon, 'sound', '音效')}${progressStack(weapon, 'voice', '語音')}</div><div class="theme3-card-updated"><i class="fa-regular fa-clock"></i> 最後更新：${esc(weapon.lastUpdatedAt || '尚無紀錄')}</div></button>`;
     }).join('') : '<div class="theme3-empty">找不到符合條件的武器。</div>';
-    grid.querySelectorAll('[data-weapon]').forEach(card => card.addEventListener('click', async () => { state.selected = card.dataset.weapon; state.detailType = 'sound'; state.detailStatus = '全部'; state.detailCharacter = '全部'; renderDetail(); document.getElementById('theme3-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); await loadTheme3WeaponDetail(card.dataset.weapon); }));
+    grid.querySelectorAll('[data-weapon]').forEach(card => card.addEventListener('click', async () => { resetBatchEdit(); state.selected = card.dataset.weapon; state.detailType = 'sound'; state.detailStatus = '全部'; state.detailCharacter = '全部'; renderDetail(); document.getElementById('theme3-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); await loadTheme3WeaponDetail(card.dataset.weapon); }));
     renderDetail();
   }
 
@@ -423,8 +449,53 @@
     if (payload.error) throw new Error(payload.error || '寫入角色語音資料失敗');
   }
 
+  async function saveBatchStatuses(weapon, allRows, isSoundView) {
+    if (state.batchSaving || !state.batchSelected.size) return;
+    const selectedRows = allRows.filter(row => state.batchSelected.has(batchRowKey(row, isSoundView)));
+    if (!selectedRows.length) return;
+    if (!window.confirm(`確定將 ${selectedRows.length} 項${isSoundView ? '音效' : '語音'}狀態變更為「${state.batchStatus}」？`)) return;
+    state.batchSaving = true;
+    renderDetail();
+    try {
+      const items = selectedRows.map(row => ({
+        rowNumber: Number(row.rowNumber),
+        actionId: String(isSoundView ? row.id : row.actionId),
+        key: isSoundView ? '' : String(row.key)
+      }));
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'batchUpdateStatuses', type: isSoundView ? 'sound' : 'voice', weaponName: weapon.name, status: state.batchStatus, items })
+      }, 0, 60000);
+      if (payload.error) throw new Error(payload.error || '批次更新失敗');
+
+      if (isSoundView) {
+        selectedRows.forEach(row => { row.soundStatus = state.batchStatus; });
+        weapon.soundCounts = countsFor(weapon.actions, 'soundStatus');
+      } else {
+        const selectedKeys = new Set(selectedRows.map(row => String(row.key)));
+        weapon.actions.forEach(action => (action.voiceEntries || []).forEach(entry => {
+          if (selectedKeys.has(String(entry.key))) entry.voiceStatus = state.batchStatus;
+        }));
+        weapon.voiceCounts = countsFor(weapon.actions.flatMap(action => action.voiceEntries || []), 'voiceStatus');
+      }
+      const updatedCount = Number(payload.updated) || selectedRows.length;
+      resetBatchEdit();
+      state.detailStatus = '全部';
+      renderStats();
+      renderFilters();
+      renderCards();
+      renderDetail();
+      window.dashboardShowToast(`已批次更新 ${updatedCount} 項${isSoundView ? '音效' : '語音'}狀態`, 'success');
+    } catch (error) {
+      state.batchSaving = false;
+      renderDetail();
+      window.dashboardShowToast(`批次更新失敗：${error.message}`, 'error');
+    }
+  }
+
   document.getElementById('theme3-search-input')?.addEventListener('input', event => { state.query = event.target.value.trim().toLowerCase(); render(); });
-  document.getElementById('theme3-reset-btn')?.addEventListener('click', () => { state.status = '全部'; state.query = ''; state.selected = null; const input = document.getElementById('theme3-search-input'); if (input) input.value = ''; renderFilters(); render(); });
+  document.getElementById('theme3-reset-btn')?.addEventListener('click', () => { resetBatchEdit(); state.status = '全部'; state.query = ''; state.selected = null; const input = document.getElementById('theme3-search-input'); if (input) input.value = ''; renderFilters(); render(); });
   const theme3StatusHelpModal = document.getElementById('theme3-status-help-modal');
   const closeTheme3StatusHelp = () => {
     if (!theme3StatusHelpModal) return;
