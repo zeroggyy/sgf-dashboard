@@ -23,13 +23,15 @@ const DISCUSSION_HEADERS = ['武器名稱', '動作編號', '日期', '留言人
 const ROSTER_HEADERS = ['角色 ID', '角色名稱', '啟用'];
 const VOICE_HEADERS = ['唯一鍵', '武器名稱', '動作編號', '指令', '角色 ID', '角色名稱', '語音狀態', '目前語音', '備註', '更新時間'];
 const UPDATE_LOG_HEADERS = ['更新時間', '類型', '武器名稱', '動作編號', '角色 ID', '角色名稱', '異動欄位'];
+const SUMMARY_CACHE_KEY = 'theme3-dashboard-summary-v2';
+const SUMMARY_CACHE_SECONDS = 300;
 
 function doGet(e) {
   try {
     requireAuthorization(e);
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     const weaponName = String((e.parameter && e.parameter.weapon) || '').trim();
-    return jsonResponse(weaponName ? getWeaponDetail(spreadsheet, weaponName) : getDashboardSummary(spreadsheet));
+    return jsonResponse(weaponName ? getWeaponDetail(spreadsheet, weaponName) : getCachedDashboardSummary(spreadsheet));
   } catch (error) {
     return jsonResponse({ error: String(error && error.message ? error.message : error) }, 500);
   }
@@ -46,16 +48,38 @@ function doPost(e) {
     else if (payload.action === 'updateVoiceRecord') result = updateVoiceRecord(spreadsheet, payload);
     else if (payload.action === 'updateWeaponStyle') result = updateWeaponStyle(spreadsheet, payload);
     else throw new Error('Unsupported action');
+    clearDashboardSummaryCache();
     return jsonResponse({ ok: true, ...result });
   } catch (error) {
     return jsonResponse({ error: String(error && error.message ? error.message : error) }, 500);
   }
 }
 
+function getCachedDashboardSummary(spreadsheet) {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(SUMMARY_CACHE_KEY);
+  if (cached) {
+    try {
+      return { ...JSON.parse(cached), cached: true };
+    } catch (error) {
+      cache.remove(SUMMARY_CACHE_KEY);
+    }
+  }
+  const summary = getDashboardSummary(spreadsheet);
+  const serialized = JSON.stringify(summary);
+  // Apps Script 單一快取值上限約 100 KB；超過時仍正常回傳，只是不寫入快取。
+  if (Utilities.newBlob(serialized).getBytes().length < 95000) cache.put(SUMMARY_CACHE_KEY, serialized, SUMMARY_CACHE_SECONDS);
+  return { ...summary, cached: false };
+}
+
+function clearDashboardSummaryCache() {
+  CacheService.getScriptCache().remove(SUMMARY_CACHE_KEY);
+}
+
 function getDashboardSummary(spreadsheet) {
   const masterSheet = spreadsheet.getSheetByName(MASTER_SHEET_NAME);
   if (!masterSheet) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
-  const voiceRows = getVoiceRows(spreadsheet);
+  const voiceRows = getVoiceSummaryRows(spreadsheet);
   const updates = getLatestUpdates(spreadsheet);
   const voiceByWeapon = groupBy(voiceRows, row => row.weaponName);
   const weapons = getMasterWeapons(masterSheet).map(weapon => {
@@ -88,10 +112,9 @@ function getWeaponDetail(spreadsheet, weaponName) {
   if (!masterSheet) throw new Error(`找不到分頁：${MASTER_SHEET_NAME}`);
   const weapon = getMasterWeapons(masterSheet).find(item => item.name === weaponName);
   if (!weapon) throw new Error(`確認總表沒有武器：${weaponName}`);
-  const discussions = getDiscussions(spreadsheet);
-  const allVoiceRows = getVoiceRows(spreadsheet);
-  const voiceByAction = groupBy(allVoiceRows.filter(row => row.weaponName === weaponName), row => row.actionId);
-  const updates = getLatestUpdates(spreadsheet);
+  const discussions = getDiscussionsForWeapon(spreadsheet, weaponName);
+  const voiceByAction = groupBy(getVoiceRowsForWeapon(spreadsheet, weaponName), row => row.actionId);
+  const updates = getLatestUpdatesForWeapon(spreadsheet, weaponName);
   const actions = getWeaponActions(spreadsheet, weaponName).map(action => ({
     ...action,
     discussions: discussions[discussionKey(weaponName, action.id)] || [],
@@ -140,6 +163,26 @@ function getVoiceRows(spreadsheet) {
       characterId: String(row[4] || '').trim(), characterName: String(row[5] || '').trim(), voiceStatus: normalizeStatus(row[6]),
       currentVoice: String(row[7] || '').trim(), note: String(row[8] || '').trim(), updatedAt: String(row[9] || '').trim(), rowNumber: index + 2
     })).filter(row => row.weaponName && row.actionId && row.characterId);
+}
+
+function getVoiceSummaryRows(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName(VOICE_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  // 摘要只需要武器、角色與狀態，避免下載完整 10 欄資料。
+  return sheet.getRange(2, 2, sheet.getLastRow() - 1, 6).getDisplayValues()
+    .map(row => ({ weaponName: String(row[0] || '').trim(), characterId: String(row[3] || '').trim(), voiceStatus: normalizeStatus(row[5]) }))
+    .filter(row => row.weaponName && row.characterId);
+}
+
+function getVoiceRowsForWeapon(spreadsheet, weaponName) {
+  const sheet = spreadsheet.getSheetByName(VOICE_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const rowNumbers = findMatchingRows(sheet, 2, weaponName, 2);
+  return readRowsBySegments(sheet, rowNumbers, VOICE_HEADERS.length).map((entry) => ({
+    key: String(entry.values[0] || '').trim(), weaponName: String(entry.values[1] || '').trim(), actionId: String(entry.values[2] || '').trim(), command: String(entry.values[3] || '').trim(),
+    characterId: String(entry.values[4] || '').trim(), characterName: String(entry.values[5] || '').trim(), voiceStatus: normalizeStatus(entry.values[6]),
+    currentVoice: String(entry.values[7] || '').trim(), note: String(entry.values[8] || '').trim(), updatedAt: String(entry.values[9] || '').trim(), rowNumber: entry.rowNumber
+  })).filter(row => row.actionId && row.characterId);
 }
 
 function syncVoiceMatrix(spreadsheet) {
@@ -237,6 +280,18 @@ function getDiscussions(spreadsheet) {
   }, {});
 }
 
+function getDiscussionsForWeapon(spreadsheet, weaponName) {
+  const sheet = spreadsheet.getSheetByName(DISCUSSION_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return {};
+  return readRowsBySegments(sheet, findMatchingRows(sheet, 1, weaponName, 2), DISCUSSION_HEADERS.length).reduce((result, entry) => {
+    const row = entry.values;
+    const key = discussionKey(String(row[0] || '').trim(), String(row[1] || '').trim());
+    if (!result[key]) result[key] = [];
+    result[key].push({ date: String(row[2] || '').trim(), author: String(row[3] || '').trim(), text: String(row[4] || '').trim(), type: String(row[5] || '共用').trim(), characterId: String(row[6] || '').trim(), characterName: String(row[7] || '').trim() });
+    return result;
+  }, {});
+}
+
 function getLatestUpdates(spreadsheet) {
   const result = {};
   const setLatest = (weaponName, type, timestamp) => {
@@ -249,6 +304,54 @@ function getLatestUpdates(spreadsheet) {
     setLatest(String(row[2] || '').trim(), String(row[1] || '').trim() === '語音' ? 'voice' : 'sound', String(row[0] || '').trim());
   });
   return result;
+}
+
+function getLatestUpdatesForWeapon(spreadsheet, weaponName) {
+  const result = {};
+  const sheet = spreadsheet.getSheetByName(UPDATE_LOG_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return result;
+  readRowsBySegments(sheet, findMatchingRows(sheet, 3, weaponName, 2), UPDATE_LOG_HEADERS.length).forEach(entry => {
+    const row = entry.values;
+    const type = String(row[1] || '').trim() === '語音' ? 'voice' : 'sound';
+    const timestamp = String(row[0] || '').trim();
+    result[weaponName] = result[weaponName] || {};
+    if (timestamp && (!result[weaponName][type] || timestamp > result[weaponName][type])) result[weaponName][type] = timestamp;
+  });
+  return result;
+}
+
+function findMatchingRows(sheet, column, value, startRow) {
+  const rowStart = Math.max(1, Number(startRow) || 1);
+  const rowCount = sheet.getLastRow() - rowStart + 1;
+  if (rowCount <= 0) return [];
+  return sheet.getRange(rowStart, column, rowCount, 1)
+    .createTextFinder(String(value || '').trim())
+    .matchEntireCell(true)
+    .findAll()
+    .map(range => range.getRow())
+    .sort((a, b) => a - b);
+}
+
+function readRowsBySegments(sheet, rowNumbers, columnCount) {
+  if (!rowNumbers.length) return [];
+  const segments = [];
+  let start = rowNumbers[0];
+  let previous = start;
+  rowNumbers.slice(1).forEach(rowNumber => {
+    if (rowNumber === previous + 1) {
+      previous = rowNumber;
+      return;
+    }
+    segments.push([start, previous]);
+    start = rowNumber;
+    previous = rowNumber;
+  });
+  segments.push([start, previous]);
+  return segments.reduce((rows, segment) => {
+    const values = sheet.getRange(segment[0], 1, segment[1] - segment[0] + 1, columnCount).getDisplayValues();
+    values.forEach((row, index) => rows.push({ rowNumber: segment[0] + index, values: row }));
+    return rows;
+  }, []);
 }
 
 function latestTimestamp(...timestamps) { return timestamps.filter(Boolean).sort().pop() || ''; }
@@ -273,7 +376,9 @@ function onEdit(e) {
   const firstColumn = range.getColumn();
   const lastColumn = firstColumn + range.getNumColumns() - 1;
   const overlaps = (start, end) => firstColumn <= end && lastColumn >= start;
-  if (sheetName === UPDATE_LOG_SHEET_NAME || sheetName === MASTER_SHEET_NAME) return;
+  if (sheetName === UPDATE_LOG_SHEET_NAME) return;
+  clearDashboardSummaryCache();
+  if (sheetName === MASTER_SHEET_NAME) return;
   if (sheetName === VOICE_SHEET_NAME && range.getLastRow() >= 2 && overlaps(7, 9)) {
     const startRow = Math.max(2, range.getRow());
     const rows = sheet.getRange(startRow, 1, range.getLastRow() - startRow + 1, 9).getDisplayValues();

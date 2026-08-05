@@ -11,6 +11,9 @@
   const STATUS_CLASS = { '待修改': 'revision', '未開始': 'unstarted', '待製作': 'queued', '已製作': 'produced', '已確認': 'confirmed', '不需製作': 'not-needed', '無內容': 'empty' };
   const THEME3_API_URL = 'https://script.google.com/macros/s/AKfycbxPl_rsAVtlUae_2KseF10qC_-vXlm30xQlLSbMtjsy53pHxArPggUhnSOeSlEdQHuzHQ/exec';
   const THEME3_API_KEY = 'SGF_THEME3_WEAPON_SOUND_2026_w8Kp4Xn7Qm2Vz9Ld';
+  const THEME3_SUMMARY_STORAGE_KEY = 'sgf_theme3_last_summary';
+  const THEME3_GET_TIMEOUT_MS = 25000;
+  const THEME3_POST_TIMEOUT_MS = 35000;
   let weapons = [];
 
   const state = { status: '全部', query: '', selected: null, detailType: 'sound', detailStatus: '全部', detailCharacter: '全部', voiceView: 'overview', characterQuery: '', characterSort: 'id' };
@@ -20,6 +23,43 @@
     result[status] = actions.filter(action => action[key] === status).length;
     return result;
   }, {});
+
+  async function requestTheme3Json(url, options = {}, retries = 0, timeoutMs = THEME3_GET_TIMEOUT_MS) {
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(`API ${response.status}`);
+        return payload;
+      } catch (error) {
+        lastError = error.name === 'AbortError' ? new Error(`連線超過 ${Math.round(timeoutMs / 1000)} 秒`) : error;
+        if (attempt < retries) await new Promise(resolve => window.setTimeout(resolve, 800));
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+    throw lastError;
+  }
+
+  function saveSummarySnapshot(payload) {
+    try {
+      localStorage.setItem(THEME3_SUMMARY_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), payload }));
+    } catch (error) {
+      console.warn('Theme 3 summary snapshot could not be saved', error);
+    }
+  }
+
+  function restoreSummarySnapshot() {
+    try {
+      const snapshot = JSON.parse(localStorage.getItem(THEME3_SUMMARY_STORAGE_KEY) || 'null');
+      return snapshot && Array.isArray(snapshot.payload?.weapons) ? snapshot : null;
+    } catch (error) {
+      return null;
+    }
+  }
   const weaponCounts = (weapon, type) => weapon[`${type}Counts`] || countsFor(weapon.actions || [], type);
   const aggregateStatus = weapon => {
     if (!weapon.hasContent) return '無內容';
@@ -305,32 +345,38 @@
   async function loadTheme3Api() {
     setTheme3ApiStatus('資料載入中', 'fa-circle-notch fa-spin', 'loading');
     try {
-      const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { cache: 'no-store' });
-      const payload = await response.json();
-      if (!response.ok || payload.error || !Array.isArray(payload.weapons)) throw new Error(payload.error || '主題三 API 回傳格式不正確');
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { cache: 'no-store' }, 1);
+      if (payload.error || !Array.isArray(payload.weapons)) throw new Error(payload.error || '主題三 API 回傳格式不正確');
       weapons = payload.weapons.map(normalizeApiWeapon);
+      saveSummarySnapshot(payload);
       setTheme3ApiStatus('Google Sheet 已連線', 'fa-cloud', 'connected');
       renderStats();
       renderFilters();
       render();
     } catch (error) {
       console.error('Theme 3 Google Sheet API load failed', error);
-      weapons = [];
-      setTheme3ApiStatus('API 連線失敗', 'fa-triangle-exclamation', 'error');
+      const snapshot = weapons.length ? null : restoreSummarySnapshot();
+      if (snapshot) weapons = snapshot.payload.weapons.map(normalizeApiWeapon);
+      setTheme3ApiStatus(weapons.length ? '連線失敗・顯示上次資料' : 'API 連線失敗', 'fa-triangle-exclamation', 'error');
       renderStats();
       renderFilters();
-      const grid = document.getElementById('theme3-weapon-grid');
-      if (grid) grid.innerHTML = '<div class="theme3-empty">無法連接 Google Sheet API，請確認 Apps Script 部署與 API Key。</div>';
+      if (weapons.length) {
+        render();
+        window.dashboardShowToast(`Google Sheet 暫時無法連線，已保留上次成功資料：${error.message}`, 'error');
+      } else {
+        const grid = document.getElementById('theme3-weapon-grid');
+        if (grid) grid.innerHTML = '<div class="theme3-empty">無法連接 Google Sheet API，請確認 Apps Script 部署與 API Key。</div>';
+      }
     }
   }
 
   async function loadTheme3WeaponDetail(weaponName) {
     const weapon = weapons.find(item => item.name === weaponName);
-    if (!weapon || weapon.detailLoaded || !weapon.hasContent) return;
+    if (!weapon || weapon.detailLoaded || weapon.detailLoading || !weapon.hasContent) return;
+    weapon.detailLoading = true;
     try {
-      const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}&weapon=${encodeURIComponent(weaponName)}`, { cache: 'no-store' });
-      const payload = await response.json();
-      if (!response.ok || payload.error || !payload.weapon) throw new Error(payload.error || '武器明細回傳格式不正確');
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}&weapon=${encodeURIComponent(weaponName)}`, { cache: 'no-store' }, 1);
+      if (payload.error || !payload.weapon) throw new Error(payload.error || '武器明細回傳格式不正確');
       const detail = normalizeApiWeapon(payload.weapon);
       weapon.actions = detail.actions.map(action => ({ ...action, voiceEntries: Array.isArray(payload.weapon.actions?.find(source => String(source.id) === action.id)?.voiceEntries) ? payload.weapon.actions.find(source => String(source.id) === action.id).voiceEntries.map(entry => ({ ...entry, voiceStatus: EDITABLE_STATUSES.includes(entry.voiceStatus) ? entry.voiceStatus : ({ '待確認': '未開始', '最終確認': '已確認' }[entry.voiceStatus] || '未開始'), rowNumber: Number(entry.rowNumber) })) : [] }));
       weapon.detailLoaded = true;
@@ -339,11 +385,13 @@
       console.error('Theme 3 weapon detail load failed', error);
       const panel = document.getElementById('theme3-detail-panel');
       if (state.selected === weaponName && panel) panel.innerHTML = `<div class="theme3-empty">無法讀取武器明細：${esc(error.message)}</div>`;
+    } finally {
+      weapon.detailLoading = false;
     }
   }
 
   async function updateTheme3Action(weapon, action, values) {
-    const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
+    const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -354,28 +402,25 @@
         soundStatus: values.sound,
         discussion: values.discussion
       })
-    });
-    const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || '寫入 Google Sheet 失敗');
+    }, 0, THEME3_POST_TIMEOUT_MS);
+    if (payload.error) throw new Error(payload.error || '寫入 Google Sheet 失敗');
   }
 
   async function updateTheme3WeaponStyle(weapon, style) {
-    const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
+    const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateWeaponStyle', weaponName: weapon.name, style })
-    });
-    const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || '寫入確認總表失敗');
+    }, 0, THEME3_POST_TIMEOUT_MS);
+    if (payload.error) throw new Error(payload.error || '寫入確認總表失敗');
   }
 
   async function updateTheme3Voice(weapon, action, voiceEntry, values) {
-    const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
+    const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'updateVoiceRecord', weaponName: weapon.name, actionId: action.id, voiceKey: voiceEntry.key, voiceRowNumber: voiceEntry.rowNumber, voiceStatus: values.voice, discussion: values.discussion })
-    });
-    const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || '寫入角色語音資料失敗');
+    }, 0, THEME3_POST_TIMEOUT_MS);
+    if (payload.error) throw new Error(payload.error || '寫入角色語音資料失敗');
   }
 
   document.getElementById('theme3-search-input')?.addEventListener('input', event => { state.query = event.target.value.trim().toLowerCase(); render(); });
@@ -400,9 +445,8 @@
     button.disabled = true;
     button.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 同步中…';
     try {
-      const response = await fetch(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'syncVoiceMatrix' }) });
-      const payload = await response.json();
-      if (!response.ok || payload.error) throw new Error(payload.error || '同步失敗');
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'syncVoiceMatrix' }) }, 0, 60000);
+      if (payload.error) throw new Error(payload.error || '同步失敗');
       await loadTheme3Api();
       window.dashboardShowToast(payload.message || `已新增 ${payload.created || 0} 筆角色語音項目`, 'success');
     } catch (error) { window.dashboardShowToast(`同步失敗：${error.message}`, 'error'); }
