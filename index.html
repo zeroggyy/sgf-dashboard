@@ -174,8 +174,13 @@
       <div id="milestone-edit-date-display" style="font-size: 0.88rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem;">
         編輯日期：--/--/-- (星期-)
       </div>
+      <div class="form-group" style="margin-bottom: 0.8rem;">
+        <label for="milestone-edit-textarea" style="display: block; margin-bottom: 0.3rem; font-weight: 700;">專案目標（F欄）</label>
+        <textarea id="milestone-edit-textarea" rows="4" placeholder="請輸入當日里程碑目標內容...支援 Ctrl + Enter 儲存" style="width: 100%; font-family: var(--font-main); padding: 0.6rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); resize: vertical; box-sizing: border-box;"></textarea>
+      </div>
       <div class="form-group" style="margin-bottom: 1.5rem;">
-        <textarea id="milestone-edit-textarea" rows="5" placeholder="請輸入當日里程碑目標內容...支援 Ctrl + Enter 儲存" style="width: 100%; font-family: var(--font-main); padding: 0.6rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); resize: vertical; box-sizing: border-box;"></textarea>
+        <label for="milestone-edit-column-h" style="display: block; margin-bottom: 0.3rem; font-weight: 700;">補充內容（H欄）</label>
+        <textarea id="milestone-edit-column-h" rows="3" placeholder="請輸入時程 H 欄內容..." style="width: 100%; font-family: var(--font-main); padding: 0.6rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); resize: vertical; box-sizing: border-box;"></textarea>
       </div>
       <div style="display: flex; gap: 1rem; justify-content: flex-end;">
         <button id="cancel-milestone-modal-btn" class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.5rem 1.2rem; cursor: pointer; font-weight: 700;">取消</button>
@@ -614,7 +619,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- 全域核心腳本 -->
-  <script src="app_v10.js?v=1.2.5"></script>
+  <script src="app_v10.js?v=1.2.6"></script>
   <script src="dashboard-navigation.js?v=1.2.1"></script>
 </body>
 </html>

@@ -2179,7 +2179,7 @@ function renderMilestones() {
             : '';
 
           return `
-            <tr class="milestone-row" data-date="${m.date}" data-day="${m.day}" data-row="${m.rowNumber}" data-target="${m.target.replace(/"/g, '&quot;')}" style="transition: background-color 0.2s !important; ${itemHighlightBg} cursor: pointer;">
+            <tr class="milestone-row" data-date="${m.date}" data-day="${m.day}" data-row="${m.rowNumber}" data-target="${m.target.replace(/"/g, '&quot;')}" data-column-h="${escapeMilestoneText(m.columnH)}" style="transition: background-color 0.2s !important; ${itemHighlightBg} cursor: pointer;">
               <!-- 1. 日期 (C欄) -->
               <td style="width: 110px !important; padding: 0.8rem 0.5rem !important; font-size: 0.92rem !important; font-family: 'Playfair Display', Georgia, serif !important; text-align: left !important; vertical-align: top !important; line-height: 1.4 !important; user-select: none !important; box-sizing: border-box !important;">
                 <span style="${dateBgStyle}">${m.date}</span>
@@ -2214,7 +2214,7 @@ function renderMilestones() {
 }
 
 // 宣告迷你編輯彈窗全域變數與事件監聽
-let activeEditingMilestone = null; // 儲存當前正在編輯的時程資訊 { rowNumber, date, day, target }
+let activeEditingMilestone = null; // { rowNumber, date, day, target, columnH }
 
 function bindMilestoneModalEvents() {
   const container = scheduleListContainer;
@@ -2237,6 +2237,7 @@ function bindMilestoneModalEvents() {
       const dateKey = row.getAttribute('data-date');
       const dayLabel = row.getAttribute('data-day');
       const currentTarget = row.getAttribute('data-target') || "";
+      const currentColumnH = row.getAttribute('data-column-h') || "";
       
       if (rowNum === 'null' || !rowNum) return; // 試算表無此行防呆
       
@@ -2244,16 +2245,19 @@ function bindMilestoneModalEvents() {
         rowNumber: parseInt(rowNum),
         date: dateKey,
         day: dayLabel,
-        target: currentTarget
+        target: currentTarget,
+        columnH: currentColumnH
       };
       
       // 開啟迷你 Modal 並預填數值
       const miniModal = document.getElementById('milestone-edit-modal');
       const miniTextarea = document.getElementById('milestone-edit-textarea');
+      const miniColumnH = document.getElementById('milestone-edit-column-h');
       const miniDateDisplay = document.getElementById('milestone-edit-date-display');
       
       if (miniDateDisplay) miniDateDisplay.textContent = `編輯日期：${dateKey} (${dayLabel})`;
       if (miniTextarea) miniTextarea.value = currentTarget;
+      if (miniColumnH) miniColumnH.value = currentColumnH;
       
       if (miniModal) {
         miniModal.classList.add('open');
@@ -2267,15 +2271,17 @@ function bindMilestoneModalEvents() {
 function setupMilestoneEditModalListeners() {
   const miniModal = document.getElementById('milestone-edit-modal');
   const miniTextarea = document.getElementById('milestone-edit-textarea');
+  const miniColumnH = document.getElementById('milestone-edit-column-h');
   const closeMiniBtn = document.getElementById('close-milestone-edit-modal-btn');
   const cancelMiniBtn = document.getElementById('cancel-milestone-modal-btn');
   const saveMiniBtn = document.getElementById('save-milestone-modal-btn');
   
-  if (!miniModal || !miniTextarea) return;
+  if (!miniModal || !miniTextarea || !miniColumnH) return;
   
   const closeEditor = () => {
     miniModal.classList.remove('open');
     miniTextarea.value = "";
+    miniColumnH.value = "";
     activeEditingMilestone = null;
   };
   
@@ -2295,30 +2301,33 @@ function setupMilestoneEditModalListeners() {
     
     const { rowNumber, date, day } = activeEditingMilestone;
     const newTarget = miniTextarea.value.trim();
+    const newColumnH = miniColumnH.value.trim();
     
-    showToast('正在更新專案目標...', 'info');
+    showToast('正在更新時程內容...', 'info');
     
     const payload = {
       rowNumber: rowNumber,
       action: "updateMilestone",
-      target: newTarget
+      target: newTarget,
+      columnH: newColumnH
     };
     
     const success = await syncTaskToGoogleSheet(rowNumber, payload);
     if (success) {
-      showToast('時程目標更新成功！', 'success');
+      showToast('時程內容更新成功！', 'success');
       
       // 1. 更新本地狀態 appState.milestones
       const existingIdx = appState.milestones.findIndex(m => m.rowNumber == rowNumber);
       if (existingIdx !== -1) {
         appState.milestones[existingIdx].target = newTarget;
+        appState.milestones[existingIdx].columnH = newColumnH;
       } else {
         appState.milestones.push({
           rowNumber: rowNumber,
           date: date,
           day: day,
           target: newTarget,
-          columnH: ''
+          columnH: newColumnH
         });
       }
       
@@ -2334,13 +2343,15 @@ function setupMilestoneEditModalListeners() {
   if (saveMiniBtn) saveMiniBtn.addEventListener('click', submitMilestoneChange);
   
   // 綁定 Ctrl + Enter 儲存與 Esc 取消
-  miniTextarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      submitMilestoneChange();
-    } else if (e.key === 'Escape') {
-      closeEditor();
-    }
+  [miniTextarea, miniColumnH].forEach(field => {
+    field.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        submitMilestoneChange();
+      } else if (e.key === 'Escape') {
+        closeEditor();
+      }
+    });
   });
 }
 

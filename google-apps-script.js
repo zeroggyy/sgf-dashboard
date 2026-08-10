@@ -350,13 +350,18 @@ function doPost(e) {
     if (!rowNumber || isNaN(rowNumber)) {
       return jsonResponse({ error: "Missing or invalid rowNumber" }, 400);
     }
-    // 時程分頁里程碑的就地更新寫回 (F 欄是第 6 欄)
+    // 時程分頁里程碑的就地更新寫回（F 欄目標、H 欄補充內容）
     if (postData.action === "updateMilestone") {
       const scheduleSheet = ss.getSheetByName("時程");
       if (!scheduleSheet) {
         return jsonResponse({ error: "找不到名稱為 '時程' 的分頁" }, 404);
       }
-      scheduleSheet.getRange(rowNumber, 6).setValue(postData.target || "");
+      // 一次寫回 F:H，保留中間 G 欄原值，避免分成兩次網路操作。
+      const milestoneRange = scheduleSheet.getRange(rowNumber, 6, 1, 3);
+      const milestoneValues = milestoneRange.getValues();
+      milestoneValues[0][0] = postData.target || "";
+      milestoneValues[0][2] = postData.columnH || "";
+      milestoneRange.setValues(milestoneValues);
       return jsonResponse({ success: true, message: "里程碑已成功更新！" });
     }
     const sheet = ss.getSheetByName("Task");
