@@ -1975,6 +1975,46 @@ input[disabled] {
   padding: 0.2rem;
 }
 
+.timeline-older-toggle {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px dashed var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+}
+
+.timeline-older-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.timeline-older-toggle[hidden] {
+  display: none;
+}
+
+.timeline-older-action {
+  white-space: nowrap;
+}
+
+.timeline-older-action .fa-chevron-down {
+  margin-left: 0.25rem;
+  transition: transform 0.18s ease;
+}
+
+.timeline-older-toggle.expanded .fa-chevron-down {
+  transform: rotate(180deg);
+}
+
 .drawer-timeline-item {
   border: 1px solid var(--border-color);
   padding: 0.75rem;

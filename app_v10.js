@@ -20,6 +20,7 @@ let appState = {
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
   activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
   timelineFilterMode: 'history', // 編輯抽屜時間軸篩選：'history' (歷程) 或 'all' (全部)
+  timelineOlderExpanded: false,  // 上週以前的較早歷程預設收合
   searchQuery: '',
   expandedGroups: new Set(),
   filteredTasks: []
@@ -754,6 +755,7 @@ function toggleCoOwnersSection() {
 function resetDrawerTabs() {
   // 重置時間軸篩選器狀態為預設「歷程」
   appState.timelineFilterMode = 'history';
+  appState.timelineOlderExpanded = false;
   const btnFilterHistory = document.getElementById('btn-timeline-filter-history');
   const btnFilterAll = document.getElementById('btn-timeline-filter-all');
   if (btnFilterHistory && btnFilterAll) {
@@ -772,22 +774,43 @@ function applyTimelineFilter() {
   const currentWeekLabel = timeWeeks.current ? timeWeeks.current.label : null;
   const nextWeekLabel = timeWeeks.next ? timeWeeks.next.label : null;
   const showAll = (appState.timelineFilterMode === 'all');
+  const lastWeekIndex = lastWeekLabel
+    ? appState.weeksList.findIndex(week => week.label === lastWeekLabel)
+    : -1;
+  let olderVisibleCount = 0;
 
   container.querySelectorAll('.drawer-timeline-item').forEach(item => {
     const weekLabel = item.getAttribute('data-week-card');
+    const weekIndex = appState.weeksList.findIndex(week => week.label === weekLabel);
     const textarea = item.querySelector('.timeline-textarea');
     const val = textarea ? textarea.value.trim() : '';
     const hasText = val !== '';
     
     // 判斷是否為核心三週（上週、當週、下週）之一
     const isCoreWeek = (weekLabel === lastWeekLabel || weekLabel === currentWeekLabel || weekLabel === nextWeekLabel);
+    const isOlderWeek = lastWeekIndex > 0 && weekIndex >= 0 && weekIndex < lastWeekIndex;
+    const passesCurrentFilter = showAll || hasText || isCoreWeek;
 
-    if (showAll || hasText || isCoreWeek) {
+    if (isOlderWeek && passesCurrentFilter) {
+      olderVisibleCount += 1;
+      item.style.display = appState.timelineOlderExpanded ? 'flex' : 'none';
+    } else if (passesCurrentFilter) {
       item.style.display = 'flex';
     } else {
       item.style.display = 'none';
     }
   });
+
+  const olderToggle = container.querySelector('.timeline-older-toggle');
+  if (olderToggle) {
+    olderToggle.hidden = olderVisibleCount === 0;
+    olderToggle.classList.toggle('expanded', appState.timelineOlderExpanded);
+    olderToggle.setAttribute('aria-expanded', String(appState.timelineOlderExpanded));
+    olderToggle.innerHTML = `
+      <span><i class="fa-solid fa-clock-rotate-left"></i> 較早進度（${olderVisibleCount} 筆）</span>
+      <span class="timeline-older-action">${appState.timelineOlderExpanded ? '收合' : '展開'} <i class="fa-solid fa-chevron-down"></i></span>
+    `;
+  }
 }
 
 // 渲染左側全年歷史時間軸進度
@@ -800,7 +823,7 @@ function renderTimeline(taskObj = null) {
   const currentWeekLabel = timeWeeks.current ? timeWeeks.current.label : null;
   const nextWeekLabel = timeWeeks.next ? timeWeeks.next.label : null;
 
-  container.innerHTML = appState.weeksList.map(week => {
+  const timelineItemsHtml = appState.weeksList.map(week => {
     const isCurrent = (week.label === currentWeekLabel);
     const isLast = (week.label === lastWeekLabel);
     const isNext = (week.label === nextWeekLabel);
@@ -829,6 +852,19 @@ function renderTimeline(taskObj = null) {
       </div>
     `;
   }).join('');
+
+  container.innerHTML = `
+    <button type="button" class="timeline-older-toggle" aria-expanded="false"></button>
+    ${timelineItemsHtml}
+  `;
+
+  const olderToggle = container.querySelector('.timeline-older-toggle');
+  if (olderToggle) {
+    olderToggle.addEventListener('click', () => {
+      appState.timelineOlderExpanded = !appState.timelineOlderExpanded;
+      applyTimelineFilter();
+    });
+  }
   
   // 渲染完畢後，立即套用當前的時間軸篩選條件（預設歷程，強制包含當週）
   applyTimelineFilter();
@@ -1041,9 +1077,24 @@ function renderOwnerChips() {
           appState.activeOwnerFilters.push(owner);
         }
       }
+      syncRolesWithOwnerSelection();
       renderOwnerChips();
       renderTasks();
     });
+  });
+}
+
+// 負責人複選時同時查詢主要與支援；回到單選模式時恢復只查詢主要。
+// 此函式只在負責人條件發生變動時執行，不影響負責權限原本的手動操作。
+function syncRolesWithOwnerSelection() {
+  appState.activeRoles = appState.activeOwnerFilters.length > 1
+    ? ['primary', 'support']
+    : ['primary'];
+
+  if (!roleChips) return;
+  roleChips.querySelectorAll('.chip').forEach(chip => {
+    const role = chip.getAttribute('data-role');
+    chip.classList.toggle('active', appState.activeRoles.includes(role));
   });
 }
 
