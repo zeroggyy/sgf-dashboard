@@ -77,6 +77,7 @@ const editOwnerSelect = document.getElementById('edit-owner-select');
 const editGroup = document.getElementById('edit-group');
 const editProgressVal = document.getElementById('edit-progress-val');
 const editDetail = document.getElementById('edit-detail');
+const editDetailLinks = document.getElementById('edit-detail-links');
 const editIsDone = document.getElementById('edit-is-done');
 const editTaskLink = document.getElementById('edit-task-link');
 const btnOpenTaskLink = document.getElementById('btn-open-task-link');
@@ -270,6 +271,7 @@ function setupEventListeners() {
       if (editTaskId) editTaskId.value = '';
       if (editTaskLink) editTaskLink.value = '';
       if (editDetail) editDetail.value = '';
+      renderDetailLinks();
       
       // 對齊 Google Sheet 下拉選單的負責人清單
       const ownersList = ["", "上0", "小麥", "Rogin", "小夏", "芳如", "姵瑾", "neko", "AruV", "龍強", "企劃"];
@@ -801,6 +803,11 @@ function applyTimelineFilter() {
     }
   });
 
+  // 目標內容維持可編輯，並同步產生可直接點擊的網址清單。
+  if (editDetail) {
+    editDetail.addEventListener('input', renderDetailLinks);
+  }
+
   const olderToggle = container.querySelector('.timeline-older-toggle');
   if (olderToggle) {
     olderToggle.hidden = olderVisibleCount === 0;
@@ -1020,6 +1027,37 @@ function renderStats() {
   statCompletedTasks.textContent = completed;
   statPendingTasks.textContent = pending;
   statOverallProgress.textContent = `${overallAvg}%`;
+}
+
+// 從目標內容擷取網址，以 DOM API 建立安全且可另開分頁的連結。
+function renderDetailLinks() {
+  if (!editDetail || !editDetailLinks) return;
+
+  const urlPattern = /https?:\/\/[^\s<>"'`]+/gi;
+  const trailingPunctuation = /[),.;!?，。；！？、】》」』]+$/;
+  const urls = [...new Set((editDetail.value.match(urlPattern) || [])
+    .map(url => url.replace(trailingPunctuation, ''))
+    .filter(Boolean))];
+
+  editDetailLinks.replaceChildren();
+  editDetailLinks.hidden = urls.length === 0;
+  if (urls.length === 0) return;
+
+  const title = document.createElement('div');
+  title.className = 'detail-links-title';
+  title.innerHTML = '<i class="fa-solid fa-link"></i> 內容連結';
+  editDetailLinks.appendChild(title);
+
+  urls.forEach(url => {
+    const link = document.createElement('a');
+    link.className = 'detail-link-item';
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.title = url;
+    link.textContent = url;
+    editDetailLinks.appendChild(link);
+  });
 }
 
 // 渲染負責人篩選標籤 (支援複選)
@@ -1557,6 +1595,7 @@ function openDrawer(rowNum) {
   // 完成度僅做展示 (純文字)
   editProgressVal.textContent = `${task.progress}%`;
   editDetail.value = task.detail;
+  renderDetailLinks();
   editTaskLink.value = task.taskLink || '';
   if (editTaskLink.value.trim() !== "") {
     btnOpenTaskLink.classList.remove('disabled');
@@ -1992,6 +2031,15 @@ if (nonsenseModal) {
 }
 
 // 渲染專案時程里程碑 (1-31日全月展示 - 點擊彈出 Mini Modal 編輯)
+function escapeMilestoneText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function renderMilestones() {
   const year = scheduleYearSelect ? scheduleYearSelect.value : new Date().getFullYear().toString();
   const month = scheduleMonthSelect ? scheduleMonthSelect.value : ("0" + (new Date().getMonth() + 1)).slice(-2);
@@ -2054,6 +2102,7 @@ function renderMilestones() {
         date: dateKey,
         day: dayLabel,
         target: existing ? existing.target : "",
+        columnH: existing ? (existing.columnH || "") : "",
         rowNumber: existing ? existing.rowNumber : null
       });
     }
@@ -2089,6 +2138,7 @@ function renderMilestones() {
             date: dateKey,
             day: dayLabel,
             target: existing ? existing.target : "",
+            columnH: existing ? (existing.columnH || "") : "",
             rowNumber: existing ? existing.rowNumber : null
           });
         }
@@ -2148,6 +2198,8 @@ function renderMilestones() {
                   </div>
                 </div>
               </td>
+              <!-- 4. 時程補充內容 (H欄，唯讀顯示) -->
+              <td class="milestone-column-h" style="width: 150px !important; padding: 0.8rem 0.5rem !important; font-size: 0.82rem !important; text-align: left !important; vertical-align: top !important; line-height: 1.4 !important; color: var(--text-secondary) !important; white-space: pre-wrap !important; overflow-wrap: anywhere !important; box-sizing: border-box !important;">${escapeMilestoneText(m.columnH)}</td>
             </tr>
           `;
         }).join('')}
@@ -2265,7 +2317,8 @@ function setupMilestoneEditModalListeners() {
           rowNumber: rowNumber,
           date: date,
           day: day,
-          target: newTarget
+          target: newTarget,
+          columnH: ''
         });
       }
       

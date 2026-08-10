@@ -158,6 +158,7 @@ function doGet(e) {
     const scheduleSheet = ss.getSheetByName("時程");
     if (scheduleSheet) {
       const scheduleData = scheduleSheet.getDataRange().getValues();
+      const scheduleDisplayData = scheduleSheet.getDataRange().getDisplayValues();
       // 從第二列 (索引 1) 開始，跳過標題
       for (let i = 1; i < scheduleData.length; i++) {
         const row = scheduleData[i];
@@ -166,6 +167,9 @@ function doGet(e) {
         const dateVal = row[2]; // C 欄 (索引 2)
         const dayVal = row[3];  // D 欄 (索引 3)
         const targetVal = row[5]; // F 欄 (索引 5)
+        const columnHVal = scheduleDisplayData[i] && scheduleDisplayData[i][7]
+          ? scheduleDisplayData[i][7].trim()
+          : ""; // H 欄 (索引 7)，保留試算表顯示格式
         
         // 格式化日期：如果是 Date 物件，轉為 YYYY/MM/DD 字串
         let dateStr = "";
@@ -190,7 +194,8 @@ function doGet(e) {
             rowNumber: i + 1, // 試算表上的實際行數
             date: dateStr,
             day: dayStr,
-            target: targetStr
+            target: targetStr,
+            columnH: columnHVal
           });
         }
       }

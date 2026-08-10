@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- 核心報紙風 CSS 樣式 -->
-  <link rel="stylesheet" href="style.css?v=1.2.1">
+  <link rel="stylesheet" href="style.css?v=1.2.2">
   
   <style>
     /* 鎖死里程碑 Modal 排版，不被任何舊 CSS 快取干擾 */
@@ -560,9 +560,10 @@
             <div class="info-divider" style="margin-top: 0.5rem; margin-bottom: 0.5rem;"></div>
 
             <!-- 目標 (需要文件) 大文字框移至此處 -->
-            <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0.6rem; height: 240px; flex-shrink: 0;">
+            <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0.6rem; flex-shrink: 0;">
               <label for="edit-detail" style="text-align: left; display: block; margin-bottom: 0.3rem;">目標 (需要文件)</label>
               <textarea id="edit-detail" placeholder="輸入任務備忘錄、詳細需求說明..." style="height: 210px; resize: none; box-sizing: border-box; flex-shrink: 0;"></textarea>
+              <div id="edit-detail-links" class="detail-links" hidden aria-live="polite"></div>
             </div>
 
             <div style="display: flex; gap: 0.8rem; margin-top: 0.8rem; width: 100%; box-sizing: border-box;">
@@ -613,7 +614,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- 全域核心腳本 -->
-  <script src="app_v10.js?v=1.2.3"></script>
+  <script src="app_v10.js?v=1.2.5"></script>
   <script src="dashboard-navigation.js?v=1.2.1"></script>
 </body>
 </html>
