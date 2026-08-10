@@ -998,7 +998,14 @@ function renderOwnerChips() {
     }
   });
   
-  const owners = ['all', 'unassigned', ...new Set(allNames)];
+  // 固定將常用條件放在最前面，其餘負責人依名稱 A → Z 排序。
+  const sortedOwners = [...new Set(allNames)]
+    .filter(owner => owner !== '企劃')
+    .sort((a, b) => a.localeCompare(b, 'en', {
+      sensitivity: 'base',
+      numeric: true
+    }));
+  const owners = ['all', 'unassigned', '企劃', ...sortedOwners];
   
   ownerChips.innerHTML = owners.map(owner => {
     const label = owner === 'all' ? '全部' : (owner === 'unassigned' ? '未分派' : owner);
