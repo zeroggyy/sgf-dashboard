@@ -37,6 +37,7 @@
     3: '第三批'
   };
   let items = [];
+  let rawSheetRows = [];
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
@@ -369,14 +370,42 @@
   }
 
   async function updateTheme2Item(itemId, changes) {
-    const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateUiItem', itemId, changes })
-    });
-    const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || `儲存失敗（${response.status}）`);
+    let response;
+    try {
+      response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateUiItem', itemId, changes })
+      });
+    } catch (error) {
+      throw new Error('無法連線至 Google Sheet API；請確認 Apps Script 網頁應用程式已部署，且網址仍為 /exec。');
+    }
+    const responseText = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(responseText);
+    } catch (error) {
+      throw new Error(`Apps Script 未回傳可讀取的 JSON（HTTP ${response.status}）。請重新部署包含 doPost 的新版網頁應用程式。`);
+    }
+    if (!response.ok || payload.error) throw new Error(payload.error || `儲存失敗（HTTP ${response.status}）`);
     return payload;
+  }
+
+  function rebuildTheme2Items(rows) {
+    const masterRowsBySequence = new Map();
+    rows.forEach(row => {
+      const sequence = String(row['序號'] || '').trim();
+      if (sequence && isTrue(row['進度主項'])) masterRowsBySequence.set(sequence, row);
+    });
+    items = rows.map((row, index) => normalizeRow(row, index, masterRowsBySequence)).filter(Boolean);
+  }
+
+  function applyLocalTheme2Changes(itemId, changes) {
+    const targetRow = rawSheetRows.find(row => String(row['項目ID'] || '').trim() === itemId);
+    if (!targetRow) return;
+    Object.assign(targetRow, changes);
+    rebuildTheme2Items(rawSheetRows);
+    applyFilters();
   }
 
   function renderDetailEditor(item) {
@@ -387,7 +416,7 @@
     const textarea = (label, key, value = data[key] || '') => `<label class="theme2-edit-field is-wide"><span>${label}</span><textarea name="${escapeHtml(key)}" rows="3">${escapeHtml(value)}</textarea></label>`;
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
-    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${textInput('企劃開表日', '企劃開表日')}${textInput('企劃整合目標日', '企劃整合目標日')}${textInput('美術可用交付日', '美術可用交付日')}${textInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', '', true)}${textInput('正式完成路徑', '正式完成路徑', '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術拆圖完成', '美術拆圖完成')}${check('企劃整合完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${textInput('退回日期', '退回日期')}${textInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${textInput('企劃開表日', '企劃開表日')}${textInput('企劃整合目標日', '企劃整合目標日')}${textInput('美術可用交付日', '美術可用交付日')}${textInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術拆圖完成', '美術拆圖完成')}${check('企劃整合完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${textInput('退回日期', '退回日期')}${textInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
     detail.querySelector('#theme2-edit-cancel')?.addEventListener('click', () => { detailEditing = false; renderDetail(item); });
     detail.querySelector('#theme2-edit-form')?.addEventListener('submit', async event => {
       event.preventDefault();
@@ -400,10 +429,11 @@
       saveButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中';
       try {
         await updateTheme2Item(item.itemId, changes);
+        applyLocalTheme2Changes(item.itemId, changes);
         window.dashboardShowToast('已回寫 Google Sheet', 'success');
         detailEditing = false;
         closeDetailModal();
-        await loadTheme2Api();
+        loadTheme2Api().catch(error => console.warn('Theme 2 background refresh failed', error));
       } catch (error) {
         window.dashboardShowToast(`儲存失敗：${error.message}`, 'error');
         saveButton.disabled = false;
@@ -606,12 +636,8 @@
 
   function applyTheme2Payload(payload, statusText = 'Google Sheet API', statusIcon = 'fa-cloud') {
     theme2ProjectName = payload.projectName || 'SGF 專案';
-    const masterRowsBySequence = new Map();
-    payload.items.forEach(row => {
-      const sequence = String(row['序號'] || '').trim();
-      if (sequence && isTrue(row['進度主項'])) masterRowsBySequence.set(sequence, row);
-    });
-    items = payload.items.map((row, index) => normalizeRow(row, index, masterRowsBySequence)).filter(Boolean);
+    rawSheetRows = payload.items.map(row => ({ ...row }));
+    rebuildTheme2Items(rawSheetRows);
     finishTheme2Load(statusText, statusIcon);
   }
 
