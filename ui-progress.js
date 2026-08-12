@@ -22,14 +22,14 @@
     final: ['最終確認完成', 'final']
   };
   const STAGE_LABELS = {
-    planning: '企劃需求完成',
-    function: '程式功能完成',
-    placeholder: '代圖操作確認',
-    art: '美術拆圖完成',
-    integration: '企劃整合完成',
-    final: '製作人確認',
-    returned: '退回修改中',
-    completed: '已完成'
+    planning: '待企劃需求',
+    function: '待程式功能',
+    placeholder: '待代圖操作確認',
+    art: '待美術拆圖',
+    integration: '待企劃整合',
+    final: '待製作人確認',
+    returned: '退回處理中',
+    completed: '已結案'
   };
   const REQUIREMENT_BATCH_LABELS = {
     1: '第一批',
