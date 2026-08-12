@@ -136,6 +136,9 @@
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
   }
+  function getGyazoId(value) {
+    return String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
+  }
   function renderPipeline(filteredItems = items) {
     const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
     const activeStage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
@@ -191,10 +194,6 @@
       };
     }) : fallbackFlowBranches;
     // 依 Google Sheet 的截圖欄位建立 Gyazo 圖片預覽。
-    const getGyazoId = value => {
-      const match = String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i);
-      return match ? match[1] : '';
-    };
     const getCategoryCard = (category, group) => {
       const completedSteps = group.reduce((sum, item) => sum + STAGES.filter(stage => item.checklist[stage]).length, 0);
       const progress = Math.round((completedSteps / (group.length * STAGES.length)) * 100);
@@ -319,7 +318,6 @@
       return;
     }
     if (!groups.has(openMechanismKey)) openMechanismKey = groups.size === 1 ? groups.keys().next().value : '';
-    const getGyazoId = value => String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
     const progressOf = group => Math.round(group.reduce((sum, item) => sum + STAGES.filter(stage => item.checklist[stage]).length, 0) / (group.length * STAGES.length) * 100);
     const summaryOf = group => {
       const stageCounts = {};
@@ -456,6 +454,8 @@
       return `<div class="detail-path-row"><span><b>${label}：</b>${escapeHtml(path || '待補')}</span><button class="detail-copy-path" type="button" ${hasPath ? `data-copy-path="${escapeHtml(path)}"` : 'disabled'} title="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}" aria-label="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}"><i class="fa-regular fa-copy"></i></button></div>`;
     };
     const description = `<div class="theme2-detail-description theme2-detail-description-primary"><span>項目說明</span><p>${escapeHtml(item.description || '尚未填寫')}</p></div>`;
+    const thumbnailId = getGyazoId(item.gyazoUrl);
+    const thumbnail = thumbnailId ? `<a class="theme2-detail-thumbnail" href="${escapeHtml(item.gyazoUrl)}" target="_blank" rel="noopener noreferrer" title="開啟原始縮圖"><img src="https://i.gyazo.com/${escapeHtml(thumbnailId)}.jpg" data-gyazo-id="${escapeHtml(thumbnailId)}" alt="${escapeHtml(item.name)} 縮圖" loading="lazy" referrerpolicy="no-referrer"><span><i class="fa-solid fa-arrow-up-right-from-square"></i> 點擊開啟原圖</span></a>` : '';
     const notes = item.notes ? `<div class="theme2-detail-description"><span>備註</span><p>${escapeHtml(item.notes)}</p></div>` : '';
     const source = item.isReference ? `<div class="detail-reference"><i class="fa-solid fa-link"></i> 此項目共用「${escapeHtml(item.sourceName || item.sequence)}」的進度與交付資料。</div>` : '';
     const returned = item.returned ? `<div class="detail-returned"><i class="fa-solid fa-rotate-left"></i><b>製作人退回修改中</b><span>退回日期：${escapeHtml(item.returnDate || '待補')} · 重新確認：${escapeHtml(item.reconfirmationDate || '待補')}</span><p>${escapeHtml(item.returnReason || '待補退回原因')}</p></div>` : '';
@@ -463,7 +463,8 @@
       ? `<button class="theme2-detail-edit" data-edit-source-id="${escapeHtml(item.sourceItemId)}" type="button"><i class="fa-solid fa-arrow-up-right-from-square"></i> 編輯共用主項</button>`
       : '<button id="theme2-detail-edit" class="theme2-detail-edit" type="button"><i class="fa-solid fa-pen-to-square"></i> 編輯內容</button>';
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
-    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${description}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    detail.querySelector('.theme2-detail-thumbnail img')?.addEventListener('error', event => event.currentTarget.closest('.theme2-detail-thumbnail')?.remove());
     detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditing = true; renderDetail(item); });
     detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
       const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);

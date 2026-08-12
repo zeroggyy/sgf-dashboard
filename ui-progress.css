@@ -318,6 +318,10 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-description span { display: block; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
 .theme2-detail-description p { margin: 0.3rem 0 0; color: var(--text-primary); font-size: 0.76rem; line-height: 1.55; white-space: pre-wrap; }
 .theme2-detail-description-primary { margin: 0 0 0.7rem; padding: 0.5rem 0.7rem; }
+.theme2-detail-thumbnail { position: relative; display: flex; align-items: center; justify-content: center; min-height: 150px; max-height: 310px; margin: 0 0 0.7rem; overflow: hidden; border: 1px solid var(--theme2-line); background: #eaf2f6; color: var(--theme-accent); text-decoration: none; }
+.theme2-detail-thumbnail img { display: block; width: 100%; max-height: 310px; object-fit: contain; }
+.theme2-detail-thumbnail span { position: absolute; right: 0.45rem; top: 0.45rem; padding: 0.32rem 0.48rem; background: rgba(255, 255, 255, 0.92); color: var(--theme-accent); font-size: 0.65rem; font-weight: 700; opacity: 0; transition: opacity 0.15s ease; }
+.theme2-detail-thumbnail:hover span, .theme2-detail-thumbnail:focus-visible span { opacity: 1; }
 .theme2-detail-actions { display: flex; justify-content: flex-end; margin: 0 0 0.6rem; }
 .theme2-detail-edit { padding: 0.4rem 0.65rem; border: 1px solid var(--theme-accent); background: transparent; color: var(--theme-accent); font-family: var(--font-main); font-size: 0.7rem; font-weight: 700; cursor: pointer; }
 .theme2-detail-edit:hover { background: var(--theme-accent); color: #fff; }
