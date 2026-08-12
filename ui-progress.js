@@ -32,11 +32,25 @@
     const firstIncomplete = STAGES.find(stage => !isTrue(row[stage]));
     return firstIncomplete || 'completed';
   }
+  function batchLabel(value) {
+    const batch = String(value || '').trim();
+    if (!batch) return '未分批';
+    return REQUIREMENT_BATCH_LABELS[batch] || batch.toUpperCase();
+  }
+  function itemGroup(item) {
+    return item.mechanism || item.category || '未分類';
+  }
+  function searchableText(item) {
+    return `${item.name} ${item.mechanism || ''} ${item.category || ''} ${item.description || ''} ${item.sequence || ''}`.toLowerCase();
+  }
   function normalizeRow(row, index) {
     const hasWorkflow = STAGES.some(stage => row[stage] !== '');
-    const category = row['分類'] || '未分類';
-    const name = row['項目名稱'] || category;
-    if (!hasWorkflow || (!row['分類'] && !row['項目名稱'])) return null;
+    const usesNewColumns = Object.prototype.hasOwnProperty.call(row, '機制') || Object.prototype.hasOwnProperty.call(row, '項目');
+    const category = row['機制'] || row['分類'] || '未分類';
+    const sequence = row['序號'] || '';
+    const name = row['項目'] || row['項目名稱'] || (sequence ? `${category} · ${sequence}` : category);
+    if (!hasWorkflow || (!row['機制'] && !row['項目'] && !row['分類'] && !row['項目名稱'])) return null;
+    const batch = String(row['製作批次'] || row['優先'] || '').trim();
     const criticalFields = [
       ['企劃開表', '企劃開表'],
       ['期望完成', '期望完成'],
@@ -50,8 +64,11 @@
       id: `${category}-${name}-${index}`,
       name,
       category,
-      mechanism: row['機制'] || row['第二層節點'] || row['機制分類'] || '',
-      priority: Number(row['優先']) || 3,
+      mechanism: usesNewColumns ? category : (row['第二層節點'] || row['機制分類'] || ''),
+      description: row['項目說明'] || '',
+      sequence,
+      batch,
+      batchLabel: batchLabel(batch),
       stage: firstStage(row),
       stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
       plannedDate: row['企劃開表'],
@@ -61,6 +78,7 @@
       artUploadPath: row['美術上傳路徑'],
       archivePath: row['拆圖歸檔路徑'],
       gyazoUrl,
+      notes: row['備註'] || '',
       checklist: Object.fromEntries(STAGES.map(stage => [stage, isTrue(row[stage])])),
       missingFields
     };
@@ -106,7 +124,7 @@
     // 三層結構：專案 → 合併後的機制分類 → UI 項目。
     const flowGroupMap = new Map();
     filteredItems.forEach(item => {
-      const flowGroup = [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類';
+      const flowGroup = itemGroup(item);
       item.flowGroup = flowGroup;
       if (!flowGroupMap.has(flowGroup)) flowGroupMap.set(flowGroup, []);
       flowGroupMap.get(flowGroup).push(item);
@@ -143,7 +161,9 @@
           ? `<span class="ui-flow-item-thumb"><img src="${escapeHtml(itemPreviewUrl)}" data-gyazo-id="${escapeHtml(itemGyazoId)}" data-original-url="${escapeHtml(item.gyazoUrl)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
           : '<span class="ui-flow-item-thumb is-empty">無預覽</span>';
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span><strong>${escapeHtml(item.name || category)}</strong></span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
+        const sequenceText = item.sequence ? `<small class="ui-flow-item-sequence">${escapeHtml(item.sequence)}</small>` : '';
+        const descriptionText = item.description ? `<small class="ui-flow-item-description">${escapeHtml(item.description)}</small>` : '';
+        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy">${sequenceText}<strong>${escapeHtml(item.name || category)}</strong>${descriptionText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
       const preview = '';
@@ -245,7 +265,9 @@
       const hasPath = Boolean(path);
       return `<div class="detail-path-row"><span><b>${label}：</b>${escapeHtml(path || '待補')}</span><button class="detail-copy-path" type="button" ${hasPath ? `data-copy-path="${escapeHtml(path)}"` : 'disabled'} title="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}" aria-label="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}"><i class="fa-regular fa-copy"></i></button></div>`;
     };
-    detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM · SHEET ROW ${item.rowIndex}</span><h2 id="theme2-detail-modal-heading">${escapeHtml(item.name)}</h2><div class="detail-meta-grid"><div><span>功能分類</span><strong>${escapeHtml(item.category)}</strong></div><div><span>批次</span><strong>${REQUIREMENT_BATCH_LABELS[item.priority] || `P${item.priority}`}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${completeness}<div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
+    const description = item.description ? `<div class="theme2-detail-description"><span>項目說明</span><p>${escapeHtml(item.description)}</p></div>` : '';
+    const notes = item.notes ? `<div class="theme2-detail-description"><span>備註</span><p>${escapeHtml(item.notes)}</p></div>` : '';
+    detail.innerHTML = `<div class="theme2-detail-content"><span class="theme2-kicker">SELECTED ITEM · SHEET ROW ${item.rowIndex}</span><h2 id="theme2-detail-modal-heading">${escapeHtml(item.name)}</h2><div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>製作批次</span><strong>${escapeHtml(item.batchLabel)}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${description}${notes}${completeness}<div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
       const path = button.dataset.copyPath;
       try {
@@ -280,11 +302,10 @@
     const requirementBatch = document.getElementById('theme2-priority-filter')?.value || 'all';
     const query = (document.getElementById('theme2-search-input')?.value || '').trim().toLowerCase();
     const filtered = items.filter(item => {
-      const itemGroup = [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類';
-      const categoryMatch = category === '全部功能分類' || itemGroup === category;
+      const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
       const stageMatch = stage === '全部階段' || item.stage === stage;
-      const priorityMatch = requirementBatch === 'all' || Number(requirementBatch) === item.priority;
-      const searchMatch = !query || `${item.name} ${item.mechanism || ''} ${item.category || ''}`.toLowerCase().includes(query);
+      const priorityMatch = requirementBatch === 'all' || requirementBatch === item.batch;
+      const searchMatch = !query || searchableText(item).includes(query);
       return categoryMatch && stageMatch && priorityMatch && searchMatch;
     });
     updateDimensionCounts({ category, stage, requirementBatch, query });
@@ -296,17 +317,16 @@
 
   function updateDimensionCounts({ category, stage, requirementBatch, query }) {
     const matchesStage = item => stage === '全部階段' || item.stage === stage;
-    const matchesQuery = item => !query || `${item.name} ${item.mechanism || ''} ${item.category || ''}`.toLowerCase().includes(query);
-    const itemGroup = item => [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類';
+    const matchesQuery = item => !query || searchableText(item).includes(query);
     theme2View.querySelectorAll('#theme2-category-chips .theme2-dimension-chip').forEach(chip => {
       const value = chip.dataset.selectValue;
-      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (requirementBatch === 'all' || Number(requirementBatch) === item.priority) && (value === '全部功能分類' || itemGroup(item) === value)).length;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (requirementBatch === 'all' || requirementBatch === item.batch) && (value === '全部功能分類' || itemGroup(item) === value)).length;
       const countEl = chip.querySelector('.theme2-chip-count');
       if (countEl) countEl.textContent = total;
     });
     theme2View.querySelectorAll('#theme2-priority-chips .theme2-dimension-chip').forEach(chip => {
       const value = chip.dataset.selectValue;
-      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (category === '全部功能分類' || itemGroup(item) === category) && (value === 'all' || item.priority === Number(value))).length;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (category === '全部功能分類' || itemGroup(item) === category) && (value === 'all' || item.batch === value)).length;
       const countEl = chip.querySelector('.theme2-chip-count');
       if (countEl) countEl.textContent = total;
     });
@@ -320,13 +340,14 @@
   }
 
   function bindTheme2Controls() {
-    const categories = [...new Set(items.map(item => [item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類'))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+    const categories = [...new Set(items.map(itemGroup))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+    const batches = [...new Set(items.map(item => item.batch).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
     const categorySelect = document.getElementById('theme2-category-filter');
     if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
     if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
     const prioritySelect = document.getElementById('theme2-priority-filter');
-    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + batches.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(batchLabel(value))}</option>`).join('');
 
     function renderChipGroup(containerId, values, selectId) {
       const container = document.getElementById(containerId);
@@ -348,11 +369,11 @@
 
     renderChipGroup('theme2-category-chips', [
       { label: '全部', value: '全部功能分類', index: 0, count: items.length },
-      ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => ([item.mechanism, item.category].filter(Boolean).join(' · ') || '未分類') === category) }))
+      ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => itemGroup(item) === category) }))
     ], 'theme2-category-filter');
     renderChipGroup('theme2-priority-chips', [
       { label: '全部', value: 'all', index: 0, count: items.length },
-      ...Object.entries(REQUIREMENT_BATCH_LABELS).map(([value, label], index) => ({ label, value, index: index + 1, count: count(item => item.priority === Number(value)) }))
+      ...batches.map((value, index) => ({ label: batchLabel(value), value, index: index + 1, count: count(item => item.batch === value) }))
     ], 'theme2-priority-filter');
 
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
