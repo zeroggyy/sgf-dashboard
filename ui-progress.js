@@ -68,7 +68,8 @@
       description: row['項目說明'] || '',
       sequence,
       batch,
-      batchLabel: batchLabel(batch),
+      // 新版 A 欄字母只作為內部批次代碼；畫面統一顯示 B 欄「機制」。
+      batchLabel: usesNewColumns ? (category || '未分批') : batchLabel(batch),
       stage: firstStage(row),
       stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
       plannedDate: row['企劃開表'],
@@ -347,7 +348,8 @@
     const stageSelect = document.getElementById('theme2-stage-filter');
     if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
     const prioritySelect = document.getElementById('theme2-priority-filter');
-    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + batches.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(batchLabel(value))}</option>`).join('');
+    const visibleBatchLabel = value => items.find(item => item.batch === value)?.batchLabel || batchLabel(value);
+    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + batches.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(visibleBatchLabel(value))}</option>`).join('');
 
     function renderChipGroup(containerId, values, selectId) {
       const container = document.getElementById(containerId);
@@ -373,7 +375,7 @@
     ], 'theme2-category-filter');
     renderChipGroup('theme2-priority-chips', [
       { label: '全部', value: 'all', index: 0, count: items.length },
-      ...batches.map((value, index) => ({ label: batchLabel(value), value, index: index + 1, count: count(item => item.batch === value) }))
+      ...batches.map((value, index) => ({ label: visibleBatchLabel(value), value, index: index + 1, count: count(item => item.batch === value) }))
     ], 'theme2-priority-filter');
 
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
