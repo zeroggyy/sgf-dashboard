@@ -308,4 +308,5 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-description { margin-top: 0.7rem; padding: 0.65rem 0.75rem; border: 1px solid var(--theme2-line); background: rgba(234, 242, 246, 0.35); }
 .theme2-detail-description span { display: block; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
 .theme2-detail-description p { margin: 0.3rem 0 0; color: var(--text-primary); font-size: 0.76rem; line-height: 1.55; white-space: pre-wrap; }
+.theme2-detail-description-primary { margin: 0.55rem 0 0.7rem; }
 
