@@ -8,6 +8,9 @@
   const DEFAULT_THEME2_API_KEY = 'SGF_THEME2_2026_UI_FLOW_8fK2mP7x';
   let theme2ApiUrl = localStorage.getItem('sgf_theme2_gas_url') || DEFAULT_THEME2_API_URL;
   let theme2ApiKey = localStorage.getItem('sgf_theme2_api_key') || DEFAULT_THEME2_API_KEY;
+  const THEME2_CACHE_KEY = 'sgf_theme2_last_success_payload';
+  const THEME2_REQUEST_TIMEOUT_MS = 20000;
+  const THEME2_MAX_ATTEMPTS = 3;
   const STAGES = ['企劃', '功能', '代圖操作', '拆圖', '編輯', 'final'];
   const PIPELINE_STAGES = [...STAGES, 'completed'];
   const STAGE_LABELS = {
@@ -439,14 +442,69 @@
     if (label) label.textContent = text;
   }
 
-  async function loadTheme2Api() {
-    const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
-    const payload = await response.json();
-    if (payload.error || !Array.isArray(payload.items)) throw new Error(payload.error || 'Theme 2 API 回傳格式不正確');
+  function applyTheme2Payload(payload, statusText = 'Google Sheet API', statusIcon = 'fa-cloud') {
     theme2ProjectName = payload.projectName || 'SGF 專案';
     items = payload.items.map(normalizeRow).filter(Boolean);
-    finishTheme2Load('Google Sheet API', 'fa-cloud');
+    finishTheme2Load(statusText, statusIcon);
+  }
+
+  function readTheme2Cache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(THEME2_CACHE_KEY) || 'null');
+      return cached && cached.apiUrl === theme2ApiUrl && Array.isArray(cached.payload?.items) ? cached : null;
+    } catch (error) {
+      localStorage.removeItem(THEME2_CACHE_KEY);
+      return null;
+    }
+  }
+
+  function writeTheme2Cache(payload) {
+    try {
+      localStorage.setItem(THEME2_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), apiUrl: theme2ApiUrl, payload }));
+    } catch (error) {
+      console.warn('Theme 2 cache write failed', error);
+    }
+  }
+
+  async function fetchTheme2Payload() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), THEME2_REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
+      const payload = await response.json();
+      if (payload.error || !Array.isArray(payload.items)) throw new Error(payload.error || 'Theme 2 API 回傳格式不正確');
+      return payload;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function loadTheme2Api() {
+    let lastError;
+    for (let attempt = 1; attempt <= THEME2_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        if (attempt > 1) setTheme2ApiStatus(`重新連線 ${attempt - 1}/2`, 'fa-rotate', 'loading');
+        const payload = await fetchTheme2Payload();
+        writeTheme2Cache(payload);
+        applyTheme2Payload(payload);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < THEME2_MAX_ATTEMPTS) await new Promise(resolve => setTimeout(resolve, attempt * 900));
+      }
+    }
+    const cached = readTheme2Cache();
+    if (cached) {
+      const cachedAt = new Date(cached.savedAt).toLocaleString('zh-TW', { hour12: false });
+      applyTheme2Payload(cached.payload, `離線資料 ${cachedAt}`, 'fa-clock-rotate-left');
+      window.dashboardShowToast('API 暫時無法連線，已顯示上次成功資料', 'error');
+      return;
+    }
+    throw lastError || new Error('Theme 2 API 連線失敗');
   }
 
   function closeDetailModal() {
@@ -515,6 +573,7 @@
     }
     localStorage.setItem('sgf_theme2_gas_url', url);
     localStorage.setItem('sgf_theme2_api_key', key);
+    localStorage.removeItem(THEME2_CACHE_KEY);
     theme2ApiUrl = url;
     theme2ApiKey = key;
     window.dashboardShowToast('主題二 API 設定已儲存，正在重新連線', 'success');
