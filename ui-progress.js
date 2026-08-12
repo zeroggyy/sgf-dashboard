@@ -39,6 +39,7 @@
   let items = [];
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
+  let detailEditing = false;
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
   function stageDone(row, stage) {
@@ -95,6 +96,9 @@
       rowIndex: index + 2,
       id: `${category}-${name}-${index}`,
       itemId: String(row['項目ID'] || '').trim(),
+      sourceItemId: String(masterRow['項目ID'] || '').trim(),
+      raw: row,
+      masterRaw: masterRow,
       name,
       category,
       mechanism: usesNewColumns ? category : (row['第二層節點'] || row['機制分類'] || ''),
@@ -364,10 +368,55 @@
     }));
   }
 
+  async function updateTheme2Item(itemId, changes) {
+    const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateUiItem', itemId, changes })
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) throw new Error(payload.error || `儲存失敗（${response.status}）`);
+    return payload;
+  }
+
+  function renderDetailEditor(item) {
+    const detail = document.getElementById('theme2-detail-modal-body');
+    if (!detail) return;
+    const data = item.masterRaw;
+    const textInput = (label, key, value = data[key] || '', wide = false) => `<label class="theme2-edit-field ${wide ? 'is-wide' : ''}"><span>${label}</span><input name="${escapeHtml(key)}" value="${escapeHtml(value)}" autocomplete="off"></label>`;
+    const textarea = (label, key, value = data[key] || '') => `<label class="theme2-edit-field is-wide"><span>${label}</span><textarea name="${escapeHtml(key)}" rows="3">${escapeHtml(value)}</textarea></label>`;
+    const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
+    document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${textInput('企劃開表日', '企劃開表日')}${textInput('企劃整合目標日', '企劃整合目標日')}${textInput('美術可用交付日', '美術可用交付日')}${textInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', '', true)}${textInput('正式完成路徑', '正式完成路徑', '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術拆圖完成', '美術拆圖完成')}${check('企劃整合完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${textInput('退回日期', '退回日期')}${textInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.querySelector('#theme2-edit-cancel')?.addEventListener('click', () => { detailEditing = false; renderDetail(item); });
+    detail.querySelector('#theme2-edit-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const saveButton = form.querySelector('#theme2-edit-save');
+      const formData = new FormData(form);
+      const changes = Object.fromEntries(formData.entries());
+      ['企劃需求完成', '程式功能完成', '代圖操作確認', '美術拆圖完成', '企劃整合完成', '最終確認完成', '退回修改中'].forEach(key => { changes[key] = form.querySelector(`[name="${key}"]`).checked ? 'TRUE' : 'FALSE'; });
+      saveButton.disabled = true;
+      saveButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中';
+      try {
+        await updateTheme2Item(item.itemId, changes);
+        window.dashboardShowToast('已回寫 Google Sheet', 'success');
+        detailEditing = false;
+        closeDetailModal();
+        await loadTheme2Api();
+      } catch (error) {
+        window.dashboardShowToast(`儲存失敗：${error.message}`, 'error');
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 儲存變更';
+      }
+    });
+  }
+
   function renderDetail(item) {
     const modal = document.getElementById('theme2-detail-modal');
     const detail = document.getElementById('theme2-detail-modal-body');
     if (!modal || !detail) return;
+    if (detailEditing) { renderDetailEditor(item); modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); document.body.classList.add('body-scroll-lock'); return; }
     const missing = [...item.missingFields];
     const completeness = missing.length
       ? `<div class="detail-missing"><i class="fa-solid fa-triangle-exclamation"></i> 建議補齊：${missing.join('、')}</div>`
@@ -380,8 +429,17 @@
     const notes = item.notes ? `<div class="theme2-detail-description"><span>備註</span><p>${escapeHtml(item.notes)}</p></div>` : '';
     const source = item.isReference ? `<div class="detail-reference"><i class="fa-solid fa-link"></i> 此項目共用「${escapeHtml(item.sourceName || item.sequence)}」的進度與交付資料。</div>` : '';
     const returned = item.returned ? `<div class="detail-returned"><i class="fa-solid fa-rotate-left"></i><b>製作人退回修改中</b><span>退回日期：${escapeHtml(item.returnDate || '待補')} · 重新確認：${escapeHtml(item.reconfirmationDate || '待補')}</span><p>${escapeHtml(item.returnReason || '待補退回原因')}</p></div>` : '';
+    const editAction = item.isReference
+      ? `<button class="theme2-detail-edit" data-edit-source-id="${escapeHtml(item.sourceItemId)}" type="button"><i class="fa-solid fa-arrow-up-right-from-square"></i> 編輯共用主項</button>`
+      : '<button id="theme2-detail-edit" class="theme2-detail-edit" type="button"><i class="fa-solid fa-pen-to-square"></i> 編輯內容</button>';
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
-    detail.innerHTML = `<div class="theme2-detail-content">${description}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${description}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditing = true; renderDetail(item); });
+    detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
+      const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);
+      if (sourceItem) { detailEditing = true; renderDetail(sourceItem); }
+      else window.dashboardShowToast('找不到此引用項目的主項', 'error');
+    });
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
       const path = button.dataset.copyPath;
       try {
@@ -622,6 +680,7 @@
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('body-scroll-lock');
+    detailEditing = false;
   }
 
   function closeStageHelpModal() {
