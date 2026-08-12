@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=1.2.0">
-  <link rel="stylesheet" href="ui-progress.css?v=1.4.0">
+  <link rel="stylesheet" href="ui-progress.css?v=1.4.1">
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme2">
   <main id="theme-view-theme2" class="page-container theme-view theme-view-demo theme2-view">
@@ -42,6 +42,7 @@
       </section>
       <section class="theme2-pipeline-panel">
         <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦流程地圖</span></div>
+        <div class="theme2-pipeline-legend" aria-label="流程卡狀態說明"><span class="is-filtered"><i class="fa-solid fa-filter"></i> 篩選中</span><span class="is-bottleneck"><i class="fa-solid fa-triangle-exclamation"></i> 目前瓶頸</span><span class="is-returned"><i class="fa-solid fa-rotate-left"></i> 退回處理</span></div>
         <div class="theme2-pipeline"><button data-theme2-stage="planning"><span>企劃需求完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="function"><span>程式功能完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="placeholder"><span>代圖操作確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="art"><span>美術拆圖完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="integration"><span>企劃整合完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>製作人確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="returned"><span>退回修改中</span><strong>0</strong></button><i>→</i><button data-theme2-stage="completed"><span>已完成</span><strong>0</strong></button></div>
       </section>
       <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI FLOW MAP</span><h2><i class="fa-solid fa-diagram-project"></i> UI 流程地圖</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 專案名稱 → 機制 → UI 項目 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
