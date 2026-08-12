@@ -43,6 +43,12 @@
   function searchableText(item) {
     return `${item.name} ${item.mechanism || ''} ${item.category || ''} ${item.description || ''} ${item.sequence || ''}`.toLowerCase();
   }
+  function expectedDateValue(item) {
+    return String(item.expectedDate || '').trim() || '__undetermined__';
+  }
+  function expectedDateLabel(value) {
+    return value === '__undetermined__' ? '未定' : value;
+  }
   function normalizeRow(row, index) {
     const hasWorkflow = STAGES.some(stage => row[stage] !== '');
     const usesNewColumns = Object.prototype.hasOwnProperty.call(row, '機制') || Object.prototype.hasOwnProperty.call(row, '項目');
@@ -302,35 +308,42 @@
 
   function applyFilters() {
     const category = document.getElementById('theme2-category-filter')?.value || '全部功能分類';
+    const expectedDate = document.getElementById('theme2-expected-date-filter')?.value || 'all';
     const stage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
-    const requirementBatch = 'all';
     const query = (document.getElementById('theme2-search-input')?.value || '').trim().toLowerCase();
     const filtered = items.filter(item => {
       const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
       const stageMatch = stage === '全部階段' || item.stage === stage;
-      const priorityMatch = requirementBatch === 'all' || requirementBatch === item.batch;
+      const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
-      return categoryMatch && stageMatch && priorityMatch && searchMatch;
+      return categoryMatch && expectedDateMatch && stageMatch && searchMatch;
     });
-    updateDimensionCounts({ category, stage, requirementBatch, query });
+    updateDimensionCounts({ category, expectedDate, stage, query });
     const specialCount = theme2View.querySelector('[data-theme2-count="all"]');
     if (specialCount) specialCount.textContent = filtered.length;
     // 流程分布保留各階段數量，僅套用搜尋與機制，不被階段自身過濾。
     const pipelineItems = items.filter(item => {
       const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
+      const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
-      return categoryMatch && searchMatch;
+      return categoryMatch && expectedDateMatch && searchMatch;
     });
     renderPipeline(pipelineItems);
     renderFlowMap(filtered);
   }
 
-  function updateDimensionCounts({ category, stage, requirementBatch, query }) {
+  function updateDimensionCounts({ category, expectedDate, stage, query }) {
     const matchesStage = item => stage === '全部階段' || item.stage === stage;
     const matchesQuery = item => !query || searchableText(item).includes(query);
     theme2View.querySelectorAll('#theme2-category-chips .theme2-dimension-chip').forEach(chip => {
       const value = chip.dataset.selectValue;
-      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (requirementBatch === 'all' || requirementBatch === item.batch) && (value === '全部功能分類' || itemGroup(item) === value)).length;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (expectedDate === 'all' || expectedDateValue(item) === expectedDate) && (value === '全部功能分類' || itemGroup(item) === value)).length;
+      const countEl = chip.querySelector('.theme2-chip-count');
+      if (countEl) countEl.textContent = total;
+    });
+    theme2View.querySelectorAll('#theme2-expected-date-chips .theme2-dimension-chip').forEach(chip => {
+      const value = chip.dataset.selectValue;
+      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (category === '全部功能分類' || itemGroup(item) === category) && (value === 'all' || expectedDateValue(item) === value)).length;
       const countEl = chip.querySelector('.theme2-chip-count');
       if (countEl) countEl.textContent = total;
     });
@@ -345,8 +358,15 @@
 
   function bindTheme2Controls() {
     const categories = [...new Set(items.map(itemGroup))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+    const expectedDates = [...new Set(items.map(expectedDateValue))].sort((a, b) => {
+      if (a === '__undetermined__') return 1;
+      if (b === '__undetermined__') return -1;
+      return a.localeCompare(b, 'zh-Hant', { numeric: true });
+    });
     const categorySelect = document.getElementById('theme2-category-filter');
     if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
+    const expectedDateSelect = document.getElementById('theme2-expected-date-filter');
+    if (expectedDateSelect) expectedDateSelect.innerHTML = '<option value="all">全部時間</option>' + expectedDates.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(expectedDateLabel(value))}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
     if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
 
@@ -372,14 +392,18 @@
       { label: '全部', value: '全部功能分類', index: 0, count: items.length },
       ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => itemGroup(item) === category) }))
     ], 'theme2-category-filter');
+    renderChipGroup('theme2-expected-date-chips', [
+      { label: '全部', value: 'all', index: 0, count: items.length },
+      ...expectedDates.map((value, index) => ({ label: expectedDateLabel(value), value, index: index + 1, count: count(item => expectedDateValue(item) === value) }))
+    ], 'theme2-expected-date-filter');
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.remove('active'));
       chip.classList.add('active');
       applyFilters();
     }));
-    ['theme2-category-filter', 'theme2-stage-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
+    ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
     theme2View.querySelector('.demo-reset-btn')?.addEventListener('click', () => {
-      ['theme2-category-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
+      ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
