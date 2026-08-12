@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=1.2.0">
-  <link rel="stylesheet" href="ui-progress.css?v=1.3.3">
+  <link rel="stylesheet" href="ui-progress.css?v=1.4.0">
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme2">
   <main id="theme-view-theme2" class="page-container theme-view theme-view-demo theme2-view">
@@ -24,7 +24,7 @@
       <div class="header-right-meta theme2-header-meta">
         <div class="newspaper-meta-box"><span class="meta-val">2026年</span><span class="meta-val">UI 專案</span><span class="meta-val">交付進度控制台</span></div>
         <div class="header-control-grid theme2-header-control-grid">
-          <button id="theme2-schedule-btn" class="btn" type="button" title="專案時程里程碑"><i class="fa-regular fa-calendar-days"></i></button>
+          <button id="theme2-schedule-btn" class="btn" type="button" title="依企劃整合目標日篩選"><i class="fa-regular fa-calendar-days"></i></button>
           <button id="theme2-help-btn" class="btn" type="button" title="主題二使用說明"><i class="fa-solid fa-circle-question"></i></button>
           <button id="theme2-sort-btn" class="btn theme2-placeholder-control" type="button" title="功能尚未設定" disabled><i class="fa-solid fa-arrow-down-short-wide"></i></button>
           <button id="theme2-config-btn" class="btn demo-theme-status theme2-api-status is-loading" type="button" aria-live="polite" aria-label="主題二 API 設定，資料載入中" title="主題二 API 設定・資料載入中"><i class="fa-solid fa-gear"></i><span class="theme2-api-status-label">資料載入中</span></button>
@@ -36,13 +36,13 @@
         <div class="demo-section-heading"><div><span class="theme2-kicker">FILTERS</span><h2><i class="fa-solid fa-filter"></i> 快速篩選</h2></div><button class="demo-reset-btn" type="button">重設篩選</button></div>
         <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-magnifying-glass"></i> 搜尋：</div><div class="theme2-filter-content theme2-search-content"><input id="theme2-search-input" type="search" placeholder="搜尋機制、項目、說明或序號..." /></div></div>
         <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-layer-group"></i> 機制：</div><div id="theme2-category-chips" class="theme2-filter-content"></div></div>
-        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-regular fa-calendar-check"></i> 期望完成：</div><div id="theme2-expected-date-chips" class="theme2-filter-content"></div></div>
-        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">無（<b data-theme2-count="all">56</b>）</button></div></div>
+        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-regular fa-calendar-check"></i> 企劃整合目標日：</div><div id="theme2-expected-date-chips" class="theme2-filter-content"></div></div>
+        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">全部（<b data-theme2-count="all">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="returned" type="button">退回修改中（<b data-theme2-count="returned">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="evidence" type="button">交付證據待補（<b data-theme2-count="evidence">0</b>）</button></div></div>
         <select id="theme2-category-filter" hidden><option>全部功能分類</option></select><select id="theme2-expected-date-filter" hidden><option value="all">全部時間</option></select><select id="theme2-stage-filter" hidden><option>全部階段</option></select>
       </section>
       <section class="theme2-pipeline-panel">
         <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦流程地圖</span></div>
-        <div class="theme2-pipeline"><button data-theme2-stage="企劃"><span>企劃需求</span><strong>4</strong></button><i>→</i><button data-theme2-stage="功能"><span>程式施工</span><strong>5</strong></button><i>→</i><button data-theme2-stage="代圖操作"><span>功能驗證</span><strong>0</strong></button><i>→</i><button data-theme2-stage="拆圖"><span>美術製作</span><strong>24</strong></button><i>→</i><button data-theme2-stage="編輯"><span>正式介面</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>待驗收</span><strong>23</strong></button><i>→</i><button data-theme2-stage="completed"><span>已完成</span><strong>0</strong></button></div>
+        <div class="theme2-pipeline"><button data-theme2-stage="planning"><span>企劃需求完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="function"><span>程式功能完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="placeholder"><span>代圖操作確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="art"><span>美術拆圖完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="integration"><span>企劃整合完成</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>製作人確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="returned"><span>退回修改中</span><strong>0</strong></button><i>→</i><button data-theme2-stage="completed"><span>已完成</span><strong>0</strong></button></div>
       </section>
       <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI FLOW MAP</span><h2><i class="fa-solid fa-diagram-project"></i> UI 流程地圖</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 專案名稱 → 機制 → UI 項目 · 點擊項目查看詳情</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
     </main>
@@ -52,7 +52,7 @@
         <div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">DELIVERY DEFINITIONS</span><h2 id="theme2-stage-help-title">交付階段定義</h2></div><button id="theme2-stage-help-close" type="button" aria-label="關閉階段定義">&times;</button></div>
         <div class="theme2-help-intro"><p><b>快速篩選：</b>依機制縮小項目範圍，重設篩選可回到完整資料。</p><p><b>交付流程：</b>點擊任一階段，直接聚焦該階段的 UI 項目。</p><p><b>流程地圖：</b>展開機制後點擊 UI 項目，可查看序號、說明、進度、資料完整度與檔案路徑。</p></div>
         <div class="stage-definition-list">
-          <article><b>01 · 企劃需求</b><p>需求範圍、製作項目、批次與完成條件已確認。</p></article><article><b>02 · 程式施工</b><p>程式功能與畫面框架完成，進入可測試狀態。</p></article><article><b>03 · 功能驗證</b><p>使用暫代圖跑過流程，確認功能可以正常操作與遊玩。</p></article><article><b>04 · 美術製作</b><p>正式美術素材完成拆圖、命名、尺寸與輸出整理。</p></article><article><b>05 · 正式介面</b><p>正式素材已整合進程式，完成畫面替換與初步檢查。</p></article><article><b>06 · 待驗收</b><p>正式素材已整合完成，正在等待功能、畫面、流程、尺寸與細節的最終確認。</p></article><article><b>07 · 已完成</b><p>最終驗收已通過，功能、畫面與相關素材皆確認完成。</p></article>
+          <article><b>01 · 企劃需求完成</b><p>需求、示意圖與操作說明完整，程式可開始製作。</p></article><article><b>02 · 程式功能完成</b><p>程式功能已實作，企劃可實際操作驗證。</p></article><article><b>03 · 代圖操作確認</b><p>企劃已使用代圖完成操作驗證，功能確認無誤。</p></article><article><b>04 · 美術拆圖完成</b><p>美術圖素可供企劃使用，美術上傳與拆圖歸檔路徑已建立。</p></article><article><b>05 · 企劃整合完成</b><p>企劃已替換正式圖素、完成整合與自測；「企劃整合目標日」以此為準。</p></article><article><b>06 · 製作人確認</b><p>等待製作人最終確認。通過前須有正式完成路徑、網頁縮圖與最終確認日。</p></article><article><b>07 · 退回修改中</b><p>製作人確認時退回，維持既有歷程並優先顯示退回原因與日期。</p></article><article><b>08 · 已完成</b><p>製作人已確認，項目正式結案。</p></article>
         </div>
       </div>
     </div>
@@ -70,7 +70,7 @@
   <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div>
   <div id="toast" class="toast"></div>
   <script src="dashboard-shared.js?v=1.2.0"></script>
-  <script src="ui-progress.js?v=1.4.1"></script>
+  <script src="ui-progress.js?v=1.5.0"></script>
   <script src="dashboard-navigation.js?v=1.2.1"></script>
 </body>
 </html>

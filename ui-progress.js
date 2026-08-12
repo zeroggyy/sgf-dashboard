@@ -11,15 +11,24 @@
   const THEME2_CACHE_KEY = 'sgf_theme2_last_success_payload';
   const THEME2_REQUEST_TIMEOUT_MS = 20000;
   const THEME2_MAX_ATTEMPTS = 3;
-  const STAGES = ['企劃', '功能', '代圖操作', '拆圖', '編輯', 'final'];
-  const PIPELINE_STAGES = [...STAGES, 'completed'];
+  const STAGES = ['planning', 'function', 'placeholder', 'art', 'integration', 'final'];
+  const PIPELINE_STAGES = [...STAGES, 'returned', 'completed'];
+  const STAGE_FIELDS = {
+    planning: ['企劃需求完成', '企劃'],
+    function: ['程式功能完成', '功能'],
+    placeholder: ['代圖操作確認', '代圖操作'],
+    art: ['美術拆圖完成', '拆圖'],
+    integration: ['企劃整合完成', '編輯'],
+    final: ['最終確認完成', 'final']
+  };
   const STAGE_LABELS = {
-    企劃: '企劃需求',
-    功能: '程式施工',
-    代圖操作: '功能驗證',
-    拆圖: '美術製作',
-    編輯: '正式介面',
-    final: '待驗收',
+    planning: '企劃需求完成',
+    function: '程式功能完成',
+    placeholder: '代圖操作確認',
+    art: '美術拆圖完成',
+    integration: '企劃整合完成',
+    final: '製作人確認',
+    returned: '退回修改中',
     completed: '已完成'
   };
   const REQUIREMENT_BATCH_LABELS = {
@@ -31,8 +40,12 @@
   let theme2ProjectName = 'SGF 專案';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
+  function stageDone(row, stage) {
+    return isTrue(STAGE_FIELDS[stage].map(field => row[field]).find(value => value !== undefined));
+  }
   function firstStage(row) {
-    const firstIncomplete = STAGES.find(stage => !isTrue(row[stage]));
+    if (isTrue(row['退回修改中'])) return 'returned';
+    const firstIncomplete = STAGES.find(stage => !stageDone(row, stage));
     return firstIncomplete || 'completed';
   }
   function batchLabel(value) {
@@ -52,22 +65,31 @@
   function expectedDateLabel(value) {
     return value === '__undetermined__' ? '未定' : value;
   }
-  function normalizeRow(row, index) {
-    const hasWorkflow = STAGES.some(stage => row[stage] !== '');
+  function normalizeRow(row, index, masterRowsBySequence) {
+    const sequence = String(row['序號'] || '').trim();
+    const isReference = String(row['進度主項'] || '').toUpperCase() === 'FALSE';
+    const masterRow = isReference && masterRowsBySequence.get(sequence) ? masterRowsBySequence.get(sequence) : row;
+    const hasWorkflow = STAGES.some(stage => STAGE_FIELDS[stage].some(field => masterRow[field] !== undefined && masterRow[field] !== ''));
     const usesNewColumns = Object.prototype.hasOwnProperty.call(row, '機制') || Object.prototype.hasOwnProperty.call(row, '項目');
     const category = row['機制'] || row['分類'] || '未分類';
-    const sequence = row['序號'] || '';
     const name = row['項目'] || row['項目名稱'] || (sequence ? `${category} · ${sequence}` : category);
     if (!hasWorkflow || (!row['機制'] && !row['項目'] && !row['分類'] && !row['項目名稱'])) return null;
     const batch = String(row['製作批次'] || row['優先'] || '').trim();
+    const expectedDate = masterRow['企劃整合目標日'] || masterRow['期望完成'] || '';
+    const screenshotPath = masterRow['介面截圖路徑（需求／代圖）'] || masterRow['介面截圖路徑'] || masterRow['介面截圖路徑(需求)'] || '';
+    const artUploadPath = masterRow['美術上傳路徑'] || '';
+    const archivePath = masterRow['拆圖歸檔路徑'] || '';
+    const formalPath = masterRow['正式完成路徑'] || '';
+    const gyazoUrl = masterRow['網頁縮圖連結'] || masterRow['截圖'] || masterRow['圖片網址'] || masterRow['Gyazo'] || masterRow['P'] || '';
+    const finalDate = masterRow['最終確認日'] || '';
     const criticalFields = [
-      ['企劃開表', '企劃開表'],
-      ['期望完成', '期望完成'],
-      ['介面截圖路徑', '介面截圖路徑'],
-      ['拆圖歸檔路徑', '拆圖歸檔路徑']
+      [masterRow['企劃開表日'] || masterRow['企劃開表'], '企劃開表日'],
+      [expectedDate, '企劃整合目標日'],
+      [screenshotPath, '需求／代圖路徑']
     ];
-    const missingFields = criticalFields.filter(([key]) => !row[key]).map(([, label]) => label);
-    const gyazoUrl = row['截圖'] || row['圖片網址'] || row['Gyazo'] || row['P'] || '';
+    if (stageDone(masterRow, 'art')) criticalFields.push([artUploadPath, '美術上傳路徑'], [archivePath, '拆圖歸檔路徑']);
+    if (stageDone(masterRow, 'final')) criticalFields.push([formalPath && formalPath !== '1111' ? formalPath : '', '正式完成路徑'], [gyazoUrl, '網頁縮圖連結'], [finalDate, '最終確認日']);
+    const missingFields = criticalFields.filter(([value]) => !String(value || '').trim()).map(([, label]) => label);
     return {
       rowIndex: index + 2,
       id: `${category}-${name}-${index}`,
@@ -79,18 +101,26 @@
       batch,
       // 新版 A 欄字母只作為內部批次代碼；畫面統一顯示 B 欄「機制」。
       batchLabel: usesNewColumns ? (category || '未分批') : batchLabel(batch),
-      stage: firstStage(row),
-      stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
-      plannedDate: row['企劃開表'],
-      expectedDate: row['期望完成'],
-      artSubmitDate: row['美術提交'],
-      screenshotPath: row['介面截圖路徑'],
-      artUploadPath: row['美術上傳路徑'],
-      archivePath: row['拆圖歸檔路徑'],
+      stage: firstStage(masterRow),
+      stageLabel: STAGE_LABELS[firstStage(masterRow)] || '已完成',
+      plannedDate: masterRow['企劃開表日'] || masterRow['企劃開表'] || '',
+      expectedDate,
+      artSubmitDate: masterRow['美術可用交付日'] || masterRow['美術提交'] || '',
+      screenshotPath,
+      artUploadPath,
+      archivePath,
+      formalPath,
       gyazoUrl,
-      notes: row['備註'] || '',
-      checklist: Object.fromEntries(STAGES.map(stage => [stage, isTrue(row[stage])])),
-      missingFields
+      notes: row['備註'] || masterRow['備註'] || '',
+      checklist: Object.fromEntries(STAGES.map(stage => [stage, stageDone(masterRow, stage)])),
+      missingFields,
+      isReference,
+      sourceName: isReference ? (masterRow['項目'] || masterRow['項目名稱'] || sequence) : '',
+      returned: isTrue(masterRow['退回修改中']),
+      returnReason: masterRow['退回原因'] || '',
+      returnDate: masterRow['退回日期'] || '',
+      reconfirmationDate: masterRow['重新確認日期'] || '',
+      finalDate
     };
   }
 
@@ -167,7 +197,7 @@
       const currentStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
       const itemCards = group.map(item => {
         const itemProgress = Math.round((STAGES.filter(stage => item.checklist[stage]).length / STAGES.length) * 100);
-        const itemState = item.missingFields.length > 0 ? 'has-missing' : itemProgress === 100 ? 'is-complete' : '';
+        const itemState = [item.missingFields.length > 0 ? 'has-missing' : '', itemProgress === 100 ? 'is-complete' : '', item.returned ? 'is-returned' : '', item.isReference ? 'is-reference' : ''].filter(Boolean).join(' ');
         const itemGyazoId = getGyazoId(item.gyazoUrl);
         const itemPreviewUrl = itemGyazoId ? `https://i.gyazo.com/${itemGyazoId}.jpg` : '';
         const itemPreview = itemGyazoId
@@ -176,7 +206,8 @@
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
         const sequenceText = item.sequence ? `<small class="ui-flow-item-sequence">${escapeHtml(item.sequence)}</small>` : '';
         const descriptionText = item.description ? `<small class="ui-flow-item-description">${escapeHtml(item.description)}</small>` : '';
-        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy">${sequenceText}<strong>${escapeHtml(item.name || category)}</strong>${descriptionText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
+        const referenceText = item.isReference ? `<small class="ui-flow-item-reference">共用 ${escapeHtml(item.sourceName || item.sequence)} 的進度</small>` : '';
+        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy">${sequenceText}<strong>${escapeHtml(item.name || category)}</strong>${descriptionText}${referenceText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
       const preview = '';
@@ -280,8 +311,10 @@
     };
     const description = `<div class="theme2-detail-description theme2-detail-description-primary"><span>項目說明</span><p>${escapeHtml(item.description || '尚未填寫')}</p></div>`;
     const notes = item.notes ? `<div class="theme2-detail-description"><span>備註</span><p>${escapeHtml(item.notes)}</p></div>` : '';
+    const source = item.isReference ? `<div class="detail-reference"><i class="fa-solid fa-link"></i> 此項目共用「${escapeHtml(item.sourceName || item.sequence)}」的進度與交付資料。</div>` : '';
+    const returned = item.returned ? `<div class="detail-returned"><i class="fa-solid fa-rotate-left"></i><b>製作人退回修改中</b><span>退回日期：${escapeHtml(item.returnDate || '待補')} · 重新確認：${escapeHtml(item.reconfirmationDate || '待補')}</span><p>${escapeHtml(item.returnReason || '待補退回原因')}</p></div>` : '';
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
-    detail.innerHTML = `<div class="theme2-detail-content">${description}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>期望完成</span><strong>${escapeHtml(item.expectedDate || '待補')}</strong></div><div><span>美術提交</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('介面截圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}</div></div>`;
+    detail.innerHTML = `<div class="theme2-detail-content">${description}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}${pathRow('網頁縮圖', item.gyazoUrl)}</div></div>`;
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
       const path = button.dataset.copyPath;
       try {
@@ -315,22 +348,26 @@
     const expectedDate = document.getElementById('theme2-expected-date-filter')?.value || 'all';
     const stage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
     const query = (document.getElementById('theme2-search-input')?.value || '').trim().toLowerCase();
+    const special = theme2View.querySelector('.theme2-filter-chip.active')?.dataset.theme2Filter || 'all';
     const filtered = items.filter(item => {
       const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
       const stageMatch = stage === '全部階段' || item.stage === stage;
       const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
-      return categoryMatch && expectedDateMatch && stageMatch && searchMatch;
+      const specialMatch = special === 'all' || (special === 'returned' && item.returned) || (special === 'evidence' && item.missingFields.length > 0);
+      return categoryMatch && expectedDateMatch && stageMatch && searchMatch && specialMatch;
     });
     updateDimensionCounts({ category, expectedDate, stage, query });
-    const specialCount = theme2View.querySelector('[data-theme2-count="all"]');
-    if (specialCount) specialCount.textContent = filtered.length;
+    theme2View.querySelector('[data-theme2-count="all"]')?.replaceChildren(document.createTextNode(items.length));
+    theme2View.querySelector('[data-theme2-count="returned"]')?.replaceChildren(document.createTextNode(items.filter(item => item.returned).length));
+    theme2View.querySelector('[data-theme2-count="evidence"]')?.replaceChildren(document.createTextNode(items.filter(item => item.missingFields.length > 0).length));
     // 流程分布保留各階段數量，僅套用搜尋與機制，不被階段自身過濾。
     const pipelineItems = items.filter(item => {
       const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
       const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
-      return categoryMatch && expectedDateMatch && searchMatch;
+      const specialMatch = special === 'all' || (special === 'returned' && item.returned) || (special === 'evidence' && item.missingFields.length > 0);
+      return categoryMatch && expectedDateMatch && searchMatch && specialMatch;
     });
     renderPipeline(pipelineItems);
     renderFlowMap(filtered);
@@ -444,7 +481,12 @@
 
   function applyTheme2Payload(payload, statusText = 'Google Sheet API', statusIcon = 'fa-cloud') {
     theme2ProjectName = payload.projectName || 'SGF 專案';
-    items = payload.items.map(normalizeRow).filter(Boolean);
+    const masterRowsBySequence = new Map();
+    payload.items.forEach(row => {
+      const sequence = String(row['序號'] || '').trim();
+      if (sequence && isTrue(row['進度主項'])) masterRowsBySequence.set(sequence, row);
+    });
+    items = payload.items.map((row, index) => normalizeRow(row, index, masterRowsBySequence)).filter(Boolean);
     finishTheme2Load(statusText, statusIcon);
   }
 
@@ -532,7 +574,10 @@
   };
   document.getElementById('theme2-stage-help-btn')?.addEventListener('click', openTheme2Help);
   document.getElementById('theme2-help-btn')?.addEventListener('click', openTheme2Help);
-  document.getElementById('theme2-schedule-btn')?.addEventListener('click', () => scheduleBtn?.click());
+  document.getElementById('theme2-schedule-btn')?.addEventListener('click', () => {
+    document.getElementById('theme2-expected-date-chips')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.dashboardShowToast('此頁以「企劃整合目標日」追蹤時程，可直接使用上方日期篩選。', 'info');
+  });
   document.getElementById('theme2-stage-help-close')?.addEventListener('click', closeStageHelpModal);
   stageHelpModal?.addEventListener('click', event => {
     if (event.target.id === 'theme2-stage-help-modal') closeStageHelpModal();
