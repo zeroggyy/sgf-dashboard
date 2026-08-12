@@ -92,6 +92,7 @@
   }
   function renderPipeline(filteredItems = items) {
     const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
+    const activeStage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
     const stageCounts = Object.fromEntries(PIPELINE_STAGES.map(stage => [stage, filteredItems.filter(item => item.stage === stage).length]));
     const maxCount = Math.max(0, ...Object.values(stageCounts));
     buttons.forEach(button => {
@@ -101,6 +102,8 @@
       if (strong) strong.textContent = stageCount;
       button.classList.toggle('is-bottleneck', maxCount > 0 && stageCount === maxCount);
       button.classList.toggle('is-empty', stageCount === 0);
+      button.classList.toggle('is-active', activeStage === stage);
+      button.setAttribute('aria-pressed', String(activeStage === stage));
     });
   }
 
@@ -300,7 +303,7 @@
   function applyFilters() {
     const category = document.getElementById('theme2-category-filter')?.value || '全部功能分類';
     const stage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
-    const requirementBatch = document.getElementById('theme2-priority-filter')?.value || 'all';
+    const requirementBatch = 'all';
     const query = (document.getElementById('theme2-search-input')?.value || '').trim().toLowerCase();
     const filtered = items.filter(item => {
       const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
@@ -312,7 +315,13 @@
     updateDimensionCounts({ category, stage, requirementBatch, query });
     const specialCount = theme2View.querySelector('[data-theme2-count="all"]');
     if (specialCount) specialCount.textContent = filtered.length;
-    renderPipeline(filtered);
+    // 流程分布保留各階段數量，僅套用搜尋與機制，不被階段自身過濾。
+    const pipelineItems = items.filter(item => {
+      const categoryMatch = category === '全部功能分類' || itemGroup(item) === category;
+      const searchMatch = !query || searchableText(item).includes(query);
+      return categoryMatch && searchMatch;
+    });
+    renderPipeline(pipelineItems);
     renderFlowMap(filtered);
   }
 
@@ -322,12 +331,6 @@
     theme2View.querySelectorAll('#theme2-category-chips .theme2-dimension-chip').forEach(chip => {
       const value = chip.dataset.selectValue;
       const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (requirementBatch === 'all' || requirementBatch === item.batch) && (value === '全部功能分類' || itemGroup(item) === value)).length;
-      const countEl = chip.querySelector('.theme2-chip-count');
-      if (countEl) countEl.textContent = total;
-    });
-    theme2View.querySelectorAll('#theme2-priority-chips .theme2-dimension-chip').forEach(chip => {
-      const value = chip.dataset.selectValue;
-      const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (category === '全部功能分類' || itemGroup(item) === category) && (value === 'all' || item.batch === value)).length;
       const countEl = chip.querySelector('.theme2-chip-count');
       if (countEl) countEl.textContent = total;
     });
@@ -342,14 +345,10 @@
 
   function bindTheme2Controls() {
     const categories = [...new Set(items.map(itemGroup))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-    const batches = [...new Set(items.map(item => item.batch).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
     const categorySelect = document.getElementById('theme2-category-filter');
     if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
     if (stageSelect) stageSelect.innerHTML = '<option value="全部階段">全部階段</option>' + PIPELINE_STAGES.map(stage => `<option value="${stage}">${STAGE_LABELS[stage]}</option>`).join('');
-    const prioritySelect = document.getElementById('theme2-priority-filter');
-    const visibleBatchLabel = value => items.find(item => item.batch === value)?.batchLabel || batchLabel(value);
-    if (prioritySelect) prioritySelect.innerHTML = '<option value="all">全部批次</option>' + batches.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(visibleBatchLabel(value))}</option>`).join('');
 
     function renderChipGroup(containerId, values, selectId) {
       const container = document.getElementById(containerId);
@@ -373,19 +372,14 @@
       { label: '全部', value: '全部功能分類', index: 0, count: items.length },
       ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => itemGroup(item) === category) }))
     ], 'theme2-category-filter');
-    renderChipGroup('theme2-priority-chips', [
-      { label: '全部', value: 'all', index: 0, count: items.length },
-      ...batches.map((value, index) => ({ label: visibleBatchLabel(value), value, index: index + 1, count: count(item => item.batch === value) }))
-    ], 'theme2-priority-filter');
-
     theme2View.querySelectorAll('.theme2-filter-chip').forEach(chip => chip.addEventListener('click', () => {
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.remove('active'));
       chip.classList.add('active');
       applyFilters();
     }));
-    ['theme2-category-filter', 'theme2-stage-filter', 'theme2-priority-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
+    ['theme2-category-filter', 'theme2-stage-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
     theme2View.querySelector('.demo-reset-btn')?.addEventListener('click', () => {
-      ['theme2-category-filter', 'theme2-stage-filter', 'theme2-priority-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
+      ['theme2-category-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
@@ -394,7 +388,12 @@
     });
     theme2View.querySelectorAll('[data-theme2-stage]').forEach(button => button.addEventListener('click', () => {
       const stageSelect = document.getElementById('theme2-stage-filter');
-      if (stageSelect) { stageSelect.value = button.dataset.theme2Stage; theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all')); applyFilters(); }
+      if (stageSelect) {
+        const clickedStage = button.dataset.theme2Stage;
+        stageSelect.value = stageSelect.value === clickedStage ? '全部階段' : clickedStage;
+        theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
+        applyFilters();
+      }
     }));
   }
 
