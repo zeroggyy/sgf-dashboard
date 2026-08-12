@@ -37,24 +37,17 @@
 .theme2-search span { display: block; }
 .theme2-pipeline { display: grid; grid-template-columns: repeat(8, minmax(108px, 1fr)); gap: 0.45rem; align-items: stretch; padding: 1rem; }
 .theme2-pipeline > i { display: none; }
-.theme2-pipeline-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; padding: 0 1rem 0.15rem; color: var(--text-muted); font-size: 0.62rem; }
-.theme2-pipeline-legend span { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.4rem; border: 1px solid var(--border-color); background: var(--bg-color); font-weight: 700; }
-.theme2-pipeline-legend .is-filtered { border-color: var(--theme-accent); color: var(--theme-accent); }
-.theme2-pipeline-legend .is-bottleneck { border-color: var(--theme-warning); color: #8b5a08; background: #fff6df; }
-.theme2-pipeline-legend .is-returned { border-color: var(--accent-red); color: var(--accent-red); background: #fff0ec; }
 .theme2-pipeline button { position: relative; min-height: 104px; display: flex; flex-direction: column; justify-content: center; gap: 0.55rem; padding: 1rem 0.65rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-primary); cursor: pointer; font-family: var(--font-main); transition: opacity 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease; }
 .theme2-pipeline button:hover { border-color: var(--text-primary); background: rgba(28, 26, 23, 0.04); }
 .theme2-pipeline button span { font-size: 0.68rem; color: var(--text-secondary); }
 .theme2-pipeline button strong { font-family: 'Playfair Display', Georgia, serif; font-size: 2.2rem; line-height: 1; }
 .theme2-pipeline > i { align-self: center; color: var(--text-muted); font-size: 0.8rem; }
 .theme2-pipeline button.is-empty { opacity: 0.42; }
-.theme2-pipeline button.is-bottleneck { border-color: var(--theme-warning); background: var(--theme-warning); color: #fff; transform: translateY(-3px); }
+.theme2-pipeline button.is-bottleneck { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; transform: translateY(-3px); }
 .theme2-pipeline button.is-bottleneck span { color: rgba(255, 255, 255, 0.82); }
-.theme2-pipeline button.is-returned-stage { border-color: var(--accent-red); background: var(--accent-red); color: #fff; }
-.theme2-pipeline button.is-returned-stage span { color: rgba(255, 255, 255, 0.86); }
-.theme2-pipeline button.is-active { border-color: var(--theme-accent); box-shadow: inset 0 0 0 3px var(--panel-bg), inset 0 0 0 5px var(--theme-accent), 0 0 0 2px rgba(47, 118, 159, 0.2); transform: translateY(-3px); }
-.theme2-pipeline button.is-active::after { content: '篩選中'; position: absolute; top: 0.35rem; right: 0.4rem; padding: 0.16rem 0.28rem; background: var(--theme-accent); color: #fff; font-size: 0.55rem; font-weight: 800; letter-spacing: 0.06em; }
-.theme2-pipeline button.is-active.is-bottleneck::after, .theme2-pipeline button.is-active.is-returned-stage::after { background: #fff; color: var(--theme-accent); }
+.theme2-pipeline button.is-active { border-color: var(--text-primary); box-shadow: inset 0 0 0 3px var(--panel-bg), inset 0 0 0 5px var(--theme-accent); transform: translateY(-3px); }
+.theme2-pipeline button.is-active::after { content: '篩選中'; position: absolute; top: 0.35rem; right: 0.4rem; color: var(--theme-accent); font-size: 0.55rem; font-weight: 800; letter-spacing: 0.06em; }
+.theme2-pipeline button.is-active.is-bottleneck::after { color: #fff; }
 .theme2-muted { color: var(--text-muted); font-size: 0.7rem; }
 .theme2-flow-map { padding: 1rem; overflow-x: auto; }
 .ui-flow-map { position: relative; display: grid; grid-template-columns: 155px 34px minmax(0, 1fr); gap: 0.75rem; align-items: start; min-width: 720px; }
@@ -313,8 +306,7 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 }
 .theme2-view .chip.active::before { background-color: #D7E8F1; }
 .theme2-view .theme2-pipeline button:hover { border-color: var(--theme-accent); background: var(--theme-accent-soft); }
-.theme2-view .theme2-pipeline button.is-bottleneck:hover { border-color: var(--theme-warning); background: #9b6813; color: #fff; }
-.theme2-view .theme2-pipeline button.is-returned-stage:hover { border-color: var(--accent-red); background: #a82b20; color: #fff; }
+.theme2-view .theme2-pipeline button.is-bottleneck:hover { border-color: var(--theme-accent); background: var(--theme-accent-hover); color: #fff; }
 .theme2-view .detail-empty i { color: var(--theme-accent); }
 .theme2-view .detail-missing { color: var(--theme-warning); background: rgba(183, 124, 26, 0.1); }
 .theme2-view .stage-help-btn:hover { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
@@ -326,4 +318,54 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-description span { display: block; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
 .theme2-detail-description p { margin: 0.3rem 0 0; color: var(--text-primary); font-size: 0.76rem; line-height: 1.55; white-space: pre-wrap; }
 .theme2-detail-description-primary { margin: 0 0 0.7rem; padding: 0.5rem 0.7rem; }
+
+/* 機制優先：以單層手風琴取代流程樹，避免閱讀時在分支與內容間來回移動。 */
+.theme2-flow-map { padding: 0.9rem; overflow: visible; background: #F7F8F8; }
+.mechanism-accordion-list { display: grid; gap: 0.6rem; }
+.mechanism-accordion { border: 1px solid #CAD3D8; background: #fff; }
+.mechanism-accordion.is-open { border-color: var(--theme-accent); box-shadow: 2px 2px 0 rgba(47, 111, 149, 0.1); }
+.mechanism-accordion-toggle { display: grid; grid-template-columns: minmax(190px, 1.05fr) minmax(360px, 1.8fr) 28px; gap: 1rem; align-items: center; width: 100%; min-height: 70px; padding: 0.7rem 0.85rem; border: 0; background: transparent; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.mechanism-accordion-toggle:hover { background: var(--theme-accent-soft); }
+.mechanism-accordion-title { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 0.45rem; align-items: center; }
+.mechanism-accordion-title > i { grid-row: span 2; color: var(--theme-accent); font-size: 0.9rem; }
+.mechanism-accordion-title strong { overflow: hidden; font-size: 0.9rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.mechanism-accordion-title small { color: var(--text-muted); font-size: 0.66rem; }
+.mechanism-accordion-summary { display: grid; grid-template-columns: minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(90px, auto); gap: 0.8rem; align-items: center; }
+.mechanism-accordion-summary > span:first-child { display: grid; gap: 0.15rem; color: var(--text-secondary); font-size: 0.66rem; }
+.mechanism-accordion-summary > span:first-child b { color: var(--text-muted); font-size: 0.58rem; }
+.mechanism-accordion-progress { display: flex; align-items: center; gap: 0.45rem; }
+.mechanism-accordion-progress i { display: block; flex: 1; height: 7px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-color); }
+.mechanism-accordion-progress em { display: block; height: 100%; background: var(--theme-accent); }
+.mechanism-accordion-progress b { min-width: 30px; color: var(--theme-accent); font-size: 0.68rem; }
+.mechanism-accordion-notices { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.3rem; }
+.mechanism-accordion-notices small { padding: 0.18rem 0.32rem; background: #fff4dd; color: #8d5a06; font-size: 0.58rem; font-weight: 700; white-space: nowrap; }
+.mechanism-accordion-chevron { color: var(--theme-accent); transition: transform 0.18s ease; }
+.mechanism-accordion.is-open .mechanism-accordion-chevron { transform: rotate(180deg); }
+.mechanism-accordion-panel { display: none; padding: 0.75rem; border-top: 1px solid #CAD3D8; background: #F8FAFB; }
+.mechanism-accordion.is-open .mechanism-accordion-panel { display: block; }
+.mechanism-accordion-panel-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.65rem; color: var(--text-secondary); font-size: 0.7rem; }
+.mechanism-accordion-panel-head small { color: var(--text-muted); }
+.mechanism-item-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; }
+.mechanism-item-card { position: relative; display: grid; grid-template-rows: auto 1fr; min-width: 0; padding: 0.45rem; border: 1px solid #CAD3D8; border-top: 3px solid #A9B8C0; background: #fff; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.mechanism-item-card:hover { border-color: var(--theme-accent); color: var(--text-primary); box-shadow: 2px 2px 0 rgba(47, 111, 149, 0.1); }
+.mechanism-item-card.has-missing { border-top-color: var(--theme-warning); }
+.mechanism-item-card.is-complete { border-top-color: var(--theme-success); }
+.mechanism-item-card.is-returned { border-top-color: var(--accent-red); background: #fff8f6; }
+.mechanism-item-card.is-reference { background-image: linear-gradient(135deg, transparent 0 9px, rgba(142, 175, 193, 0.12) 9px 11px, transparent 11px 20px); }
+.mechanism-item-thumb { display: flex; aspect-ratio: 16 / 9; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #D7E0E4; background: #EEF2F4; color: var(--text-muted); }
+.mechanism-item-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+.mechanism-item-thumb.is-empty { flex-direction: column; gap: 0.3rem; border-style: dashed; }
+.mechanism-item-thumb.is-empty i { font-size: 1rem; color: #A9B8C0; }
+.mechanism-item-thumb.is-empty small { font-size: 0.6rem; }
+.mechanism-item-copy { display: grid; align-content: start; gap: 0.18rem; min-width: 0; padding: 0.5rem 0.08rem 0.06rem; }
+.mechanism-item-sequence { color: var(--theme-accent); font-size: 0.62rem; font-weight: 700; }
+.mechanism-item-copy strong { overflow: hidden; font-size: 0.8rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.mechanism-item-stage { color: var(--theme-accent); font-size: 0.67rem; font-weight: 700; }
+.mechanism-item-flags { display: flex; flex-wrap: wrap; gap: 0.25rem; min-height: 1rem; }
+.mechanism-item-flags small { padding: 0.1rem 0.25rem; color: #8d5a06; background: #fff4dd; font-size: 0.56rem; font-weight: 700; }
+.mechanism-item-open { position: absolute; top: 0.6rem; right: 0.6rem; display: grid; width: 1.75rem; height: 1.75rem; place-items: center; background: rgba(255,255,255,.84); color: var(--theme-accent); cursor: zoom-in; }
+.mechanism-item-open:hover, .mechanism-item-open:focus-visible { background: var(--theme-accent); color: #fff; outline: none; }
+@media (max-width: 1180px) { .mechanism-item-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 780px) { .mechanism-accordion-toggle { grid-template-columns: minmax(0, 1fr) 22px; gap: 0.6rem; } .mechanism-accordion-summary { grid-column: 1; grid-template-columns: 1fr; gap: 0.4rem; } .mechanism-accordion-chevron { grid-column: 2; grid-row: 1; } .mechanism-accordion-notices { justify-content: flex-start; } .mechanism-item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .mechanism-item-grid { grid-template-columns: 1fr; } .mechanism-accordion-panel-head { display: grid; gap: 0.25rem; } }
 

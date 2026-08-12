@@ -38,6 +38,7 @@
   };
   let items = [];
   let theme2ProjectName = 'SGF 專案';
+  let openMechanismKey = '';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
   function stageDone(row, stage) {
@@ -139,8 +140,7 @@
       const stageCount = stageCounts[stage];
       const strong = button.querySelector('strong');
       if (strong) strong.textContent = stageCount;
-      button.classList.toggle('is-bottleneck', stage !== 'returned' && maxCount > 0 && stageCount === maxCount);
-      button.classList.toggle('is-returned-stage', stage === 'returned' && stageCount > 0);
+      button.classList.toggle('is-bottleneck', maxCount > 0 && stageCount === maxCount);
       button.classList.toggle('is-empty', stageCount === 0);
       button.classList.toggle('is-active', activeStage === stage);
       button.setAttribute('aria-pressed', String(activeStage === stage));
@@ -298,6 +298,71 @@
     }));
   }
 
+  function renderMechanismAccordion(filteredItems = items) {
+    const container = document.getElementById('theme2-flow-map');
+    if (!container) return;
+    setText('theme2-flow-count', `目前顯示 ${filteredItems.length} / ${items.length} 項`);
+    const groups = new Map();
+    filteredItems.forEach(item => {
+      const mechanism = itemGroup(item);
+      if (!groups.has(mechanism)) groups.set(mechanism, []);
+      groups.get(mechanism).push(item);
+    });
+    if (!groups.size) {
+      container.innerHTML = '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
+      return;
+    }
+    if (!groups.has(openMechanismKey)) openMechanismKey = groups.size === 1 ? groups.keys().next().value : '';
+    const getGyazoId = value => String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
+    const progressOf = group => Math.round(group.reduce((sum, item) => sum + STAGES.filter(stage => item.checklist[stage]).length, 0) / (group.length * STAGES.length) * 100);
+    const summaryOf = group => {
+      const stageCounts = {};
+      group.forEach(item => { stageCounts[item.stage] = (stageCounts[item.stage] || 0) + 1; });
+      const [stage, count] = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0] || ['planning', 0];
+      return { stage, count, missing: group.reduce((sum, item) => sum + item.missingFields.length, 0), returned: group.filter(item => item.returned).length };
+    };
+    const cardOf = item => {
+      const imageId = getGyazoId(item.gyazoUrl);
+      const preview = imageId
+        ? `<span class="mechanism-item-thumb"><img src="https://i.gyazo.com/${escapeHtml(imageId)}.jpg" data-gyazo-id="${escapeHtml(imageId)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
+        : '<span class="mechanism-item-thumb is-empty"><i class="fa-regular fa-image"></i><small>未提供縮圖</small></span>';
+      const state = [item.missingFields.length ? 'has-missing' : '', item.returned ? 'is-returned' : '', item.isReference ? 'is-reference' : '', STAGES.every(stage => item.checklist[stage]) ? 'is-complete' : ''].filter(Boolean).join(' ');
+      const flags = [item.isReference ? '共用進度' : '', item.returned ? '退回處理' : '', item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
+      const openImage = imageId ? `<span class="mechanism-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
+      return `<button class="mechanism-item-card ${state}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><small class="mechanism-item-sequence">${escapeHtml(item.sequence || '待補序號')}</small><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-stage">${escapeHtml(item.stageLabel)}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
+    };
+    const accordions = [...groups.entries()].map(([mechanism, group]) => {
+      const key = encodeURIComponent(mechanism);
+      const open = mechanism === openMechanismKey;
+      const progress = progressOf(group);
+      const summary = summaryOf(group);
+      const status = `${STAGE_LABELS[summary.stage] || summary.stage} ${summary.count} 項`;
+      const notices = [summary.returned ? `退回 ${summary.returned}` : '', summary.missing ? `缺欄 ${summary.missing}` : ''].filter(Boolean).map(value => `<small>${value}</small>`).join('');
+      return `<section class="mechanism-accordion ${open ? 'is-open' : ''}" data-mechanism-key="${key}"><button class="mechanism-accordion-toggle" type="button" aria-expanded="${open}"><span class="mechanism-accordion-title"><i class="fa-solid fa-layer-group"></i><strong>${escapeHtml(mechanism)}</strong><small>${group.length} 個項目</small></span><span class="mechanism-accordion-summary"><span><b>主要卡點</b>${escapeHtml(status)}</span><span class="mechanism-accordion-progress"><i><em style="width:${progress}%"></em></i><b>${progress}%</b></span><span class="mechanism-accordion-notices">${notices}</span></span><i class="fa-solid fa-chevron-down mechanism-accordion-chevron"></i></button><div class="mechanism-accordion-panel"><div class="mechanism-accordion-panel-head"><span>${escapeHtml(mechanism)} · UI 項目與進度</span><small>點擊項目查看詳情</small></div><div class="mechanism-item-grid">${group.map(cardOf).join('')}</div></div></section>`;
+    }).join('');
+    container.innerHTML = `<div class="mechanism-accordion-list">${accordions}</div>`;
+    container.querySelectorAll('.mechanism-accordion-toggle').forEach(toggle => toggle.addEventListener('click', () => {
+      const section = toggle.closest('.mechanism-accordion');
+      const selected = decodeURIComponent(section.dataset.mechanismKey || '');
+      openMechanismKey = section.classList.contains('is-open') ? '' : selected;
+      renderMechanismAccordion(filteredItems);
+    }));
+    container.querySelectorAll('img[data-gyazo-id]').forEach(image => {
+      const id = image.dataset.gyazoId;
+      const extensions = ['jpg', 'png', 'gif']; let attempt = 0;
+      image.addEventListener('error', () => { attempt += 1; if (attempt < extensions.length) image.src = `https://i.gyazo.com/${id}.${extensions[attempt]}`; });
+    });
+    container.querySelectorAll('.mechanism-item-open[data-original-url]').forEach(control => {
+      const open = event => { event.preventDefault(); event.stopPropagation(); window.open(control.dataset.originalUrl, '_blank', 'noopener,noreferrer'); };
+      control.addEventListener('click', open);
+      control.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') open(event); });
+    });
+    container.querySelectorAll('[data-theme2-item-id]').forEach(card => card.addEventListener('click', () => {
+      const item = items.find(candidate => candidate.id === card.dataset.theme2ItemId);
+      if (item) renderDetail(item);
+    }));
+  }
+
   function renderDetail(item) {
     const modal = document.getElementById('theme2-detail-modal');
     const detail = document.getElementById('theme2-detail-modal-body');
@@ -371,7 +436,7 @@
       return categoryMatch && expectedDateMatch && searchMatch && specialMatch;
     });
     renderPipeline(pipelineItems);
-    renderFlowMap(filtered);
+    renderMechanismAccordion(filtered);
   }
 
   function updateDimensionCounts({ category, expectedDate, stage, query }) {
