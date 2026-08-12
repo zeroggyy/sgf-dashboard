@@ -154,6 +154,7 @@
 .theme2-detail-dialog { width: min(760px, 94vw); max-height: min(760px, 88vh); overflow: auto; padding: 1.25rem; border: 2px solid var(--border-color); background: var(--panel-bg); box-shadow: 8px 8px 0 rgba(28, 26, 23, 0.16); transform: translateY(10px); transition: transform 0.2s ease; }
 .theme2-detail-modal.open .theme2-detail-dialog { transform: translateY(0); }
 .theme2-detail-dialog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 0.65rem; border-bottom: 3px double var(--border-color); }
+.theme2-detail-dialog-header > h2 { margin: 0; font-size: 1.45rem; line-height: 1.15; }
 .theme2-detail-dialog-header button { border: 0; background: transparent; color: var(--text-primary); font-size: 1.8rem; line-height: 0.8; cursor: pointer; }
 .theme2-detail-dialog .theme2-detail-content { padding: 0.8rem 0 0; }
 .theme2-detail-dialog .theme2-detail-content h2 { margin: 0 0 1rem; font-size: 1.45rem; }
@@ -308,5 +309,5 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-description { margin-top: 0.7rem; padding: 0.65rem 0.75rem; border: 1px solid var(--theme2-line); background: rgba(234, 242, 246, 0.35); }
 .theme2-detail-description span { display: block; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
 .theme2-detail-description p { margin: 0.3rem 0 0; color: var(--text-primary); font-size: 0.76rem; line-height: 1.55; white-space: pre-wrap; }
-.theme2-detail-description-primary { margin: 0.55rem 0 0.7rem; }
+.theme2-detail-description-primary { margin: 0 0 0.7rem; padding: 0.5rem 0.7rem; }
 
