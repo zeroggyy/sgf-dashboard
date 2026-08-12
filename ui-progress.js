@@ -94,6 +94,7 @@
     return {
       rowIndex: index + 2,
       id: `${category}-${name}-${index}`,
+      itemId: String(row['項目ID'] || '').trim(),
       name,
       category,
       mechanism: usesNewColumns ? category : (row['第二層節點'] || row['機制分類'] || ''),
