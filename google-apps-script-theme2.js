@@ -18,11 +18,23 @@
 const SPREADSHEET_ID = '請填入主題二 Google Sheet ID';
 const SHEET_NAME = 'SGF_UI_DataBase';
 const API_KEY = '請自行設定一組長且隨機的 API Key';
+const RESPONSE_CACHE_KEY = 'theme2_sheet_payload_v1';
+const RESPONSE_CACHE_SECONDS = 60;
 
 function doGet(e) {
   try {
     if (!isAuthorized(e)) {
       return jsonResponse({ error: 'Unauthorized: Invalid API Key' }, 401);
+    }
+
+    const cache = CacheService.getScriptCache();
+    const cachedPayload = cache.get(RESPONSE_CACHE_KEY);
+    if (cachedPayload) {
+      try {
+        return jsonResponse(JSON.parse(cachedPayload));
+      } catch (cacheError) {
+        cache.remove(RESPONSE_CACHE_KEY);
+      }
     }
 
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -48,13 +60,19 @@ function doGet(e) {
       });
 
     const projectName = items.find(item => item['專案名稱'])?.['專案名稱'] || 'SGF 專案';
-    return jsonResponse({
+    const payload = {
       projectName,
       sheetName: SHEET_NAME,
       columns,
       items,
       updatedAt: new Date().toISOString()
-    });
+    };
+    try {
+      cache.put(RESPONSE_CACHE_KEY, JSON.stringify(payload), RESPONSE_CACHE_SECONDS);
+    } catch (cacheError) {
+      console.warn(`Theme 2 response cache skipped: ${cacheError}`);
+    }
+    return jsonResponse(payload);
   } catch (error) {
     return jsonResponse({ error: String(error) }, 500);
   }
