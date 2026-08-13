@@ -25,6 +25,7 @@
   let selectedItem = null;
   let editing = false;
   let openCategory = '';
+  let workFilter = 'all';
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -33,6 +34,64 @@
   const trueValue = value => String(value).trim().toUpperCase() === 'TRUE';
   const showToast = (message, type = 'info') => window.dashboardShowToast?.(message, type);
   const gyazoId = value => String(value || '').match(/gyazo\.com\/(?:public\/)?([a-z0-9]+)/i)?.[1] || '';
+
+  function dateValue(value) {
+    const matched = String(value || '').trim().match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (!matched) return null;
+    const date = new Date(Number(matched[1]), Number(matched[2]) - 1, Number(matched[3]));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function startOfToday() {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  }
+
+  function isArtAction(item) {
+    return ['returned', 'art', 'export'].includes(item.stage);
+  }
+
+  function dueState(item) {
+    if (!isArtAction(item)) return '';
+    const target = dateValue(item.raw['目標日']);
+    if (!target) return '';
+    const days = Math.round((target - startOfToday()) / 86400000);
+    if (days < 0) return 'overdue';
+    if (days <= 7) return 'due-soon';
+    return '';
+  }
+
+  function actionOf(item) {
+    if (item.stage === 'returned') return '處理退回修改';
+    if (item.stage === 'art') return '開始美術製作';
+    if (item.stage === 'export') return '輸出正式切圖';
+    if (item.stage === 'planning') return '等待企劃需求';
+    if (item.stage === 'review') return '等待企劃驗收';
+    return '已完成';
+  }
+
+  function priorityOf(item) {
+    const due = dueState(item);
+    if (item.stage === 'returned') return 0;
+    if (due === 'overdue') return 1;
+    if (due === 'due-soon') return 2;
+    if (item.stage === 'art') return 3;
+    if (item.stage === 'export') return 4;
+    if (item.stage === 'review') return 5;
+    if (item.stage === 'planning') return 6;
+    return 7;
+  }
+
+  function compareWorkItems(a, b) {
+    const priorityDifference = priorityOf(a) - priorityOf(b);
+    if (priorityDifference) return priorityDifference;
+    const aDate = dateValue(a.raw['目標日']);
+    const bDate = dateValue(b.raw['目標日']);
+    if (aDate && bDate && aDate.getTime() !== bDate.getTime()) return aDate - bDate;
+    if (aDate && !bDate) return -1;
+    if (!aDate && bDate) return 1;
+    return a.index - b.index;
+  }
 
   function stageOf(row) {
     if (trueValue(row['退回修改中'])) return 'returned';
@@ -110,18 +169,25 @@
   }
 
   function renderStats() {
-    const configs = [['all', 'Icon 總數'], ...STAGES];
-    const selectedLabel = $('icon-stage-filter').value;
-    $('icon-stats').innerHTML = configs.map(([stage, label]) => {
-      const active = stage === 'all' ? selectedLabel === 'all' : selectedLabel === STAGE_LABELS[stage];
-      const count = stage === 'all' ? items.length : items.filter(item => item.stage === stage).length;
-      return `<button class="icon-stat ${stage === 'returned' ? 'is-alert' : ''} ${active ? 'active' : ''}" data-stat-stage="${stage}" type="button" aria-pressed="${active}" title="${active && stage !== 'all' ? `取消「${esc(label)}」篩選` : `只顯示「${esc(label)}」`}"><span>${esc(label)}</span><strong>${count}</strong><small>${active ? '篩選中' : '點擊篩選'}</small></button>`;
+    const configs = [
+      ['returned', '需要修改', '退回項目優先處理', 'is-alert'],
+      ['art', '待製作', '企劃需求已完成', ''],
+      ['export', '待切圖', '美術完稿待輸出', ''],
+      ['due-soon', '即將到期', '目標日在 7 天內', 'is-warning'],
+      ['overdue', '已逾期', '超過目標日', 'is-alert']
+    ];
+    $('icon-stats').innerHTML = configs.map(([filter, label, description, className]) => {
+      const active = workFilter === filter;
+      const count = filter === 'due-soon' || filter === 'overdue'
+        ? items.filter(item => dueState(item) === filter).length
+        : items.filter(item => item.stage === filter).length;
+      return `<button class="icon-stat ${className} ${active ? 'active' : ''}" data-work-filter="${filter}" type="button" aria-pressed="${active}" title="${active ? `取消「${esc(label)}」篩選` : `只顯示「${esc(label)}」`}"><span>${esc(label)}</span><strong>${count}</strong><small>${active ? '篩選中' : esc(description)}</small></button>`;
     }).join('');
 
-    $('icon-stats').querySelectorAll('[data-stat-stage]').forEach(button => {
+    $('icon-stats').querySelectorAll('[data-work-filter]').forEach(button => {
       button.addEventListener('click', () => {
-        const target = button.dataset.statStage === 'all' ? 'all' : STAGE_LABELS[button.dataset.statStage];
-        $('icon-stage-filter').value = $('icon-stage-filter').value === target && target !== 'all' ? 'all' : target;
+        workFilter = workFilter === button.dataset.workFilter ? 'all' : button.dataset.workFilter;
+        $('icon-stage-filter').value = 'all';
         applyFilters();
       });
     });
@@ -148,11 +214,14 @@
         (stage === 'all' || STAGE_LABELS[item.stage] === stage) &&
         (group === 'all' || item.group === group) &&
         (locale === 'all' || item.locale === locale) &&
+        (workFilter === 'all' ||
+          (['returned', 'art', 'export'].includes(workFilter) && item.stage === workFilter) ||
+          (['due-soon', 'overdue'].includes(workFilter) && dueState(item) === workFilter)) &&
         (special === 'all' ||
           (special === 'returned' && item.stage === 'returned') ||
           (special === 'missing' && item.missing.length) ||
           (special === 'no-preview' && !raw['預覽圖連結']));
-    });
+    }).sort(compareWorkItems);
 
     renderStats();
     renderGroups(filtered);
@@ -183,18 +252,29 @@
         const preview = imageId
           ? `<img src="https://i.gyazo.com/${esc(imageId)}.jpg" alt="${esc(item.name)}" loading="lazy">`
           : '<i class="fa-regular fa-image"></i>';
-        const flags = [
-          item.missing.length ? `待補 ${item.missing.length}` : '',
-          item.locale || '',
-          item.group && item.variants.length > 1 ? `${item.variants.length} 版本` : '',
-          item.stage === 'returned' ? '退回' : ''
-        ].filter(Boolean);
+        const due = dueState(item);
+        const alertText = item.stage === 'returned'
+          ? raw['退回原因'] || '退回原因待補'
+          : due === 'overdue'
+            ? '已超過目標日'
+            : due === 'due-soon'
+              ? '7 天內到期'
+              : item.missing.length
+                ? `待補 ${item.missing.length} 項資料`
+                : item.group && item.variants.length > 1
+                  ? `${item.variants.length} 個語系版本`
+                  : '';
+        const alertClass = item.stage === 'returned' || due === 'overdue'
+          ? 'is-danger'
+          : due === 'due-soon' || item.missing.length
+            ? 'is-warning'
+            : '';
         const previewLink = previewUrl
           ? `<a class="icon-preview-link" href="${esc(previewUrl)}" target="_blank" rel="noopener" title="另開預覽圖"><i class="fa-solid fa-arrow-up-right-from-square"></i> 預覽圖</a>`
           : '<span class="icon-preview-missing">無預覽圖</span>';
-        return `<div class="icon-list-row ${item.missing.length ? 'has-missing' : ''} ${item.stage === 'returned' ? 'is-returned' : ''}" data-icon-index="${item.index}"><button class="icon-row-main" type="button" aria-label="查看 ${esc(item.name)} 詳細資料"><span class="icon-thumb">${preview}</span><span class="icon-row-id">${esc(item.id || '待填 Icon ID')}</span><strong class="icon-row-name">${esc(item.name)}</strong><span class="icon-row-file">${esc(raw['檔名'] || '檔名待補')}</span><span class="icon-row-size">${esc(raw['主要尺寸'] || '尺寸待補')}</span><span class="icon-row-stage">${esc(STAGE_LABELS[item.stage])}</span><span class="icon-flags">${flags.map(flag => `<em>${esc(flag)}</em>`).join('')}</span></button>${previewLink}</div>`;
+        return `<div class="icon-list-row ${item.missing.length ? 'has-missing' : ''} ${item.stage === 'returned' ? 'is-returned' : ''} ${due === 'overdue' ? 'is-overdue' : ''}" data-icon-index="${item.index}"><button class="icon-row-main" type="button" aria-label="查看 ${esc(item.name)} 詳細資料"><span class="icon-thumb">${preview}</span><span class="icon-row-id">${esc(item.id || '待填 Icon ID')}</span><strong class="icon-row-name">${esc(item.name)}</strong><span class="icon-row-locale">${esc(item.locale || '—')}</span><span class="icon-row-action">${esc(actionOf(item))}</span><span class="icon-row-due ${due}">${esc(raw['目標日'] || '未排日期')}</span><span class="icon-row-alert ${alertClass}" title="${esc(alertText)}">${esc(alertText || '—')}</span></button>${previewLink}</div>`;
       }).join('');
-      return `<section class="icon-group ${open ? 'open' : ''}" data-category="${esc(key)}"><button class="icon-group-toggle" type="button"><span><strong>${esc(type)}</strong><small> · ${esc(subtype)}</small></span><small>${groupItems.length} 項</small><i class="fa-solid fa-chevron-down"></i></button><div class="icon-group-body"><div class="icon-list-head"><span>縮圖</span><span>Icon ID</span><span>項目名稱</span><span>檔名</span><span>尺寸</span><span>製作階段</span><span>狀態</span><span>連結</span></div><div class="icon-list">${rows}</div></div></section>`;
+      return `<section class="icon-group ${open ? 'open' : ''}" data-category="${esc(key)}"><button class="icon-group-toggle" type="button"><span><strong>${esc(type)}</strong><small> · ${esc(subtype)}</small></span><small>${groupItems.length} 項</small><i class="fa-solid fa-chevron-down"></i></button><div class="icon-group-body"><div class="icon-list-head"><span>縮圖</span><span>Icon ID</span><span>項目名稱</span><span>語系</span><span>需要的動作</span><span>目標日</span><span>提醒</span><span>預覽</span></div><div class="icon-list">${rows}</div></div></section>`;
     }).join('');
 
     $('icon-groups').querySelectorAll('.icon-group-toggle').forEach(button => {
@@ -255,7 +335,7 @@
       ? variants.map(variant => `<article class="icon-locale-card"><b>${esc(variant.locale || '未指定語系')}</b><p>${esc(variant.name)}</p><small>${esc(variant.id)} · ${esc(STAGE_LABELS[variant.stage])}</small><button data-open-variant="${variant.index}" type="button" ${variant.index === item.index ? 'disabled' : ''}>${variant.index === item.index ? '目前項目' : '查看版本'}</button></article>`).join('')
       : '<div class="icon-empty">此項目沒有語系群組</div>';
 
-    $('icon-detail-body').innerHTML = `<div class="icon-detail-actions"><button id="icon-edit-btn" type="button"><i class="fa-solid fa-pen"></i> 編輯此項目</button></div>${preview}<div class="icon-meta"><div><span>Icon ID</span><strong>${esc(item.id || '待填')}</strong></div><div><span>群組</span><strong>${esc(item.group || '無')}</strong></div><div><span>語系</span><strong>${esc(item.locale || '無')}</strong></div><div><span>類型</span><strong>${esc(raw['類型'] || '待補')}</strong></div><div><span>子類型</span><strong>${esc(raw['子類型'] || '待補')}</strong></div><div><span>目前階段</span><strong>${esc(STAGE_LABELS[item.stage])}</strong></div><div><span>尺寸</span><strong>${esc([raw['主要尺寸'], raw['其他尺寸']].filter(Boolean).join(' / ') || '待補')}</strong></div><div><span>檔名</span><strong>${esc(raw['檔名'] || '待補')}</strong></div></div><section class="icon-section"><h3>製作流程</h3><div class="icon-progress-list">${progress}</div></section><section class="icon-section"><h3>使用位置</h3><div class="icon-path">${pathRow('使用位置', raw['使用位置'])}${pathRow('使用備註', raw['使用備註'])}</div></section><section class="icon-section"><h3>交付資料</h3><div class="icon-path">${pathRow('需求圖', raw['需求圖連結'])}${pathRow('預覽圖', raw['預覽圖連結'])}${pathRow('來源檔', raw['來源檔路徑'])}${pathRow('輸出', raw['輸出路徑'])}</div></section><section class="icon-section"><h3>同群組語系版本</h3><div class="icon-locale-grid">${variantCards}</div></section>`;
+    $('icon-detail-body').innerHTML = `<div class="icon-detail-actions"><button id="icon-edit-btn" type="button"><i class="fa-solid fa-pen"></i> 編輯此項目</button></div>${preview}<div class="icon-meta"><div><span>Icon ID</span><strong>${esc(item.id || '待填')}</strong></div><div><span>群組</span><strong>${esc(item.group || '無')}</strong></div><div><span>語系</span><strong>${esc(item.locale || '無')}</strong></div><div><span>類型</span><strong>${esc(raw['類型'] || '待補')}</strong></div><div><span>子類型</span><strong>${esc(raw['子類型'] || '待補')}</strong></div><div><span>需要的動作</span><strong>${esc(actionOf(item))}</strong></div><div><span>目標日</span><strong>${esc(raw['目標日'] || '尚未安排')}</strong></div><div><span>尺寸</span><strong>${esc([raw['主要尺寸'], raw['其他尺寸']].filter(Boolean).join(' / ') || '待補')}</strong></div><div><span>檔名</span><strong>${esc(raw['檔名'] || '待補')}</strong></div></div><section class="icon-section"><h3>製作流程</h3><div class="icon-progress-list">${progress}</div></section><section class="icon-section"><h3>使用位置</h3><div class="icon-path">${pathRow('使用位置', raw['使用位置'])}${pathRow('使用備註', raw['使用備註'])}</div></section><section class="icon-section"><h3>交付資料</h3><div class="icon-path">${pathRow('需求圖', raw['需求圖連結'])}${pathRow('預覽圖', raw['預覽圖連結'])}${pathRow('來源檔', raw['來源檔路徑'])}${pathRow('輸出', raw['輸出路徑'])}</div></section><section class="icon-section"><h3>同群組語系版本</h3><div class="icon-locale-grid">${variantCards}</div></section>`;
 
     $('icon-edit-btn').addEventListener('click', () => {
       editing = true;
@@ -426,7 +506,10 @@
   }
 
   ['icon-search-input', 'icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-group-filter', 'icon-locale-filter']
-    .forEach(id => $(id).addEventListener(id === 'icon-search-input' ? 'input' : 'change', applyFilters));
+    .forEach(id => $(id).addEventListener(id === 'icon-search-input' ? 'input' : 'change', () => {
+      if (id === 'icon-stage-filter' && $(id).value !== 'all') workFilter = 'all';
+      applyFilters();
+    }));
 
   $('icon-special-filters').querySelectorAll('button').forEach(button => {
     button.addEventListener('click', () => {
@@ -437,6 +520,7 @@
 
   $('icon-reset-btn').addEventListener('click', () => {
     $('icon-search-input').value = '';
+    workFilter = 'all';
     ['icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-group-filter', 'icon-locale-filter']
       .forEach(id => { $(id).value = 'all'; });
     $('icon-special-filters').querySelectorAll('button')
