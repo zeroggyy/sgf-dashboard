@@ -163,7 +163,6 @@
   function populateFilters() {
     fillSelect('icon-type-filter', unique('類型'), '全部類型');
     fillSelect('icon-subtype-filter', unique('子類型'), '全部子類型');
-    fillSelect('icon-group-filter', unique('群組'), '全部群組');
     fillSelect('icon-locale-filter', unique('語系'), '全部語系');
     fillSelect('icon-stage-filter', STAGES.map(([, label]) => label), '全部階段');
   }
@@ -198,7 +197,6 @@
     const type = $('icon-type-filter').value;
     const subtype = $('icon-subtype-filter').value;
     const stage = $('icon-stage-filter').value;
-    const group = $('icon-group-filter').value;
     const locale = $('icon-locale-filter').value;
     const special = $('icon-special-filters').querySelector('.active')?.dataset.filter || 'all';
 
@@ -212,7 +210,6 @@
         (type === 'all' || raw['類型'] === type) &&
         (subtype === 'all' || raw['子類型'] === subtype) &&
         (stage === 'all' || STAGE_LABELS[item.stage] === stage) &&
-        (group === 'all' || item.group === group) &&
         (locale === 'all' || item.locale === locale) &&
         (workFilter === 'all' ||
           (['returned', 'art', 'export'].includes(workFilter) && item.stage === workFilter) ||
@@ -505,7 +502,7 @@
     document.body.classList.remove('body-scroll-lock');
   }
 
-  ['icon-search-input', 'icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-group-filter', 'icon-locale-filter']
+  ['icon-search-input', 'icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-locale-filter']
     .forEach(id => $(id).addEventListener(id === 'icon-search-input' ? 'input' : 'change', () => {
       if (id === 'icon-stage-filter' && $(id).value !== 'all') workFilter = 'all';
       applyFilters();
@@ -521,7 +518,7 @@
   $('icon-reset-btn').addEventListener('click', () => {
     $('icon-search-input').value = '';
     workFilter = 'all';
-    ['icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-group-filter', 'icon-locale-filter']
+    ['icon-type-filter', 'icon-subtype-filter', 'icon-stage-filter', 'icon-locale-filter']
       .forEach(id => { $(id).value = 'all'; });
     $('icon-special-filters').querySelectorAll('button')
       .forEach(item => item.classList.toggle('active', item.dataset.filter === 'all'));
