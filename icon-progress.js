@@ -18,6 +18,10 @@
     '多狀態', '企劃需求完成', '美術完稿完成',
     '輸出切圖完成', '退回修改中', '企劃驗收完成'
   ];
+  const PROGRESS_BOOLEAN_FIELDS = [
+    '企劃需求完成', '美術完稿完成', '輸出切圖完成',
+    '退回修改中', '企劃驗收完成'
+  ];
 
   let apiUrl = localStorage.getItem(API_URL_KEY) || '';
   let apiKey = localStorage.getItem(API_KEY_KEY) || '';
@@ -315,12 +319,21 @@
     const preview = imageId
       ? `<a class="icon-detail-preview" href="${esc(raw['預覽圖連結'])}" target="_blank" rel="noopener"><img src="https://i.gyazo.com/${esc(imageId)}.jpg" alt="${esc(item.name)}"></a>`
       : '';
-    const progress = [
+    const progressSteps = [
       ['企劃需求完成', '企劃需求'],
       ['美術完稿完成', '美術完稿'],
       ['輸出切圖完成', '輸出切圖'],
       ['企劃驗收完成', '企劃驗收']
-    ].map(([key, label]) => `<div class="icon-progress-item ${trueValue(raw[key]) ? 'done' : ''}"><i class="fa-solid ${trueValue(raw[key]) ? 'fa-circle-check' : 'fa-circle'}"></i> ${label}</div>`).join('');
+    ];
+    const currentStepIndex = progressSteps.findIndex(([key]) => !trueValue(raw[key]));
+    const progress = progressSteps.map(([key, label], index) => {
+      const done = trueValue(raw[key]);
+      const current = !done && index === currentStepIndex;
+      const stateClass = done ? 'done' : current ? 'current' : 'pending';
+      const icon = done ? 'fa-circle-check' : current ? 'fa-clock' : 'fa-circle';
+      const stateLabel = done ? '已完成' : current ? (item.stage === 'returned' ? '退回修改中' : '目前待處理') : '尚未開始';
+      return `<div class="icon-progress-item ${stateClass}"><i class="fa-solid ${icon}"></i><span><strong>${esc(label)}</strong><small>${esc(stateLabel)}</small></span></div>`;
+    }).join('');
 
     const localeOrder = ['繁中', '簡中', '英文', '日文'];
     const variants = [...item.variants].sort((a, b) => {
@@ -332,7 +345,10 @@
       ? variants.map(variant => `<article class="icon-locale-card"><b>${esc(variant.locale || '未指定語系')}</b><p>${esc(variant.name)}</p><small>${esc(variant.id)} · ${esc(STAGE_LABELS[variant.stage])}</small><button data-open-variant="${variant.index}" type="button" ${variant.index === item.index ? 'disabled' : ''}>${variant.index === item.index ? '目前項目' : '查看版本'}</button></article>`).join('')
       : '<div class="icon-empty">此項目沒有語系群組</div>';
 
-    $('icon-detail-body').innerHTML = `<div class="icon-detail-actions"><button id="icon-edit-btn" type="button"><i class="fa-solid fa-pen"></i> 編輯此項目</button></div>${preview}<div class="icon-meta"><div><span>Icon ID</span><strong>${esc(item.id || '待填')}</strong></div><div><span>群組</span><strong>${esc(item.group || '無')}</strong></div><div><span>語系</span><strong>${esc(item.locale || '無')}</strong></div><div><span>類型</span><strong>${esc(raw['類型'] || '待補')}</strong></div><div><span>子類型</span><strong>${esc(raw['子類型'] || '待補')}</strong></div><div><span>需要的動作</span><strong>${esc(actionOf(item))}</strong></div><div><span>目標日</span><strong>${esc(raw['目標日'] || '尚未安排')}</strong></div><div><span>尺寸</span><strong>${esc([raw['主要尺寸'], raw['其他尺寸']].filter(Boolean).join(' / ') || '待補')}</strong></div><div><span>檔名</span><strong>${esc(raw['檔名'] || '待補')}</strong></div></div><section class="icon-section"><h3>製作流程</h3><div class="icon-progress-list">${progress}</div></section><section class="icon-section"><h3>使用位置</h3><div class="icon-path">${pathRow('使用位置', raw['使用位置'])}${pathRow('使用備註', raw['使用備註'])}</div></section><section class="icon-section"><h3>交付資料</h3><div class="icon-path">${pathRow('需求圖', raw['需求圖連結'])}${pathRow('預覽圖', raw['預覽圖連結'])}${pathRow('來源檔', raw['來源檔路徑'])}${pathRow('輸出', raw['輸出路徑'])}</div></section><section class="icon-section"><h3>同群組語系版本</h3><div class="icon-locale-grid">${variantCards}</div></section>`;
+    const stateSpecification = trueValue(raw['多狀態'])
+      ? `多狀態：${raw['狀態種類'] || '種類待補'}`
+      : '單一狀態';
+    $('icon-detail-body').innerHTML = `<div class="icon-detail-actions"><button id="icon-edit-btn" type="button"><i class="fa-solid fa-pen"></i> 編輯此項目</button></div>${preview}<div class="icon-meta"><div><span>Icon ID</span><strong>${esc(item.id || '待填')}</strong></div><div><span>群組</span><strong>${esc(item.group || '無')}</strong></div><div><span>語系</span><strong>${esc(item.locale || '無')}</strong></div><div><span>類型</span><strong>${esc(raw['類型'] || '待補')}</strong></div><div><span>子類型</span><strong>${esc(raw['子類型'] || '待補')}</strong></div><div><span>版本規格</span><strong>${esc(stateSpecification)}</strong></div><div><span>需要的動作</span><strong>${esc(actionOf(item))}</strong></div><div><span>目標日</span><strong>${esc(raw['目標日'] || '尚未安排')}</strong></div><div><span>尺寸</span><strong>${esc([raw['主要尺寸'], raw['其他尺寸']].filter(Boolean).join(' / ') || '待補')}</strong></div><div><span>檔名</span><strong>${esc(raw['檔名'] || '待補')}</strong></div></div><section class="icon-section"><h3>製作流程</h3><div class="icon-progress-list">${progress}</div></section><section class="icon-section"><h3>使用位置</h3><div class="icon-path">${pathRow('使用位置', raw['使用位置'])}${pathRow('使用備註', raw['使用備註'])}</div></section><section class="icon-section"><h3>交付資料</h3><div class="icon-path">${pathRow('需求圖', raw['需求圖連結'])}${pathRow('預覽圖', raw['預覽圖連結'])}${pathRow('來源檔', raw['來源檔路徑'])}${pathRow('輸出', raw['輸出路徑'])}</div></section><section class="icon-section"><h3>同群組語系版本</h3><div class="icon-locale-grid">${variantCards}</div></section>`;
 
     $('icon-edit-btn').addEventListener('click', () => {
       editing = true;
@@ -356,12 +372,17 @@
 
   function renderEditor(item) {
     const raw = item.raw;
-    $('icon-detail-body').innerHTML = `<form id="icon-edit-form" class="icon-edit-form"><div class="icon-edit-grid">${input('類型', '類型', raw['類型'])}${input('子類型', '子類型', raw['子類型'])}${input('語系', '語系', raw['語系'])}${input('群組', '群組', raw['群組'])}${input('項目名稱', '項目名稱', raw['項目名稱'], true)}${input('使用位置', '使用位置', raw['使用位置'], true, true)}${input('檔名', '檔名', raw['檔名'])}${input('主要尺寸', '主要尺寸', raw['主要尺寸'])}${input('其他尺寸', '其他尺寸', raw['其他尺寸'])}${input('狀態種類', '狀態種類', raw['狀態種類'], true)}${input('使用備註', '使用備註', raw['使用備註'], true, true)}${input('需求圖連結', '需求圖連結', raw['需求圖連結'], true)}${input('預覽圖連結', '預覽圖連結', raw['預覽圖連結'], true)}${input('來源檔路徑', '來源檔路徑', raw['來源檔路徑'], true)}${input('輸出路徑', '輸出路徑', raw['輸出路徑'], true)}${input('需求日', '需求日', raw['需求日'])}${input('目標日', '目標日', raw['目標日'])}${input('最終確認日', '最終確認日', raw['最終確認日'])}${input('退回原因', '退回原因', raw['退回原因'], true, true)}${input('備註', '備註', raw['備註'], true, true)}</div><div class="icon-edit-checks">${BOOLEAN_FIELDS.map(key => `<label><input type="checkbox" name="${key}" ${trueValue(raw[key]) ? 'checked' : ''}> ${key}</label>`).join('')}</div><div class="icon-edit-actions"><button id="icon-edit-cancel" type="button">取消</button><button type="submit">儲存項目</button></div></form>`;
+    const multiStateEnabled = trueValue(raw['多狀態']);
+    $('icon-detail-body').innerHTML = `<form id="icon-edit-form" class="icon-edit-form"><div class="icon-edit-grid">${input('類型', '類型', raw['類型'])}${input('子類型', '子類型', raw['子類型'])}${input('語系', '語系', raw['語系'])}${input('群組', '群組', raw['群組'])}${input('項目名稱', '項目名稱', raw['項目名稱'], true)}${input('使用位置', '使用位置', raw['使用位置'], true, true)}${input('檔名', '檔名', raw['檔名'])}${input('主要尺寸', '主要尺寸', raw['主要尺寸'])}${input('其他尺寸', '其他尺寸', raw['其他尺寸'])}<div class="full icon-spec-toggle"><label><input type="checkbox" name="多狀態" ${multiStateEnabled ? 'checked' : ''}> 需要多狀態版本</label><small>例如一般、按下、選取或停用版本。</small></div><div id="icon-state-types-field" class="full ${multiStateEnabled ? '' : 'is-hidden'}">${input('狀態種類', '狀態種類', raw['狀態種類'], true)}</div>${input('使用備註', '使用備註', raw['使用備註'], true, true)}${input('需求圖連結', '需求圖連結', raw['需求圖連結'], true)}${input('預覽圖連結', '預覽圖連結', raw['預覽圖連結'], true)}${input('來源檔路徑', '來源檔路徑', raw['來源檔路徑'], true)}${input('輸出路徑', '輸出路徑', raw['輸出路徑'], true)}${input('需求日', '需求日', raw['需求日'])}${input('目標日', '目標日', raw['目標日'])}${input('最終確認日', '最終確認日', raw['最終確認日'])}${input('退回原因', '退回原因', raw['退回原因'], true, true)}${input('備註', '備註', raw['備註'], true, true)}</div><div class="icon-edit-checks">${PROGRESS_BOOLEAN_FIELDS.map(key => `<label><input type="checkbox" name="${key}" ${trueValue(raw[key]) ? 'checked' : ''}> ${key}</label>`).join('')}</div><div class="icon-edit-actions"><button id="icon-edit-cancel" type="button">取消</button><button type="submit">儲存項目</button></div></form>`;
+    const form = $('icon-edit-form');
+    form.elements['多狀態'].addEventListener('change', event => {
+      $('icon-state-types-field').classList.toggle('is-hidden', !event.currentTarget.checked);
+    });
     $('icon-edit-cancel').addEventListener('click', () => {
       editing = false;
       renderDetail();
     });
-    $('icon-edit-form').addEventListener('submit', saveItem);
+    form.addEventListener('submit', saveItem);
   }
 
   function validateChanges(changes) {
