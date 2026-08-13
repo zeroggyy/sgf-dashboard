@@ -1,7 +1,8 @@
 const NAV_DASHBOARD_PAGES = Object.freeze({
   sgf: { label: 'SGF 企劃進度控制台', href: 'index.html' },
   theme2: { label: 'SGF 介面進度控制台', href: 'ui-progress.html' },
-  theme3: { label: 'SGF 音效語音進度控制台', href: 'sound-voice-progress.html' }
+  theme3: { label: 'SGF 音效語音進度控制台', href: 'sound-voice-progress.html' },
+  theme4: { label: 'SGF Icon 製作進度控制台', href: 'icon-progress.html' }
 });
 
 // 多視圖主題管理：各主題保有獨立 DOM、版面與互動，不再改寫 SGF 主題內容。
@@ -14,7 +15,8 @@ const NAV_DASHBOARD_PAGES = Object.freeze({
   const views = {
     sgf: document.querySelector('.theme-view-sgf'),
     theme2: document.getElementById('theme-view-theme2'),
-    theme3: document.getElementById('theme-view-theme3')
+    theme3: document.getElementById('theme-view-theme3'),
+    theme4: document.getElementById('theme-view-theme4')
   };
   const isMultiPage = document.body.dataset.dashboardMode === 'multipage';
   if (!drawer || !backdrop || !options.length || (!isMultiPage && !views.sgf)) return;

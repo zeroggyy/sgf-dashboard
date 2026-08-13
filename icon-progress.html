@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGF Icon 製作進度控制台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css?v=1.2.2">
+  <link rel="stylesheet" href="icon-progress.css?v=1.0.0">
+</head>
+<body data-dashboard-mode="multipage" data-dashboard-key="theme4">
+  <main id="theme-view-theme4" class="icon-page theme-view theme-view-demo theme4-view">
+    <header class="icon-header">
+      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF Icon 製作進度控制台</strong></span></button>
+      <div class="icon-title"><span>ICON PRODUCTION</span><h1>SGF Icon 製作進度控制台</h1><p>企劃需求、美術完稿、切圖與驗收的一站式追蹤。</p></div>
+      <div class="icon-header-actions"><button id="icon-refresh-btn" class="icon-tool-btn" type="button"><i class="fa-solid fa-rotate"></i> 重新整理</button><button id="icon-config-btn" class="icon-tool-btn" type="button"><i class="fa-solid fa-gear"></i> API 設定</button><span id="icon-api-status" class="icon-api-status is-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 資料載入中</span></div>
+    </header>
+
+    <section id="icon-stats" class="icon-stats" aria-label="Icon 進度摘要"></section>
+    <section class="icon-filter-panel">
+      <div class="icon-section-head"><div><span>FILTERS</span><h2><i class="fa-solid fa-filter"></i> 快速篩選</h2></div><button id="icon-reset-btn" type="button">重設篩選</button></div>
+      <div class="icon-filter-grid">
+        <label class="icon-search"><i class="fa-solid fa-magnifying-glass"></i><input id="icon-search-input" type="search" placeholder="搜尋 Icon ID、項目、檔名或使用位置…"></label>
+        <select id="icon-type-filter"><option value="all">全部類型</option></select>
+        <select id="icon-subtype-filter"><option value="all">全部子類型</option></select>
+        <select id="icon-stage-filter"><option value="all">全部階段</option></select>
+        <select id="icon-ui-filter"><option value="all">全部 UI 機制</option></select>
+        <select id="icon-locale-filter"><option value="all">全部語系狀態</option><option value="has">有語系資料</option><option value="missing">無語系資料</option><option value="incomplete">語系待處理</option></select>
+      </div>
+      <div id="icon-special-filters" class="icon-special-filters"><button class="active" data-filter="all" type="button">全部</button><button data-filter="returned" type="button">退回處理</button><button data-filter="missing" type="button">資料待補</button><button data-filter="no-preview" type="button">缺預覽圖</button></div>
+    </section>
+
+    <section class="icon-content-panel">
+      <div class="icon-section-head"><div><span>ASSET LIBRARY</span><h2><i class="fa-solid fa-icons"></i> Icon 分類與項目</h2></div><b id="icon-result-count">0 / 0 項</b></div>
+      <div id="icon-groups" class="icon-groups"><div class="icon-empty">資料載入中…</div></div>
+    </section>
+  </main>
+
+  <div id="icon-detail-modal" class="icon-modal" aria-hidden="true"><div class="icon-dialog" role="dialog" aria-modal="true" aria-labelledby="icon-detail-title"><header><div><span>ICON DETAIL</span><h2 id="icon-detail-title">Icon 詳情</h2></div><button id="icon-detail-close" type="button" aria-label="關閉">&times;</button></header><div id="icon-detail-body"></div></div></div>
+  <div id="icon-config-modal" class="icon-modal" aria-hidden="true"><div class="icon-dialog icon-config-dialog" role="dialog" aria-modal="true" aria-labelledby="icon-config-title"><header><div><span>DATA SOURCE</span><h2 id="icon-config-title">Icon API 設定</h2></div><button id="icon-config-close" type="button" aria-label="關閉">&times;</button></header><form id="icon-config-form"><label>Apps Script /exec URL<input id="icon-api-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"></label><label>API Key<input id="icon-api-key" type="password" autocomplete="off"></label><p>API 必須同時讀取 <b>SGF_ICON_DataBase</b> 與 <b>SGF_ICON_Locale</b>。</p><div><button type="button" id="icon-config-cancel">取消</button><button type="submit">儲存並重新載入</button></div></form></div></div>
+
+  <aside id="theme-drawer" class="theme-drawer" aria-hidden="true"><div class="theme-drawer-header"><div><span class="theme-drawer-kicker">SGF CONTROL CENTERS</span><h2>選擇控制台</h2></div><button id="theme-drawer-close" class="theme-drawer-close" type="button" aria-label="關閉主題選單">&times;</button></div><p class="theme-drawer-intro">依目前工作內容切換追蹤視角。</p><div id="theme-options" class="theme-options"><button class="theme-option" type="button" data-theme="sgf" data-dashboard-href="index.html"><span class="theme-option-icon"><i class="fa-solid fa-clipboard-list"></i></span><span class="theme-option-copy"><strong>SGF 企劃進度控制台</strong><small>企劃任務與週進度</small></span><span class="theme-option-current">目前使用中</span></button><button class="theme-option" type="button" data-theme="theme2" data-dashboard-href="ui-progress.html"><span class="theme-option-icon"><i class="fa-solid fa-display"></i></span><span class="theme-option-copy"><strong>SGF 介面進度控制台</strong><small>UI 製作與交付流程</small></span><span class="theme-option-current">目前使用中</span></button><button class="theme-option" type="button" data-theme="theme3" data-dashboard-href="sound-voice-progress.html"><span class="theme-option-icon"><i class="fa-solid fa-volume-high"></i></span><span class="theme-option-copy"><strong>SGF 音效語音進度控制台</strong><small>武器音效與語音驗收</small></span><span class="theme-option-current">目前使用中</span></button><button class="theme-option active" type="button" data-theme="theme4" data-dashboard-href="icon-progress.html"><span class="theme-option-icon"><i class="fa-solid fa-icons"></i></span><span class="theme-option-copy"><strong>SGF Icon 製作進度控制台</strong><small>Icon、圖字與語系驗收</small></span><span class="theme-option-current">目前使用中</span></button></div></aside>
+  <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div><div id="toast" class="toast"></div>
+  <script src="dashboard-shared.js?v=1.2.0"></script><script src="icon-progress.js?v=1.0.0"></script><script src="dashboard-navigation.js?v=1.3.0"></script>
+</body>
+</html>

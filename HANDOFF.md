@@ -93,3 +93,12 @@
 - 若保留既有部署，`/exec` URL 不變。
 - 主題二這次新增的 60 秒 API 快取尚需確認是否已重新部署。
 - 完成部署後以正式 GitHub Pages 測試，而不只測本地頁。
+# 2026-08-13｜第四頁 Icon 控制台交接
+
+- 新增 `icon-progress.html`、`icon-progress.css`、`icon-progress.js`。
+- 新增 `google-apps-script-icon.js`，同時讀取 `SGF_ICON_DataBase` 與 `SGF_ICON_Locale`。
+- 主資料寫回 action：`updateIcon`，使用 `Icon ID` 定位。
+- 語系寫回 action：`updateIconLocale`，使用 `Icon ID + 語言` 定位。
+- 四個 HTML 的控制台抽屜已加入 `theme4`，集中導覽位於 `dashboard-navigation.js`。
+- 實際上線前須部署 Icon 專用 Apps Script，並在 `icon-progress.html` 的 API 設定視窗填入 URL／Key。
+- 本機測試已涵蓋資料載入、階段統計、分類展開、詳情、主資料寫回、語系編輯、桌機及手機版。

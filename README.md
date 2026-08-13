@@ -159,3 +159,14 @@ HTML、CSS、JavaScript 與共用檔案必須一起上傳。網址不會因拆�
 - 前端資源修改後同步提高 HTML 中的 `?v=` 版本，避免 GitHub Pages／瀏覽器舊快取。
 - 不要把實際 API Key 再複製進交接文件或公開 issue；正式金鑰目前存在前端原始碼，屬於輕量防誤用而非真正祕密保護。
 - 發布前執行 JavaScript 語法檢查，並在真實瀏覽器測試主要流程。
+# 2026-08-13｜Icon 製作進度控制台
+
+新增第四個獨立頁面 `icon-progress.html`，資料來源為 Google Sheet 的 `SGF_ICON_DataBase` 與 `SGF_ICON_Locale` 兩個分頁。
+
+- 主表以 `Icon ID` 作為唯一識別碼。
+- 語系表以 `Icon ID + 語言` 作為唯一識別組合。
+- 流程為企劃需求、美術完稿、輸出切圖、企劃驗收，另支援退回處理、已結案與不適用。
+- 頁面提供摘要、搜尋、類型／子類型／階段／UI 機制／語系篩選、分類卡片、詳情及雙表寫回。
+- Apps Script 程式位於 `google-apps-script-icon.js`，需使用獨立 Apps Script 專案或獨立部署，避免與其他控制台的 `doGet/doPost` 衝突。
+
+部署時請設定 `SPREADSHEET_ID` 與 `API_KEY`，重新部署成 Web App，再於 Icon 頁面的「API 設定」填入 `/exec` URL 與相同 API Key。
