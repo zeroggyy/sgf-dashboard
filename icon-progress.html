@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=1.2.2">
-  <link rel="stylesheet" href="icon-progress.css?v=1.0.1">
+  <link rel="stylesheet" href="icon-progress.css?v=1.1.0">
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme4">
   <main id="theme-view-theme4" class="page-container icon-page theme-view theme-view-demo theme4-view">
@@ -22,15 +22,16 @@
     <section id="icon-stats" class="icon-stats" aria-label="Icon 進度摘要"></section>
     <section class="icon-filter-panel">
       <div class="icon-section-head"><div><span>FILTERS</span><h2><i class="fa-solid fa-filter"></i> 快速篩選</h2></div><button id="icon-reset-btn" type="button">重設篩選</button></div>
+      <p class="icon-filter-help"><i class="fa-solid fa-circle-info"></i> 可同時設定多個條件；畫面只會顯示符合所有條件的 Icon。</p>
       <div class="icon-filter-grid">
-        <label class="icon-search"><i class="fa-solid fa-magnifying-glass"></i><input id="icon-search-input" type="search" placeholder="搜尋 Icon ID、項目、檔名或使用位置…"></label>
-        <select id="icon-type-filter"><option value="all">全部類型</option></select>
-        <select id="icon-subtype-filter"><option value="all">全部子類型</option></select>
-        <select id="icon-stage-filter"><option value="all">全部階段</option></select>
-        <select id="icon-ui-filter"><option value="all">全部 UI 機制</option></select>
-        <select id="icon-locale-filter"><option value="all">全部語系狀態</option><option value="has">有語系資料</option><option value="missing">無語系資料</option><option value="incomplete">語系待處理</option></select>
+        <label class="icon-filter-field icon-filter-search"><span>關鍵字搜尋</span><span class="icon-search"><i class="fa-solid fa-magnifying-glass"></i><input id="icon-search-input" type="search" placeholder="Icon ID、項目、檔名或使用位置…"></span></label>
+        <label class="icon-filter-field"><span>Icon 類型</span><select id="icon-type-filter"><option value="all">全部類型</option></select></label>
+        <label class="icon-filter-field"><span>子類型</span><select id="icon-subtype-filter"><option value="all">全部子類型</option></select></label>
+        <label class="icon-filter-field"><span>製作階段</span><select id="icon-stage-filter"><option value="all">全部階段</option></select></label>
+        <label class="icon-filter-field"><span>UI 機制</span><select id="icon-ui-filter"><option value="all">全部 UI 機制</option></select></label>
+        <label class="icon-filter-field"><span>語系資料</span><select id="icon-locale-filter"><option value="all">全部語系狀態</option><option value="has">有語系資料</option><option value="missing">無語系資料</option><option value="incomplete">語系待處理</option></select></label>
       </div>
-      <div id="icon-special-filters" class="icon-special-filters"><button class="active" data-filter="all" type="button">全部</button><button data-filter="returned" type="button">退回處理</button><button data-filter="missing" type="button">資料待補</button><button data-filter="no-preview" type="button">缺預覽圖</button></div>
+      <div class="icon-quick-filter-row"><span class="icon-quick-filter-label">快速檢查</span><div id="icon-special-filters" class="icon-special-filters"><button class="active" data-filter="all" type="button">不限</button><button data-filter="returned" type="button">只看退回處理</button><button data-filter="missing" type="button">只看資料待補</button><button data-filter="no-preview" type="button">只看缺預覽圖</button></div></div>
     </section>
 
     <section class="icon-content-panel">
