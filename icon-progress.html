@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=1.2.2">
-  <link rel="stylesheet" href="icon-progress.css?v=1.2.0">
+  <link rel="stylesheet" href="icon-progress.css?v=1.3.0">
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme4">
   <main id="theme-view-theme4" class="page-container icon-page theme-view theme-view-demo theme4-view">
@@ -19,7 +19,10 @@
       <div class="icon-header-actions"><button id="icon-refresh-btn" class="icon-tool-btn" type="button"><i class="fa-solid fa-rotate"></i> 重新整理</button><button id="icon-config-btn" class="icon-tool-btn" type="button"><i class="fa-solid fa-gear"></i> API 設定</button><span id="icon-api-status" class="icon-api-status is-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 資料載入中</span></div>
     </header>
 
-    <section id="icon-stats" class="icon-stats" aria-label="Icon 進度摘要"></section>
+    <section class="icon-stage-filter-panel" aria-labelledby="icon-stage-filter-title">
+      <div class="icon-stage-filter-heading"><div><span>PROGRESS FILTER</span><h2 id="icon-stage-filter-title"><i class="fa-solid fa-arrow-pointer"></i> 依製作階段快速篩選</h2></div><p><i class="fa-solid fa-circle-info"></i> 點擊一個階段即可篩選；再次點擊可取消。</p></div>
+      <div id="icon-stats" class="icon-stats" aria-label="Icon 製作階段快速篩選"></div>
+    </section>
     <section class="icon-filter-panel">
       <div class="icon-section-head"><div><span>FILTERS</span><h2><i class="fa-solid fa-filter"></i> 快速篩選</h2></div><button id="icon-reset-btn" type="button">重設篩選</button></div>
       <p class="icon-filter-help"><i class="fa-solid fa-circle-info"></i> 可同時設定多個條件；畫面只會顯示符合所有條件的 Icon。</p>
