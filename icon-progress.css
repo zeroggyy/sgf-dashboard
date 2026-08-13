@@ -10,3 +10,45 @@ body{background:var(--icon-paper);color:var(--icon-ink)}.icon-page{min-height:10
 .icon-list-row:hover,.icon-list-row:focus-within{background:var(--icon-soft)}.icon-row-main:hover{background:transparent}
 .icon-filter-grid{grid-template-columns:2fr repeat(4,minmax(130px,1fr))}
 @media(max-width:1100px){.icon-filter-grid{grid-template-columns:repeat(3,1fr)}.icon-filter-search{grid-column:1/-1}}@media(max-width:760px){.icon-filter-grid{grid-template-columns:1fr 1fr}}@media(max-width:500px){.icon-filter-grid{grid-template-columns:1fr}.icon-filter-search{grid-column:auto}}
+
+/* 詳細與編輯視窗：統一正文尺寸，讓長時間閱讀與填寫更舒適。 */
+#icon-detail-modal .icon-dialog{width:min(1120px,96vw)}
+#icon-detail-modal .icon-dialog>header{padding:1rem 1.25rem}
+#icon-detail-modal .icon-dialog h2{font-size:1.45rem}
+#icon-detail-modal .icon-dialog header span{font-size:.78rem}
+#icon-detail-modal .icon-dialog>header button{font-size:1.65rem}
+#icon-detail-modal .icon-detail-actions{padding:1rem 1.25rem 0}
+#icon-detail-modal .icon-detail-actions button,
+#icon-detail-modal .icon-edit-actions button,
+#icon-detail-modal .icon-locale-card button{font-size:1rem}
+#icon-detail-modal .icon-meta{gap:.7rem;padding:0 1.25rem}
+#icon-detail-modal .icon-meta div,
+#icon-detail-modal .icon-locale-card{padding:.8rem}
+#icon-detail-modal .icon-meta span,
+#icon-detail-modal .icon-meta strong,
+#icon-detail-modal .icon-progress-item,
+#icon-detail-modal .icon-path div,
+#icon-detail-modal .icon-locale-card,
+#icon-detail-modal .icon-locale-card p,
+#icon-detail-modal .icon-locale-card small{font-size:1rem;line-height:1.5}
+#icon-detail-modal .icon-meta span{margin-bottom:.18rem}
+#icon-detail-modal .icon-section{padding:1.25rem}
+#icon-detail-modal .icon-section h3{font-size:1.1rem}
+#icon-detail-modal .icon-progress-list,
+#icon-detail-modal .icon-locale-grid{gap:.7rem}
+#icon-detail-modal .icon-progress-item{padding:.75rem}
+#icon-detail-modal .icon-path{gap:.5rem}
+#icon-detail-modal .icon-path div{padding:.7rem}
+#icon-detail-modal .icon-edit-form{gap:1rem;padding:1.25rem}
+#icon-detail-modal .icon-edit-grid{gap:.8rem}
+#icon-detail-modal .icon-edit-grid label{gap:.4rem;font-size:1rem;line-height:1.35}
+#icon-detail-modal .icon-edit-grid input,
+#icon-detail-modal .icon-edit-grid textarea{min-height:46px;padding:.7rem .8rem;font-size:1rem;line-height:1.45;box-sizing:border-box}
+#icon-detail-modal .icon-edit-grid textarea{min-height:86px;resize:vertical}
+#icon-detail-modal .icon-edit-checks{gap:1rem;padding:.85rem}
+#icon-detail-modal .icon-edit-checks label{font-size:1rem;line-height:1.5}
+#icon-detail-modal .icon-edit-checks input{width:17px;height:17px;vertical-align:-2px}
+#icon-detail-modal .icon-edit-actions{gap:.7rem}
+#icon-detail-modal .icon-edit-actions button{min-height:46px;padding:.65rem 1rem}
+@media(max-width:760px){#icon-detail-modal .icon-dialog{width:98vw}#icon-detail-modal .icon-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){#icon-detail-modal .icon-meta{grid-template-columns:1fr}}
