@@ -25,11 +25,21 @@
     planning: '待企劃需求',
     function: '待程式功能',
     placeholder: '待代圖操作確認',
-    art: '待美術拆圖',
-    integration: '待企劃整合',
+    art: '待美術製作',
+    integration: '待正式介面整合',
     final: '待製作人確認',
     returned: '退回處理中',
     completed: '已結案'
+  };
+  const PIPELINE_LABELS = {
+    planning: '企劃需求',
+    function: '程式功能',
+    placeholder: '代圖確認',
+    art: '美術製作',
+    integration: '正式介面',
+    final: '製作人確認',
+    returned: '退回處理',
+    completed: '已完成'
   };
   const REQUIREMENT_BATCH_LABELS = {
     1: '第一批',
@@ -41,6 +51,7 @@
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
+  let artWorkFilter = 'all';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
   function stageDone(row, stage) {
@@ -139,6 +150,85 @@
   function getGyazoId(value) {
     return String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
   }
+  function parseTheme2Date(value) {
+    const match = String(value || '').trim().match(/^(\d{4})[.\/-](\d{1,2})(?:[.\/-](\d{1,2}))?/);
+    if (!match) return null;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3] || 1));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  function theme2DueState(item) {
+    if (!['art', 'returned'].includes(item.stage)) return '';
+    const target = parseTheme2Date(item.expectedDate);
+    if (!target) return '';
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const days = Math.ceil((target - start) / 86400000);
+    if (days < 0) return 'overdue';
+    if (days <= 7) return 'due-soon';
+    return '';
+  }
+  function artActionOf(item) {
+    if (item.stage === 'returned') return '處理退回修改';
+    if (item.stage === 'art') return '開始美術製作';
+    if (item.stage === 'integration') return '等待正式介面整合';
+    if (item.stage === 'final') return '等待製作人確認';
+    if (item.stage === 'completed') return '已完成';
+    return '等待需求準備';
+  }
+  function artPriorityOf(item) {
+    const due = theme2DueState(item);
+    if (item.stage === 'returned') return 0;
+    if (due === 'overdue') return 1;
+    if (due === 'due-soon') return 2;
+    if (item.stage === 'art') return 3;
+    if (['planning', 'function', 'placeholder'].includes(item.stage)) return 4;
+    if (item.stage === 'integration') return 5;
+    if (item.stage === 'final') return 6;
+    return 7;
+  }
+  function compareArtWork(a, b) {
+    const priority = artPriorityOf(a) - artPriorityOf(b);
+    if (priority) return priority;
+    const aDate = parseTheme2Date(a.expectedDate);
+    const bDate = parseTheme2Date(b.expectedDate);
+    if (aDate && bDate && aDate.getTime() !== bDate.getTime()) return aDate - bDate;
+    if (aDate && !bDate) return -1;
+    if (!aDate && bDate) return 1;
+    return a.rowIndex - b.rowIndex;
+  }
+  function matchesArtWorkFilter(item, filter = artWorkFilter) {
+    if (filter === 'all') return true;
+    if (filter === 'ready') return item.stage === 'art';
+    if (filter === 'returned') return item.stage === 'returned';
+    if (filter === 'due-soon') return theme2DueState(item) === 'due-soon';
+    if (filter === 'overdue') return theme2DueState(item) === 'overdue';
+    if (filter === 'waiting') return ['planning', 'function', 'placeholder'].includes(item.stage);
+    return true;
+  }
+  function renderArtWorkSummary() {
+    let panel = document.getElementById('theme2-art-work-panel');
+    if (!panel) {
+      panel = document.createElement('section');
+      panel.id = 'theme2-art-work-panel';
+      panel.className = 'theme2-art-work-panel';
+      const pipeline = theme2View.querySelector('.theme2-pipeline-panel');
+      pipeline?.parentNode?.insertBefore(panel, pipeline);
+    }
+    const configs = [
+      ['all', '全部項目', '完整查看'],
+      ['ready', '可開始製作', '目前輪到美術'],
+      ['returned', '退回修改', '優先處理'],
+      ['due-soon', '即將到期', '目標日 7 天內'],
+      ['overdue', '已逾期', '超過目標日'],
+      ['waiting', '等待需求', '尚未輪到美術']
+    ];
+    panel.innerHTML = `<div class="theme2-art-work-heading"><div><span class="theme2-kicker">ART WORK QUEUE</span><h2><i class="fa-solid fa-palette"></i> 美術工作提示</h2></div><p><i class="fa-solid fa-circle-info"></i> 點擊狀態可直接篩選下方既有項目；再次點擊可解除。</p></div><div class="theme2-art-work-stats">${configs.map(([filter, label, note]) => `<button class="theme2-art-work-stat ${artWorkFilter === filter ? 'active' : ''} ${filter === 'returned' || filter === 'overdue' ? 'is-alert' : filter === 'due-soon' ? 'is-warning' : ''}" data-art-work-filter="${filter}" type="button" aria-pressed="${artWorkFilter === filter}"><span>${label}</span><strong>${items.filter(item => matchesArtWorkFilter(item, filter)).length}</strong><small>${artWorkFilter === filter ? '篩選中' : note}</small></button>`).join('')}</div>`;
+    panel.querySelectorAll('[data-art-work-filter]').forEach(button => button.addEventListener('click', () => {
+      const selected = button.dataset.artWorkFilter;
+      artWorkFilter = selected === 'all' || artWorkFilter === selected ? 'all' : selected;
+      applyFilters();
+    }));
+  }
   function renderPipeline(filteredItems = items) {
     const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
     const activeStage = document.getElementById('theme2-stage-filter')?.value || '全部階段';
@@ -149,10 +239,17 @@
       const stageCount = stageCounts[stage];
       const strong = button.querySelector('strong');
       if (strong) strong.textContent = stageCount;
+      const label = button.querySelector('span');
+      if (label) label.textContent = PIPELINE_LABELS[stage] || STAGE_LABELS[stage] || label.textContent;
       button.classList.toggle('is-bottleneck', maxCount > 0 && stageCount === maxCount);
       button.classList.toggle('is-empty', stageCount === 0);
       button.classList.toggle('is-active', activeStage === stage);
       button.setAttribute('aria-pressed', String(activeStage === stage));
+    });
+    theme2View.querySelectorAll('.stage-definition-list article').forEach((article, index) => {
+      const stage = PIPELINE_STAGES[index];
+      const heading = article.querySelector('b');
+      if (heading && stage) heading.textContent = `${String(index + 1).padStart(2, '0')} · ${PIPELINE_LABELS[stage]}`;
     });
   }
 
@@ -308,7 +405,7 @@
     if (!container) return;
     setText('theme2-flow-count', `目前顯示 ${filteredItems.length} / ${items.length} 項`);
     const groups = new Map();
-    filteredItems.forEach(item => {
+    [...filteredItems].sort(compareArtWork).forEach(item => {
       const mechanism = itemGroup(item);
       if (!groups.has(mechanism)) groups.set(mechanism, []);
       groups.get(mechanism).push(item);
@@ -331,9 +428,11 @@
         ? `<span class="mechanism-item-thumb"><img src="https://i.gyazo.com/${escapeHtml(imageId)}.jpg" data-gyazo-id="${escapeHtml(imageId)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
         : '<span class="mechanism-item-thumb is-empty"><i class="fa-regular fa-image"></i><small>未提供縮圖</small></span>';
       const state = [item.missingFields.length ? 'has-missing' : '', item.returned ? 'is-returned' : '', item.isReference ? 'is-reference' : '', STAGES.every(stage => item.checklist[stage]) ? 'is-complete' : ''].filter(Boolean).join(' ');
-      const flags = [item.isReference ? '共用進度' : '', item.returned ? '退回處理' : '', item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
+      const dueState = theme2DueState(item);
+      const dueLabel = dueState === 'overdue' ? '已逾期' : dueState === 'due-soon' ? '7 天內到期' : '';
+      const flags = [item.isReference ? '共用進度' : '', item.returned ? '退回處理' : '', dueLabel, item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
       const openImage = imageId ? `<span class="mechanism-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-      return `<button class="mechanism-item-card ${state}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><small class="mechanism-item-sequence">${escapeHtml(item.sequence || '待補序號')}</small><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-stage">${escapeHtml(item.stageLabel)}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
+      return `<button class="mechanism-item-card ${state} ${dueState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><small class="mechanism-item-sequence">${escapeHtml(item.sequence || '待補序號')}</small><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-action"><i class="fa-solid fa-arrow-right"></i> ${escapeHtml(artActionOf(item))}</span><span class="mechanism-item-due"><b>目標</b> ${escapeHtml(item.expectedDate || '未定')}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
     };
     const accordions = [...groups.entries()].map(([mechanism, group]) => {
       const key = encodeURIComponent(mechanism);
@@ -342,7 +441,7 @@
       const summary = summaryOf(group);
       const status = `${STAGE_LABELS[summary.stage] || summary.stage} ${summary.count} 項`;
       const notices = [summary.returned ? `退回 ${summary.returned}` : '', summary.missing ? `缺欄 ${summary.missing}` : ''].filter(Boolean).map(value => `<small>${value}</small>`).join('');
-      return `<section class="mechanism-accordion ${open ? 'is-open' : ''}" data-mechanism-key="${key}"><button class="mechanism-accordion-toggle" type="button" aria-expanded="${open}"><span class="mechanism-accordion-title"><i class="fa-solid fa-layer-group"></i><strong>${escapeHtml(mechanism)}</strong><small>${group.length} 個項目</small></span><span class="mechanism-accordion-summary"><span><b>主要卡點</b>${escapeHtml(status)}</span><span class="mechanism-accordion-progress"><i><em style="width:${progress}%"></em></i><b>${progress}%</b></span><span class="mechanism-accordion-notices">${notices}</span></span><i class="fa-solid fa-chevron-down mechanism-accordion-chevron"></i></button><div class="mechanism-accordion-panel"><div class="mechanism-accordion-panel-head"><span>${escapeHtml(mechanism)} · UI 項目與進度</span><small>點擊項目查看詳情</small></div><div class="mechanism-item-grid">${group.map(cardOf).join('')}</div></div></section>`;
+      return `<section class="mechanism-accordion ${open ? 'is-open' : ''}" data-mechanism-key="${key}"><button class="mechanism-accordion-toggle" type="button" aria-expanded="${open}"><span class="mechanism-accordion-title"><i class="fa-solid fa-layer-group"></i><strong>${escapeHtml(mechanism)}</strong><small>${group.length} 個項目</small></span><span class="mechanism-accordion-summary"><span><b>主要卡點</b>${escapeHtml(status)}</span><span class="mechanism-accordion-progress"><i><em style="width:${progress}%"></em></i><b>${progress}%</b></span><span class="mechanism-accordion-notices">${notices}</span></span><i class="fa-solid fa-chevron-down mechanism-accordion-chevron"></i></button><div class="mechanism-accordion-panel"><div class="mechanism-accordion-panel-head"><span>${escapeHtml(mechanism)} · UI 項目與進度</span><small>已依退回、期限與可執行狀態排序</small></div><div class="mechanism-item-grid">${[...group].sort(compareArtWork).map(cardOf).join('')}</div></div></section>`;
     }).join('');
     container.innerHTML = `<div class="mechanism-accordion-list">${accordions}</div>`;
     container.querySelectorAll('.mechanism-accordion-toggle').forEach(toggle => toggle.addEventListener('click', () => {
@@ -414,7 +513,7 @@
     const textarea = (label, key, value = data[key] || '') => `<label class="theme2-edit-field is-wide"><span>${label}</span><textarea name="${escapeHtml(key)}" rows="3">${escapeHtml(value)}</textarea></label>`;
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
-    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${textInput('企劃開表日', '企劃開表日')}${textInput('企劃整合目標日', '企劃整合目標日')}${textInput('美術可用交付日', '美術可用交付日')}${textInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術拆圖完成', '美術拆圖完成')}${check('企劃整合完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${textInput('退回日期', '退回日期')}${textInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${textInput('企劃開表日', '企劃開表日')}${textInput('企劃整合目標日', '企劃整合目標日')}${textInput('美術交付紀錄', '美術可用交付日')}${textInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${textInput('退回日期', '退回日期')}${textInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
     detail.querySelector('#theme2-edit-cancel')?.addEventListener('click', () => { detailEditing = false; renderDetail(item); });
     detail.querySelector('#theme2-edit-form')?.addEventListener('submit', async event => {
       event.preventDefault();
@@ -448,7 +547,7 @@
     const missing = [...item.missingFields];
     const completeness = missing.length
       ? `<div class="detail-missing"><i class="fa-solid fa-triangle-exclamation"></i> 建議補齊：${missing.join('、')}</div>`
-      : '<div class="detail-complete"><i class="fa-solid fa-circle-check"></i> 資料完整</div>';
+      : '<div class="detail-complete"><i class="fa-solid fa-circle-check"></i> 追蹤資料完整</div>';
     const pathRow = (label, path) => {
       const hasPath = Boolean(path);
       return `<div class="detail-path-row"><span><b>${label}：</b>${escapeHtml(path || '待補')}</span><button class="detail-copy-path" type="button" ${hasPath ? `data-copy-path="${escapeHtml(path)}"` : 'disabled'} title="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}" aria-label="${hasPath ? `複製${label}路徑` : `${label}尚未填寫`}"><i class="fa-regular fa-copy"></i></button></div>`;
@@ -463,7 +562,9 @@
       ? `<button class="theme2-detail-edit" data-edit-source-id="${escapeHtml(item.sourceItemId)}" type="button"><i class="fa-solid fa-arrow-up-right-from-square"></i> 編輯共用主項</button>`
       : '<button id="theme2-detail-edit" class="theme2-detail-edit" type="button"><i class="fa-solid fa-pen-to-square"></i> 編輯內容</button>';
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
-    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    const dueState = theme2DueState(item);
+    const actionNotice = `<div class="theme2-detail-next-action ${dueState}"><span>美術下一步</span><strong>${escapeHtml(artActionOf(item))}</strong><small>目標：${escapeHtml(item.expectedDate || '未定')}${dueState === 'overdue' ? ' · 已逾期' : dueState === 'due-soon' ? ' · 7 天內到期' : ''}</small></div>`;
+    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術交付紀錄</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
     detail.querySelector('.theme2-detail-thumbnail img')?.addEventListener('error', event => event.currentTarget.closest('.theme2-detail-thumbnail')?.remove());
     detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditing = true; renderDetail(item); });
     detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
@@ -511,8 +612,9 @@
       const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
       const specialMatch = special === 'all' || (special === 'returned' && item.returned) || (special === 'evidence' && item.missingFields.length > 0);
-      return categoryMatch && expectedDateMatch && stageMatch && searchMatch && specialMatch;
+      return categoryMatch && expectedDateMatch && stageMatch && searchMatch && specialMatch && matchesArtWorkFilter(item);
     });
+    renderArtWorkSummary();
     updateDimensionCounts({ category, expectedDate, stage, query });
     theme2View.querySelector('[data-theme2-count="all"]')?.replaceChildren(document.createTextNode(items.length));
     theme2View.querySelector('[data-theme2-count="returned"]')?.replaceChildren(document.createTextNode(items.filter(item => item.returned).length));
@@ -526,7 +628,7 @@
       return categoryMatch && expectedDateMatch && searchMatch && specialMatch;
     });
     renderPipeline(pipelineItems);
-    renderMechanismAccordion(filtered);
+    renderMechanismAccordion([...filtered].sort(compareArtWork));
   }
 
   function updateDimensionCounts({ category, expectedDate, stage, query }) {
@@ -603,6 +705,7 @@
       ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
+      artWorkFilter = 'all';
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
       theme2View.querySelectorAll('.theme2-dimension-chip').forEach(item => item.classList.toggle('active', item.dataset.selectValue === item.closest('.theme2-filter-content')?.querySelector('.theme2-dimension-chip')?.dataset.selectValue));
       applyFilters();

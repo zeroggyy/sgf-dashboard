@@ -388,6 +388,12 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .mechanism-item-sequence { color: var(--theme-accent); font-size: 0.62rem; font-weight: 700; }
 .mechanism-item-copy strong { overflow: hidden; font-size: 0.8rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .mechanism-item-stage { color: var(--theme-accent); font-size: 0.67rem; font-weight: 700; }
+.mechanism-item-action { display: flex; align-items: center; gap: 0.3rem; color: var(--theme-accent); font-size: 0.68rem; font-weight: 800; }
+.mechanism-item-action i { font-size: 0.58rem; }
+.mechanism-item-due { color: var(--text-muted); font-size: 0.61rem; }
+.mechanism-item-due b { color: var(--text-secondary); }
+.mechanism-item-card.due-soon { border-top-color: var(--theme-warning); }
+.mechanism-item-card.overdue { border-top-color: var(--theme-danger); background: #fff8f6; }
 .mechanism-item-flags { display: flex; flex-wrap: wrap; gap: 0.25rem; min-height: 1rem; }
 .mechanism-item-flags small { padding: 0.1rem 0.25rem; color: #8d5a06; background: #fff4dd; font-size: 0.56rem; font-weight: 700; }
 .mechanism-item-open { position: absolute; top: 0.6rem; right: 0.6rem; display: grid; width: 1.75rem; height: 1.75rem; place-items: center; background: rgba(255,255,255,.84); color: var(--theme-accent); cursor: zoom-in; }
@@ -395,4 +401,34 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 @media (max-width: 1180px) { .mechanism-item-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 780px) { .mechanism-accordion-toggle { grid-template-columns: minmax(0, 1fr) 22px; gap: 0.6rem; } .mechanism-accordion-summary { grid-column: 1; grid-template-columns: 1fr; gap: 0.4rem; } .mechanism-accordion-chevron { grid-column: 2; grid-row: 1; } .mechanism-accordion-notices { justify-content: flex-start; } .mechanism-item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .mechanism-item-grid { grid-template-columns: 1fr; } .mechanism-accordion-panel-head { display: grid; gap: 0.25rem; } }
+
+/* 美術工作提示沿用既有項目清單，不另建重複佇列。 */
+.theme2-art-work-panel { margin-bottom: 1rem; padding: 0.85rem 1rem 1rem; border: 1px solid var(--border-color); background: var(--panel-bg); }
+.theme2-art-work-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.theme2-art-work-heading h2 { margin: 0.08rem 0 0; font-size: 1rem; }
+.theme2-art-work-heading h2 i { color: var(--theme-accent); }
+.theme2-art-work-heading p { margin: 0; color: var(--text-muted); font-size: 0.66rem; }
+.theme2-art-work-heading p i { color: var(--theme-accent); }
+.theme2-art-work-stats { display: grid; grid-template-columns: repeat(6, minmax(115px, 1fr)); gap: 0.55rem; margin-top: 0.75rem; }
+.theme2-art-work-stat { min-width: 0; padding: 0.58rem 0.65rem; border: 1px solid var(--theme2-line); border-left: 4px solid var(--theme-accent); background: #fff; color: var(--text-primary); font-family: var(--font-main); text-align: left; cursor: pointer; }
+.theme2-art-work-stat:hover { border-color: var(--theme-accent); background: var(--theme-accent-soft); }
+.theme2-art-work-stat span, .theme2-art-work-stat strong, .theme2-art-work-stat small { display: block; }
+.theme2-art-work-stat span { color: var(--text-secondary); font-size: 0.65rem; font-weight: 800; }
+.theme2-art-work-stat strong { margin: 0.08rem 0; font-size: 1.25rem; line-height: 1; }
+.theme2-art-work-stat small { color: var(--text-muted); font-size: 0.56rem; }
+.theme2-art-work-stat.is-warning { border-left-color: var(--theme-warning); }
+.theme2-art-work-stat.is-alert { border-left-color: var(--theme-danger); }
+.theme2-art-work-stat.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
+.theme2-art-work-stat.active span, .theme2-art-work-stat.active small { color: #fff; }
+.theme2-art-work-stat.is-alert.active { border-color: var(--theme-danger); background: var(--theme-danger); }
+.theme2-art-work-stat.is-warning.active { border-color: var(--theme-warning); background: var(--theme-warning); }
+.theme2-detail-next-action { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.55rem; align-items: center; margin-bottom: 0.7rem; padding: 0.58rem 0.7rem; border-left: 4px solid var(--theme-accent); background: var(--theme-accent-soft); }
+.theme2-detail-next-action span { color: var(--text-muted); font-size: 0.61rem; font-weight: 700; }
+.theme2-detail-next-action strong { color: var(--theme-accent); font-size: 0.78rem; }
+.theme2-detail-next-action small { color: var(--text-secondary); font-size: 0.62rem; }
+.theme2-detail-next-action.due-soon { border-left-color: var(--theme-warning); background: #fff8e8; }
+.theme2-detail-next-action.overdue { border-left-color: var(--theme-danger); background: #fff0ec; }
+.theme2-detail-next-action.overdue strong { color: var(--theme-danger); }
+@media (max-width: 1100px) { .theme2-art-work-stats { grid-template-columns: repeat(3, minmax(115px, 1fr)); } }
+@media (max-width: 680px) { .theme2-art-work-heading { align-items: flex-start; flex-direction: column; gap: 0.35rem; } .theme2-art-work-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .theme2-detail-next-action { grid-template-columns: 1fr; gap: 0.18rem; } }
 
