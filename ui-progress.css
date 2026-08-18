@@ -403,7 +403,8 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 @media (max-width: 520px) { .mechanism-item-grid { grid-template-columns: 1fr; } .mechanism-accordion-panel-head { display: grid; gap: 0.25rem; } }
 
 /* 美術待辦與整體流程共用同一個檢視入口，避免重複佔據頁面。 */
-.theme2-progress-view-tabs { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--border-color); background: var(--panel-bg); }
+.theme2-progress-view-shell { margin-bottom: 1rem; border: 1px solid var(--border-color); background: var(--panel-bg); }
+.theme2-progress-view-tabs { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border: 0; border-bottom: 1px solid var(--border-color); background: var(--panel-bg); }
 .theme2-progress-view-tabs h2 { margin: 0.08rem 0 0; font-size: 1rem; }
 .theme2-progress-view-tabs h2 i { color: var(--theme-accent); }
 .theme2-progress-view-actions { display: flex; align-items: stretch; gap: 0.4rem; }
@@ -411,8 +412,8 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-progress-view-actions button:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
 .theme2-progress-view-actions button.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
 .theme2-progress-view-actions button i { margin-right: 0.25rem; }
-.theme2-art-work-panel { margin-bottom: 1rem; padding: 0.85rem 1rem 1rem; border: 1px solid var(--border-color); border-top: 0; background: var(--panel-bg); }
-.theme2-progress-view-tabs + .theme2-art-work-panel + .theme2-pipeline-panel { border-top: 0; }
+.theme2-art-work-panel { margin: 0; padding: 0.85rem 1rem 1rem; border: 0; background: var(--panel-bg); }
+.theme2-progress-view-shell > .theme2-pipeline-panel { margin: 0; border: 0; }
 .theme2-view .is-view-hidden { display: none !important; }
 .theme2-art-work-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 .theme2-art-work-heading h2 { margin: 0.08rem 0 0; font-size: 1rem; }
@@ -440,6 +441,7 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-next-action.overdue { border-left-color: var(--theme-danger); background: #fff0ec; }
 .theme2-detail-next-action.overdue strong { color: var(--theme-danger); }
 .theme2-art-work-empty i { color: var(--theme-success) !important; }
+.art-work-help-note { margin-top: 0.8rem; }
 @media (max-width: 1100px) { .theme2-art-work-stats { grid-template-columns: repeat(3, minmax(115px, 1fr)); } }
 @media (max-width: 680px) { .theme2-progress-view-tabs { align-items: flex-start; flex-direction: column; } .theme2-progress-view-actions { width: 100%; } .theme2-progress-view-actions button { flex: 1; min-width: 0; } .theme2-art-work-heading { align-items: flex-start; flex-direction: column; gap: 0.35rem; } .theme2-art-work-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .theme2-detail-next-action { grid-template-columns: 1fr; gap: 0.18rem; } }
 

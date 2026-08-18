@@ -51,7 +51,7 @@
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
-  let artWorkFilter = 'work';
+  let artWorkFilter = 'ready';
   let progressView = 'art';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
@@ -207,21 +207,29 @@
     return true;
   }
   function renderArtWorkSummary() {
+    const pipeline = theme2View.querySelector('.theme2-pipeline-panel');
+    let shell = document.getElementById('theme2-progress-view-shell');
+    if (!shell) {
+      shell = document.createElement('div');
+      shell.id = 'theme2-progress-view-shell';
+      shell.className = 'theme2-progress-view-shell';
+      pipeline?.parentNode?.insertBefore(shell, pipeline);
+    }
     let panel = document.getElementById('theme2-art-work-panel');
     if (!panel) {
       panel = document.createElement('section');
       panel.id = 'theme2-art-work-panel';
       panel.className = 'theme2-art-work-panel';
-      const pipeline = theme2View.querySelector('.theme2-pipeline-panel');
-      pipeline?.parentNode?.insertBefore(panel, pipeline);
     }
     let tabs = document.getElementById('theme2-progress-view-tabs');
     if (!tabs) {
       tabs = document.createElement('div');
       tabs.id = 'theme2-progress-view-tabs';
       tabs.className = 'theme2-progress-view-tabs';
-      panel.parentNode?.insertBefore(tabs, panel);
     }
+    if (tabs.parentNode !== shell) shell.appendChild(tabs);
+    if (panel.parentNode !== shell) shell.appendChild(panel);
+    if (pipeline && pipeline.parentNode !== shell) shell.appendChild(pipeline);
     tabs.innerHTML = `<div><span class="theme2-kicker">PROGRESS VIEW</span><h2><i class="fa-solid fa-eye"></i> 進度檢視</h2></div><div class="theme2-progress-view-actions" role="tablist" aria-label="進度檢視模式"><button class="${progressView === 'art' ? 'active' : ''}" data-progress-view="art" type="button" role="tab" aria-selected="${progressView === 'art'}"><i class="fa-solid fa-palette"></i> 美術待辦</button><button class="${progressView === 'pipeline' ? 'active' : ''}" data-progress-view="pipeline" type="button" role="tab" aria-selected="${progressView === 'pipeline'}"><i class="fa-solid fa-arrow-right-arrow-left"></i> 整體流程</button></div>`;
     const configs = [
       ['ready', '可開始製作', '目前輪到美術'],
@@ -230,17 +238,44 @@
       ['overdue', '已逾期', '超過目標日']
     ];
     const workCount = items.filter(item => matchesArtWorkFilter(item, 'work')).length;
-    panel.innerHTML = `<div class="theme2-art-work-heading"><div><span class="theme2-kicker">ART WORK FILTER</span><h2><i class="fa-solid fa-palette"></i> 美術手上工作</h2></div><p><i class="fa-solid fa-circle-info"></i> 目前手上 ${workCount} 項；點擊條件可縮小下方清單，再次點擊可解除。</p></div><div class="theme2-art-work-stats">${configs.map(([filter, label, note]) => `<button class="theme2-art-work-stat ${artWorkFilter === filter ? 'active' : ''} ${filter === 'returned' || filter === 'overdue' ? 'is-alert' : filter === 'due-soon' ? 'is-warning' : ''}" data-art-work-filter="${filter}" type="button" aria-pressed="${artWorkFilter === filter}"><span>${label}</span><strong>${items.filter(item => matchesArtWorkFilter(item, filter)).length}</strong><small>${artWorkFilter === filter ? '篩選中' : note}</small></button>`).join('')}</div>`;
+    panel.innerHTML = `<div class="theme2-art-work-heading"><div><span class="theme2-kicker">ART WORK FILTER</span><h2><i class="fa-solid fa-palette"></i> 美術手上工作 <button id="theme2-art-help-btn" class="stage-help-btn" type="button" aria-label="美術工作條件說明" data-tooltip="查看四個美術工作條件的判斷規則"><i class="fa-solid fa-question"></i></button></h2></div><p><i class="fa-solid fa-circle-info"></i> 目前手上 ${workCount} 項；選擇條件可篩選下方項目。</p></div><div class="theme2-art-work-stats">${configs.map(([filter, label, note]) => `<button class="theme2-art-work-stat ${artWorkFilter === filter ? 'active' : ''} ${filter === 'returned' || filter === 'overdue' ? 'is-alert' : filter === 'due-soon' ? 'is-warning' : ''}" data-art-work-filter="${filter}" type="button" aria-pressed="${artWorkFilter === filter}"><span>${label}</span><strong>${items.filter(item => matchesArtWorkFilter(item, filter)).length}</strong><small>${artWorkFilter === filter ? '篩選中' : note}</small></button>`).join('')}</div>`;
     panel.querySelectorAll('[data-art-work-filter]').forEach(button => button.addEventListener('click', () => {
       const selected = button.dataset.artWorkFilter;
-      artWorkFilter = artWorkFilter === selected ? 'work' : selected;
+      artWorkFilter = selected;
       applyFilters();
     }));
+    panel.querySelector('#theme2-art-help-btn')?.addEventListener('click', openArtHelpModal);
     tabs.querySelectorAll('[data-progress-view]').forEach(button => button.addEventListener('click', () => {
       progressView = button.dataset.progressView;
       applyFilters();
     }));
     syncProgressView();
+  }
+  function ensureArtHelpModal() {
+    let modal = document.getElementById('theme2-art-help-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'theme2-art-help-modal';
+    modal.className = 'theme2-stage-help-modal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `<div class="theme2-stage-help-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-art-help-title"><div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">ART WORK DEFINITIONS</span><h2 id="theme2-art-help-title">美術工作條件說明</h2></div><button id="theme2-art-help-close" type="button" aria-label="關閉美術工作條件說明">&times;</button></div><div class="theme2-help-intro"><p><b>用途：</b>這四項只用來找出目前需要美術處理的工作，不是完整專案階段分類。</p><p><b>日期來源：</b>即將到期與已逾期目前使用「企劃整合目標日／期望完成」判斷。</p></div><div class="stage-definition-list art-work-definition-list"><article><b>01 · 可開始製作</b><p>企劃需求、程式功能與代圖確認皆已完成，下一個未完成階段為美術製作。</p></article><article><b>02 · 退回修改</b><p>Google Sheet 的「退回修改中」為 TRUE，需要優先處理製作人回饋。</p></article><article><b>03 · 即將到期</b><p>項目目前在美術製作或退回修改中，且目標日期落在今天至未來 7 天內。</p></article><article><b>04 · 已逾期</b><p>項目目前在美術製作或退回修改中，且目標日期早於今天。</p></article></div><div class="theme2-help-intro art-work-help-note"><p><b>數量可能重疊：</b>可開始製作或退回修改的項目，也可能同時屬於即將到期或已逾期。</p></div></div>`;
+    theme2View.appendChild(modal);
+    modal.querySelector('#theme2-art-help-close')?.addEventListener('click', closeArtHelpModal);
+    modal.addEventListener('click', event => { if (event.target === modal) closeArtHelpModal(); });
+    return modal;
+  }
+  function openArtHelpModal() {
+    const modal = ensureArtHelpModal();
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('body-scroll-lock');
+  }
+  function closeArtHelpModal() {
+    const modal = document.getElementById('theme2-art-help-modal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('body-scroll-lock');
   }
   function syncProgressView() {
     const tabs = document.getElementById('theme2-progress-view-tabs');
@@ -271,7 +306,7 @@
       button.classList.toggle('is-active', activeStage === stage);
       button.setAttribute('aria-pressed', String(activeStage === stage));
     });
-    theme2View.querySelectorAll('.stage-definition-list article').forEach((article, index) => {
+    theme2View.querySelectorAll('#theme2-stage-help-modal .stage-definition-list article').forEach((article, index) => {
       const stage = PIPELINE_STAGES[index];
       const heading = article.querySelector('b');
       if (heading && stage) heading.textContent = `${String(index + 1).padStart(2, '0')} · ${PIPELINE_LABELS[stage]}`;
@@ -436,8 +471,9 @@
       groups.get(mechanism).push(item);
     });
     if (!groups.size) {
+      const selectedArtLabel = { ready: '可開始製作', returned: '退回修改', 'due-soon': '即將到期', overdue: '已逾期' }[artWorkFilter] || '目前條件';
       container.innerHTML = progressView === 'art'
-        ? '<div class="detail-empty theme2-art-work-empty"><i class="fa-solid fa-circle-check"></i><strong>目前沒有美術工作</strong><span>可開始製作、退回修改、即將到期與已逾期目前皆為 0。</span></div>'
+        ? `<div class="detail-empty theme2-art-work-empty"><i class="fa-solid fa-circle-check"></i><strong>${escapeHtml(selectedArtLabel)}目前沒有項目</strong><span>可切換其他美術條件，或前往「整體流程」查看所有項目。</span></div>`
         : '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
       return;
     }
@@ -733,7 +769,7 @@
       ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
-      artWorkFilter = 'work';
+      artWorkFilter = 'ready';
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
       theme2View.querySelectorAll('.theme2-dimension-chip').forEach(item => item.classList.toggle('active', item.dataset.selectValue === item.closest('.theme2-filter-content')?.querySelector('.theme2-dimension-chip')?.dataset.selectValue));
       applyFilters();
@@ -875,6 +911,7 @@
     if (event.key === 'Escape') {
       closeDetailModal();
       closeStageHelpModal();
+      closeArtHelpModal();
     }
   });
 
