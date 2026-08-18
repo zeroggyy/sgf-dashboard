@@ -159,11 +159,12 @@
 .detail-copy-path:disabled:hover { background: transparent; color: var(--text-muted); }
 .theme2-detail-modal { position: fixed; inset: 0; z-index: 11000; display: flex; align-items: center; justify-content: center; padding: 0.65rem; background: rgba(28, 26, 23, 0.28); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
 .theme2-detail-modal.open { opacity: 1; pointer-events: auto; }
-.theme2-detail-dialog { width: min(860px, 96vw); max-height: 96vh; overflow: auto; padding: 0.85rem 1.1rem; border: 2px solid var(--border-color); background: var(--panel-bg); box-shadow: 8px 8px 0 rgba(28, 26, 23, 0.16); transform: translateY(10px); transition: transform 0.2s ease; }
+.theme2-detail-dialog { display: flex; flex-direction: column; width: min(860px, 96vw); height: min(900px, 96vh); max-height: 96vh; overflow: hidden; padding: 0.85rem 1.1rem; border: 2px solid var(--border-color); background: var(--panel-bg); box-shadow: 8px 8px 0 rgba(28, 26, 23, 0.16); transform: translateY(10px); transition: transform 0.2s ease; }
 .theme2-detail-modal.open .theme2-detail-dialog { transform: translateY(0); }
-.theme2-detail-dialog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 0.65rem; border-bottom: 3px double var(--border-color); }
+.theme2-detail-dialog-header { position: relative; z-index: 2; display: flex; flex: 0 0 auto; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 0.65rem; border-bottom: 3px double var(--border-color); background: var(--panel-bg); }
 .theme2-detail-dialog-header > h2 { margin: 0; font-size: 1.45rem; line-height: 1.15; }
 .theme2-detail-dialog-header button { border: 0; background: transparent; color: var(--text-primary); font-size: 1.8rem; line-height: 0.8; cursor: pointer; }
+#theme2-detail-modal-body { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-right: 0.25rem; scrollbar-gutter: stable; }
 .theme2-detail-dialog .theme2-detail-content { padding: 0.8rem 0 0; }
 .theme2-detail-dialog .theme2-detail-content h2 { margin: 0 0 1rem; font-size: 1.45rem; }
 .theme2-detail-dialog .detail-meta-grid { grid-template-columns: repeat(4, 1fr); }
