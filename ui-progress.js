@@ -51,7 +51,7 @@
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
-  let artWorkFilter = 'all';
+  let artWorkFilter = 'work';
   let progressView = 'art';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
@@ -198,12 +198,12 @@
     return a.rowIndex - b.rowIndex;
   }
   function matchesArtWorkFilter(item, filter = artWorkFilter) {
+    if (filter === 'work') return ['art', 'returned'].includes(item.stage);
     if (filter === 'all') return true;
     if (filter === 'ready') return item.stage === 'art';
     if (filter === 'returned') return item.stage === 'returned';
     if (filter === 'due-soon') return theme2DueState(item) === 'due-soon';
     if (filter === 'overdue') return theme2DueState(item) === 'overdue';
-    if (filter === 'waiting') return ['planning', 'function', 'placeholder'].includes(item.stage);
     return true;
   }
   function renderArtWorkSummary() {
@@ -224,22 +224,21 @@
     }
     tabs.innerHTML = `<div><span class="theme2-kicker">PROGRESS VIEW</span><h2><i class="fa-solid fa-eye"></i> 進度檢視</h2></div><div class="theme2-progress-view-actions" role="tablist" aria-label="進度檢視模式"><button class="${progressView === 'art' ? 'active' : ''}" data-progress-view="art" type="button" role="tab" aria-selected="${progressView === 'art'}"><i class="fa-solid fa-palette"></i> 美術待辦</button><button class="${progressView === 'pipeline' ? 'active' : ''}" data-progress-view="pipeline" type="button" role="tab" aria-selected="${progressView === 'pipeline'}"><i class="fa-solid fa-arrow-right-arrow-left"></i> 整體流程</button></div>`;
     const configs = [
-      ['all', '全部項目', '完整查看'],
       ['ready', '可開始製作', '目前輪到美術'],
       ['returned', '退回修改', '優先處理'],
       ['due-soon', '即將到期', '目標日 7 天內'],
-      ['overdue', '已逾期', '超過目標日'],
-      ['waiting', '等待需求', '尚未輪到美術']
+      ['overdue', '已逾期', '超過目標日']
     ];
-    panel.innerHTML = `<div class="theme2-art-work-heading"><div><span class="theme2-kicker">ART WORK QUEUE</span><h2><i class="fa-solid fa-palette"></i> 美術工作提示</h2></div><p><i class="fa-solid fa-circle-info"></i> 點擊狀態可直接篩選下方既有項目；再次點擊可解除。</p></div><div class="theme2-art-work-stats">${configs.map(([filter, label, note]) => `<button class="theme2-art-work-stat ${artWorkFilter === filter ? 'active' : ''} ${filter === 'returned' || filter === 'overdue' ? 'is-alert' : filter === 'due-soon' ? 'is-warning' : ''}" data-art-work-filter="${filter}" type="button" aria-pressed="${artWorkFilter === filter}"><span>${label}</span><strong>${items.filter(item => matchesArtWorkFilter(item, filter)).length}</strong><small>${artWorkFilter === filter ? '篩選中' : note}</small></button>`).join('')}</div>`;
+    const workCount = items.filter(item => matchesArtWorkFilter(item, 'work')).length;
+    panel.innerHTML = `<div class="theme2-art-work-heading"><div><span class="theme2-kicker">ART WORK FILTER</span><h2><i class="fa-solid fa-palette"></i> 美術手上工作</h2></div><p><i class="fa-solid fa-circle-info"></i> 目前手上 ${workCount} 項；點擊條件可縮小下方清單，再次點擊可解除。</p></div><div class="theme2-art-work-stats">${configs.map(([filter, label, note]) => `<button class="theme2-art-work-stat ${artWorkFilter === filter ? 'active' : ''} ${filter === 'returned' || filter === 'overdue' ? 'is-alert' : filter === 'due-soon' ? 'is-warning' : ''}" data-art-work-filter="${filter}" type="button" aria-pressed="${artWorkFilter === filter}"><span>${label}</span><strong>${items.filter(item => matchesArtWorkFilter(item, filter)).length}</strong><small>${artWorkFilter === filter ? '篩選中' : note}</small></button>`).join('')}</div>`;
     panel.querySelectorAll('[data-art-work-filter]').forEach(button => button.addEventListener('click', () => {
       const selected = button.dataset.artWorkFilter;
-      artWorkFilter = selected === 'all' || artWorkFilter === selected ? 'all' : selected;
+      artWorkFilter = artWorkFilter === selected ? 'work' : selected;
       applyFilters();
     }));
     tabs.querySelectorAll('[data-progress-view]').forEach(button => button.addEventListener('click', () => {
       progressView = button.dataset.progressView;
-      syncProgressView();
+      applyFilters();
     }));
     syncProgressView();
   }
@@ -437,7 +436,9 @@
       groups.get(mechanism).push(item);
     });
     if (!groups.size) {
-      container.innerHTML = '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
+      container.innerHTML = progressView === 'art'
+        ? '<div class="detail-empty theme2-art-work-empty"><i class="fa-solid fa-circle-check"></i><strong>目前沒有美術工作</strong><span>可開始製作、退回修改、即將到期與已逾期目前皆為 0。</span></div>'
+        : '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
       return;
     }
     if (!groups.has(openMechanismKey)) openMechanismKey = groups.size === 1 ? groups.keys().next().value : '';
@@ -638,7 +639,8 @@
       const expectedDateMatch = expectedDate === 'all' || expectedDateValue(item) === expectedDate;
       const searchMatch = !query || searchableText(item).includes(query);
       const specialMatch = special === 'all' || (special === 'returned' && item.returned) || (special === 'evidence' && item.missingFields.length > 0);
-      return categoryMatch && expectedDateMatch && stageMatch && searchMatch && specialMatch && matchesArtWorkFilter(item);
+      const artWorkMatch = progressView === 'pipeline' || matchesArtWorkFilter(item);
+      return categoryMatch && expectedDateMatch && stageMatch && searchMatch && specialMatch && artWorkMatch;
     });
     renderArtWorkSummary();
     updateDimensionCounts({ category, expectedDate, stage, query });
@@ -731,7 +733,7 @@
       ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
       if (search) search.value = '';
-      artWorkFilter = 'all';
+      artWorkFilter = 'work';
       theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
       theme2View.querySelectorAll('.theme2-dimension-chip').forEach(item => item.classList.toggle('active', item.dataset.selectValue === item.closest('.theme2-filter-content')?.querySelector('.theme2-dimension-chip')?.dataset.selectValue));
       applyFilters();
