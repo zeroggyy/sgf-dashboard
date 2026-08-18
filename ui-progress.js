@@ -52,6 +52,7 @@
   let openMechanismKey = '';
   let detailEditing = false;
   let artWorkFilter = 'all';
+  let progressView = 'art';
 
   function isTrue(value) { return String(value).toUpperCase() === 'TRUE'; }
   function stageDone(row, stage) {
@@ -214,6 +215,14 @@
       const pipeline = theme2View.querySelector('.theme2-pipeline-panel');
       pipeline?.parentNode?.insertBefore(panel, pipeline);
     }
+    let tabs = document.getElementById('theme2-progress-view-tabs');
+    if (!tabs) {
+      tabs = document.createElement('div');
+      tabs.id = 'theme2-progress-view-tabs';
+      tabs.className = 'theme2-progress-view-tabs';
+      panel.parentNode?.insertBefore(tabs, panel);
+    }
+    tabs.innerHTML = `<div><span class="theme2-kicker">PROGRESS VIEW</span><h2><i class="fa-solid fa-eye"></i> 進度檢視</h2></div><div class="theme2-progress-view-actions" role="tablist" aria-label="進度檢視模式"><button class="${progressView === 'art' ? 'active' : ''}" data-progress-view="art" type="button" role="tab" aria-selected="${progressView === 'art'}"><i class="fa-solid fa-palette"></i> 美術待辦</button><button class="${progressView === 'pipeline' ? 'active' : ''}" data-progress-view="pipeline" type="button" role="tab" aria-selected="${progressView === 'pipeline'}"><i class="fa-solid fa-arrow-right-arrow-left"></i> 整體流程</button></div>`;
     const configs = [
       ['all', '全部項目', '完整查看'],
       ['ready', '可開始製作', '目前輪到美術'],
@@ -228,6 +237,23 @@
       artWorkFilter = selected === 'all' || artWorkFilter === selected ? 'all' : selected;
       applyFilters();
     }));
+    tabs.querySelectorAll('[data-progress-view]').forEach(button => button.addEventListener('click', () => {
+      progressView = button.dataset.progressView;
+      syncProgressView();
+    }));
+    syncProgressView();
+  }
+  function syncProgressView() {
+    const tabs = document.getElementById('theme2-progress-view-tabs');
+    const artPanel = document.getElementById('theme2-art-work-panel');
+    const pipelinePanel = theme2View.querySelector('.theme2-pipeline-panel');
+    tabs?.querySelectorAll('[data-progress-view]').forEach(button => {
+      const active = button.dataset.progressView === progressView;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+    });
+    artPanel?.classList.toggle('is-view-hidden', progressView !== 'art');
+    pipelinePanel?.classList.toggle('is-view-hidden', progressView !== 'pipeline');
   }
   function renderPipeline(filteredItems = items) {
     const buttons = [...theme2View.querySelectorAll('[data-theme2-stage]')];
