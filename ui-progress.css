@@ -353,12 +353,6 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-discussion-heading h3 { margin: 0.12rem 0 0; color: var(--text-primary); font-size: 0.88rem; }
 .theme2-discussion-heading h3 i { color: var(--theme-accent); margin-right: 0.25rem; }
 .theme2-discussion-heading > small { color: var(--text-muted); font-size: 0.6rem; }
-.theme2-discussion-filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.theme2-discussion-filter { padding: 0.32rem 0.48rem; border: 1px solid var(--theme2-line); background: transparent; color: var(--text-secondary); font-family: var(--font-main); font-size: 0.61rem; font-weight: 700; cursor: pointer; }
-.theme2-discussion-filter b { margin-left: 0.18rem; color: var(--theme-accent); font-size: 0.56rem; }
-.theme2-discussion-filter:hover { border-color: var(--theme-accent); background: var(--theme-accent-soft); }
-.theme2-discussion-filter.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
-.theme2-discussion-filter.active b { color: #d7e8f1; }
 .theme2-discussion-list { display: grid; gap: 0.45rem; max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
 .theme2-discussion-entry { padding: 0.58rem 0.65rem; border-left: 3px solid var(--theme-accent); background: var(--panel-bg); }
 .theme2-discussion-entry header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.55rem; }

@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css?v=1.2.0">
-  <link rel="stylesheet" href="ui-progress.css?v=1.9.1">
+  <link rel="stylesheet" href="ui-progress.css?v=1.9.2">
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme2">
   <main id="theme-view-theme2" class="page-container theme-view theme-view-demo theme2-view">
@@ -37,7 +37,7 @@
         <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-magnifying-glass"></i> 搜尋：</div><div class="theme2-filter-content theme2-search-content"><input id="theme2-search-input" type="search" placeholder="搜尋機制、項目、說明或序號..." /></div></div>
         <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-layer-group"></i> 機制：</div><div id="theme2-category-chips" class="theme2-filter-content"></div></div>
         <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-regular fa-calendar-check"></i> 企劃整合目標日：</div><div id="theme2-expected-date-chips" class="theme2-filter-content"></div></div>
-        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">全部（<b data-theme2-count="all">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="returned" type="button">退回修改中（<b data-theme2-count="returned">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="evidence" type="button">交付證據待補（<b data-theme2-count="evidence">0</b>）</button></div></div>
+        <div class="theme2-filter-row"><div class="theme2-filter-label"><i class="fa-solid fa-tags"></i> 特殊篩選：</div><div class="theme2-filter-content theme2-filter-chips"><button class="theme2-filter-chip active" data-theme2-filter="all" type="button">全部（<b data-theme2-count="all">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="returned" type="button">退回修改中（<b data-theme2-count="returned">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="evidence" type="button">交付證據待補（<b data-theme2-count="evidence">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="discussion-any" type="button">有討論（<b data-theme2-count="discussion-any">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="discussion-revision" type="button">修改要求（<b data-theme2-count="discussion-revision">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="discussion-reply" type="button">處理回覆（<b data-theme2-count="discussion-reply">0</b>）</button><button class="theme2-filter-chip" data-theme2-filter="discussion-complete" type="button">完成回覆（<b data-theme2-count="discussion-complete">0</b>）</button></div></div>
         <select id="theme2-category-filter" hidden><option>全部功能分類</option></select><select id="theme2-expected-date-filter" hidden><option value="all">全部時間</option></select><select id="theme2-stage-filter" hidden><option>全部階段</option></select>
       </section>
       <section class="theme2-pipeline-panel">
@@ -71,7 +71,7 @@
   <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div>
   <div id="toast" class="toast"></div>
   <script src="dashboard-shared.js?v=1.2.0"></script>
-  <script src="ui-progress.js?v=2.0.1"></script>
+  <script src="ui-progress.js?v=2.0.2"></script>
   <script src="dashboard-navigation.js?v=1.3.0"></script>
 </body>
 </html>
