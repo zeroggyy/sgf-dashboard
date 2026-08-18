@@ -51,6 +51,7 @@
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
+  let detailEditorDirty = false;
   let artWorkFilter = 'ready';
   let progressView = 'art';
 
@@ -592,7 +593,16 @@
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
     detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
-    detail.querySelector('#theme2-edit-cancel')?.addEventListener('click', () => { detailEditing = false; renderDetail(item); });
+    detailEditorDirty = false;
+    const editForm = detail.querySelector('#theme2-edit-form');
+    editForm?.addEventListener('input', () => { detailEditorDirty = true; });
+    editForm?.addEventListener('change', () => { detailEditorDirty = true; });
+    detail.querySelector('#theme2-edit-cancel')?.addEventListener('click', () => {
+      if (detailEditorDirty && !confirm('您已修改內容但尚未儲存，確定要放棄變更嗎？')) return;
+      detailEditorDirty = false;
+      detailEditing = false;
+      renderDetail(item);
+    });
     detail.querySelector('#theme2-edit-form')?.addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -610,8 +620,9 @@
         await updateTheme2Item(item.itemId, changes);
         applyLocalTheme2Changes(item.itemId, changes);
         window.dashboardShowToast('已回寫 Google Sheet', 'success');
+        detailEditorDirty = false;
         detailEditing = false;
-        closeDetailModal();
+        closeDetailModal(true);
         loadTheme2Api().catch(error => console.warn('Theme 2 background refresh failed', error));
       } catch (error) {
         window.dashboardShowToast(`儲存失敗：${error.message}`, 'error');
@@ -648,10 +659,10 @@
     const actionNotice = `<div class="theme2-detail-next-action ${dueState}"><span>美術下一步</span><strong>${escapeHtml(artActionOf(item))}</strong><small>目標：${escapeHtml(item.expectedDate || '未定')}${dueState === 'overdue' ? ' · 已逾期' : dueState === 'due-soon' ? ' · 7 天內到期' : ''}</small></div>`;
     detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
     detail.querySelector('.theme2-detail-thumbnail img')?.addEventListener('error', event => event.currentTarget.closest('.theme2-detail-thumbnail')?.remove());
-    detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditing = true; renderDetail(item); });
+    detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditorDirty = false; detailEditing = true; renderDetail(item); });
     detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
       const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);
-      if (sourceItem) { detailEditing = true; renderDetail(sourceItem); }
+      if (sourceItem) { detailEditorDirty = false; detailEditing = true; renderDetail(sourceItem); }
       else window.dashboardShowToast('找不到此引用項目的主項', 'error');
     });
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
@@ -887,12 +898,14 @@
     throw lastError || new Error('Theme 2 API 連線失敗');
   }
 
-  function closeDetailModal() {
+  function closeDetailModal(force = false) {
     const modal = document.getElementById('theme2-detail-modal');
     if (!modal) return;
+    if (!force && detailEditing && detailEditorDirty && !confirm('您已修改內容但尚未儲存，確定要直接放棄變更並離開嗎？')) return;
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('body-scroll-lock');
+    detailEditorDirty = false;
     detailEditing = false;
   }
 
@@ -922,9 +935,9 @@
     if (event.target.id === 'theme2-stage-help-modal') closeStageHelpModal();
   });
 
-  document.getElementById('theme2-detail-close')?.addEventListener('click', closeDetailModal);
+  document.getElementById('theme2-detail-close')?.addEventListener('click', () => closeDetailModal());
   document.getElementById('theme2-detail-modal')?.addEventListener('click', event => {
-    if (event.target.id === 'theme2-detail-modal') closeDetailModal();
+    if (event.target.id === 'theme2-detail-modal') event.preventDefault();
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
