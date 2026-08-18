@@ -50,6 +50,7 @@
   let rawSheetRows = [];
   let theme2Discussions = [];
   const expandedDiscussionItems = new Set();
+  const discussionTypeFilters = new Map();
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
@@ -583,13 +584,20 @@
   }
 
   function renderDiscussionSection(item) {
-    const records = discussionsForItem(item.itemId);
+    const allRecords = discussionsForItem(item.itemId);
+    const activeType = discussionTypeFilters.get(item.itemId) || '全部';
+    const records = activeType === '全部' ? allRecords : allRecords.filter(entry => entry.type === activeType);
     const expanded = expandedDiscussionItems.has(item.itemId);
     const visible = expanded ? records : records.slice(0, 3);
-    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${escapeHtml(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無討論紀錄。</p>';
+    const discussionTypes = ['全部', '一般討論', '修改要求', '處理回覆', '完成確認'];
+    const filterMarkup = discussionTypes.map(type => {
+      const count = type === '全部' ? allRecords.length : allRecords.filter(entry => entry.type === type).length;
+      return `<button class="theme2-discussion-filter ${activeType === type ? 'active' : ''}" data-discussion-type="${escapeHtml(type)}" type="button">${escapeHtml(type)} <b>${count}</b></button>`;
+    }).join('');
+    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${escapeHtml(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無符合此條件的討論紀錄。</p>';
     const toggle = records.length > 3 ? `<button id="theme2-discussion-toggle" class="theme2-discussion-toggle" type="button">${expanded ? '收合討論紀錄' : `顯示全部 ${records.length} 筆討論`} <i class="fa-solid fa-chevron-${expanded ? 'up' : 'down'}"></i></button>` : '';
     const disabled = item.itemId ? '' : 'disabled';
-    return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>最新 ${Math.min(records.length, 3)} / ${records.length} 筆</small></div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form></section>`;
+    return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>顯示 ${records.length} / ${allRecords.length} 筆</small></div><div class="theme2-discussion-filters" aria-label="討論類型快速篩選">${filterMarkup}</div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form></section>`;
   }
 
   function rebuildTheme2Items(rows) {
@@ -711,6 +719,11 @@
       else expandedDiscussionItems.add(item.itemId);
       renderDetail(item);
     });
+    detail.querySelectorAll('[data-discussion-type]').forEach(button => button.addEventListener('click', () => {
+      discussionTypeFilters.set(item.itemId, button.dataset.discussionType || '全部');
+      expandedDiscussionItems.delete(item.itemId);
+      renderDetail(item);
+    }));
     detail.querySelector('#theme2-discussion-form')?.addEventListener('submit', async event => {
       event.preventDefault();
       const authorInput = detail.querySelector('#theme2-discussion-author');
