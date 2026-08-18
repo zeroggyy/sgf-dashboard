@@ -48,6 +48,8 @@
   };
   let items = [];
   let rawSheetRows = [];
+  let theme2Discussions = [];
+  const expandedDiscussionItems = new Set();
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
@@ -552,6 +554,44 @@
     return payload;
   }
 
+  async function addTheme2Discussion(item, values) {
+    let response;
+    try {
+      response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addUiDiscussion', itemId: item.itemId, stage: item.stageLabel, ...values })
+      });
+    } catch (error) {
+      throw new Error('無法連線至 Google Sheet API；輸入內容已保留，請稍後重試。');
+    }
+    const responseText = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(responseText);
+    } catch (error) {
+      throw new Error('Apps Script 尚未部署討論紀錄功能，請更新並重新部署網頁應用程式。');
+    }
+    if (!response.ok || payload.error) throw new Error(payload.error || `新增討論失敗（HTTP ${response.status}）`);
+    return payload.discussion;
+  }
+
+  function discussionsForItem(itemId) {
+    return theme2Discussions
+      .filter(entry => entry.itemId === itemId && !entry.hidden)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  function renderDiscussionSection(item) {
+    const records = discussionsForItem(item.itemId);
+    const expanded = expandedDiscussionItems.has(item.itemId);
+    const visible = expanded ? records : records.slice(0, 3);
+    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${escapeHtml(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無討論紀錄。</p>';
+    const toggle = records.length > 3 ? `<button id="theme2-discussion-toggle" class="theme2-discussion-toggle" type="button">${expanded ? '收合討論紀錄' : `顯示全部 ${records.length} 筆討論`} <i class="fa-solid fa-chevron-${expanded ? 'up' : 'down'}"></i></button>` : '';
+    const disabled = item.itemId ? '' : 'disabled';
+    return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>最新 ${Math.min(records.length, 3)} / ${records.length} 筆</small></div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form></section>`;
+  }
+
   function rebuildTheme2Items(rows) {
     const masterRowsBySequence = new Map();
     rows.forEach(row => {
@@ -657,13 +697,47 @@
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
     const dueState = theme2DueState(item);
     const actionNotice = `<div class="theme2-detail-next-action ${dueState}"><span>美術下一步</span><strong>${escapeHtml(artActionOf(item))}</strong><small>目標：${escapeHtml(item.expectedDate || '未定')}${dueState === 'overdue' ? ' · 已逾期' : dueState === 'due-soon' ? ' · 7 天內到期' : ''}</small></div>`;
-    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div></div>`;
+    const discussionSection = renderDiscussionSection(item);
+    detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div>${discussionSection}</div>`;
     detail.querySelector('.theme2-detail-thumbnail img')?.addEventListener('error', event => event.currentTarget.closest('.theme2-detail-thumbnail')?.remove());
     detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditorDirty = false; detailEditing = true; renderDetail(item); });
     detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
       const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);
       if (sourceItem) { detailEditorDirty = false; detailEditing = true; renderDetail(sourceItem); }
       else window.dashboardShowToast('找不到此引用項目的主項', 'error');
+    });
+    detail.querySelector('#theme2-discussion-toggle')?.addEventListener('click', () => {
+      if (expandedDiscussionItems.has(item.itemId)) expandedDiscussionItems.delete(item.itemId);
+      else expandedDiscussionItems.add(item.itemId);
+      renderDetail(item);
+    });
+    detail.querySelector('#theme2-discussion-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const authorInput = detail.querySelector('#theme2-discussion-author');
+      const typeInput = detail.querySelector('#theme2-discussion-type');
+      const messageInput = detail.querySelector('#theme2-discussion-message');
+      const saveButton = detail.querySelector('#theme2-discussion-save');
+      const author = authorInput?.value.trim() || '';
+      const message = messageInput?.value.trim() || '';
+      if (!author || !message) {
+        window.dashboardShowToast(!author ? '請填寫留言人' : '請填寫討論內容', 'error');
+        (!author ? authorInput : messageInput)?.focus();
+        return;
+      }
+      saveButton.disabled = true;
+      saveButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中';
+      try {
+        const discussion = await addTheme2Discussion(item, { author, message, type: typeInput.value });
+        localStorage.setItem('sgf_theme2_discussion_author', author);
+        theme2Discussions.unshift(discussion);
+        window.dashboardShowToast('討論紀錄已新增', 'success');
+        renderDetail(item);
+        loadTheme2Api().catch(error => console.warn('Theme 2 discussion refresh failed', error));
+      } catch (error) {
+        window.dashboardShowToast(`新增討論失敗：${error.message}`, 'error');
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 新增討論';
+      }
     });
     detail.querySelectorAll('.detail-copy-path[data-copy-path]').forEach(button => button.addEventListener('click', async () => {
       const path = button.dataset.copyPath;
@@ -835,6 +909,16 @@
   function applyTheme2Payload(payload, statusText = 'Google Sheet API', statusIcon = 'fa-cloud') {
     theme2ProjectName = payload.projectName || 'SGF 專案';
     rawSheetRows = payload.items.map(row => ({ ...row }));
+    theme2Discussions = Array.isArray(payload.discussions) ? payload.discussions.map(entry => ({
+      recordId: String(entry.recordId || ''),
+      itemId: String(entry.itemId || '').trim(),
+      author: String(entry.author || '').trim(),
+      message: String(entry.message || '').trim(),
+      type: String(entry.type || '一般討論').trim(),
+      stage: String(entry.stage || '').trim(),
+      createdAt: String(entry.createdAt || '').trim(),
+      hidden: Boolean(entry.hidden)
+    })) : [];
     rebuildTheme2Items(rawSheetRows);
     finishTheme2Load(statusText, statusIcon);
   }

@@ -348,6 +348,34 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-edit-invalid i { margin-right: 0.2rem; }
 @media (max-width: 620px) { .theme2-edit-grid { grid-template-columns: 1fr; } .theme2-edit-field.is-wide { grid-column: auto; } .theme2-edit-actions { width: 100%; grid-template-columns: 1fr 1fr; } }
 
+.theme2-discussion-section { display: grid; gap: 0.65rem; margin-top: 0.85rem; padding: 0.8rem; border: 1px solid var(--theme2-line); background: rgba(234, 242, 246, 0.28); }
+.theme2-discussion-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+.theme2-discussion-heading h3 { margin: 0.12rem 0 0; color: var(--text-primary); font-size: 0.88rem; }
+.theme2-discussion-heading h3 i { color: var(--theme-accent); margin-right: 0.25rem; }
+.theme2-discussion-heading > small { color: var(--text-muted); font-size: 0.6rem; }
+.theme2-discussion-list { display: grid; gap: 0.45rem; max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
+.theme2-discussion-entry { padding: 0.58rem 0.65rem; border-left: 3px solid var(--theme-accent); background: var(--panel-bg); }
+.theme2-discussion-entry header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.55rem; }
+.theme2-discussion-entry header b { color: var(--theme-accent); font-size: 0.68rem; }
+.theme2-discussion-entry header time { color: var(--text-muted); font-size: 0.58rem; }
+.theme2-discussion-entry header span { margin-left: auto; padding: 0.16rem 0.3rem; background: var(--theme-accent-soft); color: var(--theme-accent); font-size: 0.56rem; font-weight: 700; }
+.theme2-discussion-entry p { margin: 0.4rem 0 0; color: var(--text-primary); font-size: 0.72rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.theme2-discussion-entry > small { display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.56rem; }
+.theme2-discussion-empty { margin: 0; padding: 0.75rem; border: 1px dashed var(--theme2-line); color: var(--text-muted); font-size: 0.68rem; text-align: center; }
+.theme2-discussion-toggle { width: 100%; padding: 0.45rem; border: 1px dashed var(--theme2-line); background: transparent; color: var(--theme-accent); font-family: var(--font-main); font-size: 0.64rem; font-weight: 700; cursor: pointer; }
+.theme2-discussion-toggle:hover { border-style: solid; background: var(--theme-accent-soft); }
+.theme2-discussion-form { display: grid; grid-template-columns: minmax(150px, 0.75fr) minmax(150px, 0.75fr); gap: 0.55rem; padding-top: 0.65rem; border-top: 1px dashed var(--theme2-line); }
+.theme2-discussion-form label { display: grid; gap: 0.25rem; }
+.theme2-discussion-form label.is-wide, .theme2-discussion-submit { grid-column: 1 / -1; }
+.theme2-discussion-form label > span { color: var(--text-muted); font-size: 0.61rem; font-weight: 700; }
+.theme2-discussion-form input, .theme2-discussion-form select, .theme2-discussion-form textarea { width: 100%; box-sizing: border-box; padding: 0.48rem 0.55rem; border: 1px solid var(--theme2-line); background: var(--bg-color); color: var(--text-primary); font-family: var(--font-main); font-size: 0.7rem; }
+.theme2-discussion-form textarea { min-height: 78px; resize: vertical; line-height: 1.45; }
+.theme2-discussion-form input:focus, .theme2-discussion-form select:focus, .theme2-discussion-form textarea:focus { outline: none; border-color: var(--theme-accent); box-shadow: 0 0 0 2px rgba(47, 111, 149, 0.12); }
+.theme2-discussion-submit { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+.theme2-discussion-submit small { color: var(--text-muted); font-size: 0.58rem; }
+.theme2-discussion-submit .btn { min-width: 140px; justify-content: center; }
+@media (max-width: 620px) { .theme2-discussion-form { grid-template-columns: 1fr; } .theme2-discussion-form label.is-wide, .theme2-discussion-submit { grid-column: auto; } .theme2-discussion-submit { align-items: stretch; flex-direction: column; } }
+
 /* 機制優先：以單層手風琴取代流程樹，避免閱讀時在分支與內容間來回移動。 */
 .theme2-flow-map { padding: 0.9rem; overflow: visible; background: #F7F8F8; }
 .mechanism-accordion-list { display: grid; gap: 0.6rem; }
