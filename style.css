@@ -1975,6 +1975,32 @@ input[disabled] {
   padding: 0.2rem;
 }
 
+.dashboard-loading-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 3.5rem;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: min(90vw, 460px);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  background: #fcfbf9;
+  color: var(--text-primary);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(1rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-loading-notice.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .timeline-older-toggle {
   width: 100%;
   min-height: 44px;

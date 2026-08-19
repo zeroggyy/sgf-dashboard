@@ -983,6 +983,7 @@
   }
 
   async function loadTheme2Api() {
+    window.dashboardSetLoading?.(true, 'UI 進度資料載入中，請稍候…');
     let lastError;
     for (let attempt = 1; attempt <= THEME2_MAX_ATTEMPTS; attempt += 1) {
       try {
@@ -990,6 +991,7 @@
         const payload = await fetchTheme2Payload();
         writeTheme2Cache(payload);
         applyTheme2Payload(payload);
+        window.dashboardSetLoading?.(false);
         return;
       } catch (error) {
         lastError = error;
@@ -1001,8 +1003,10 @@
       const cachedAt = new Date(cached.savedAt).toLocaleString('zh-TW', { hour12: false });
       applyTheme2Payload(cached.payload, `離線資料 ${cachedAt}`, 'fa-clock-rotate-left');
       window.dashboardShowToast('API 暫時無法連線，已顯示上次成功資料', 'error');
+      window.dashboardSetLoading?.(false);
       return;
     }
+    window.dashboardSetLoading?.(false);
     throw lastError || new Error('Theme 2 API 連線失敗');
   }
 

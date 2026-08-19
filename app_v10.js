@@ -909,6 +909,8 @@ function saveConfiguration() {
 async function loadData(isBackground = false) {
   if (!appState.gasUrl) return;
 
+  window.dashboardSetLoading?.(true, '企劃進度資料載入中，請稍候…');
+
   const sortIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
   const originalIconClass = sortIcon ? sortIcon.className : 'fa-solid fa-arrow-down-short-wide';
 
@@ -957,6 +959,7 @@ async function loadData(isBackground = false) {
     showToast('連線失敗，請檢查 API 網址或網路狀態。', 'error');
     showSetupModal();
   } finally {
+    window.dashboardSetLoading?.(false);
     if (sortIcon) {
       sortIcon.className = originalIconClass;
     }

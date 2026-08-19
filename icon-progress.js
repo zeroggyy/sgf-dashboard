@@ -447,6 +447,7 @@
   }
 
   async function load() {
+    window.dashboardSetLoading?.(true, 'Icon 進度資料載入中，請稍候…');
     setStatus('loading', '資料載入中');
     if (!apiUrl || !apiKey) {
       const cached = readCache();
@@ -457,6 +458,7 @@
         $('icon-groups').innerHTML = '<div class="icon-empty">請先設定 Icon API</div>';
         setStatus('error', 'API 尚未設定');
       }
+      window.dashboardSetLoading?.(false);
       return;
     }
 
@@ -484,6 +486,8 @@
         $('icon-groups').innerHTML = `<div class="icon-empty">載入失敗：${esc(error.message)}</div>`;
         setStatus('error', `資料載入失敗：${error.message}`);
       }
+    } finally {
+      window.dashboardSetLoading?.(false);
     }
   }
 

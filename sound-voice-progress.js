@@ -369,6 +369,7 @@
   }
 
   async function loadTheme3Api() {
+    window.dashboardSetLoading?.(true, '音效／語音進度資料載入中，請稍候…');
     setTheme3ApiStatus('資料載入中', 'fa-circle-notch fa-spin', 'loading');
     try {
       const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { cache: 'no-store' }, 1);
@@ -393,6 +394,8 @@
         const grid = document.getElementById('theme3-weapon-grid');
         if (grid) grid.innerHTML = '<div class="theme3-empty">無法連接 Google Sheet API，請確認 Apps Script 部署與 API Key。</div>';
       }
+    } finally {
+      window.dashboardSetLoading?.(false);
     }
   }
 
