@@ -154,6 +154,21 @@
   function getGyazoId(value) {
     return String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
   }
+  function attachGyazoFallback(root, onExhausted) {
+    const extensions = ['jpg', 'png', 'gif'];
+    root.querySelectorAll('img[data-gyazo-id]').forEach(image => {
+      const id = image.dataset.gyazoId;
+      let attempt = 0;
+      image.addEventListener('error', () => {
+        attempt += 1;
+        if (attempt < extensions.length) {
+          image.src = `https://i.gyazo.com/${id}.${extensions[attempt]}`;
+        } else if (onExhausted) {
+          onExhausted(image);
+        }
+      });
+    });
+  }
   function parseTheme2Date(value) {
     const match = String(value || '').trim().match(/^(\d{4})[.\/-](\d{1,2})(?:[.\/-](\d{1,2}))?/);
     if (!match) return null;
@@ -391,15 +406,7 @@
     const extra = uncategorized.map(category => `<section class="ui-flow-branch ui-flow-branch-unassigned"><button class="ui-flow-branch-node ui-flow-branch-toggle" type="button" aria-expanded="false"><span class="ui-flow-node-shape ui-flow-node-mechanism"><i>?</i><strong>其他流程</strong><small>目前資料尚未歸類</small></span><em>⌄</em></button><div class="ui-flow-branch-body"><p class="ui-flow-description">這些資料目前尚未設定所屬的主要機制，後續可透過流程欄位重新歸類。</p><div class="ui-flow-category-list">${getCategoryCard(category, categoryMap.get(category))}</div></div></section>`).join('');
     const totalProgress = filteredItems.length ? Math.round(filteredItems.reduce((sum, item) => sum + STAGES.filter(stage => item.checklist[stage]).length, 0) / (filteredItems.length * STAGES.length) * 100) : 0;
     container.innerHTML = filteredItems.length ? `<div class="ui-flow-map"><svg class="ui-flow-connections" aria-hidden="true"></svg><div class="ui-flow-start ui-flow-root-node"><span class="ui-flow-start-icon">⌂</span><strong>${projectName}</strong><small>${filteredItems.length} 個相關畫面 · 完成度 ${totalProgress}%</small><p>所有 UI 流程的起點</p></div><div class="ui-flow-connector" aria-hidden="true">→</div><div class="ui-flow-branches">${branches}${extra}</div><div class="ui-flow-legend"><span><i class="legend-mechanism"></i>主要機制</span><span><i class="legend-screen"></i>畫面分類</span><span><i class="legend-shared"></i>共用 / 外部</span><span><i class="legend-progress"></i>完成度</span></div></div>` : '<div class="detail-empty"><strong>沒有符合條件的畫面</strong><span>請調整篩選條件</span></div>';
-    container.querySelectorAll('img[data-gyazo-id]').forEach(image => {
-      const id = image.dataset.gyazoId;
-      const extensions = ['jpg', 'png', 'gif'];
-      let attempt = 0;
-      image.addEventListener('error', () => {
-        attempt += 1;
-        if (attempt < extensions.length) image.src = `https://i.gyazo.com/${id}.${extensions[attempt]}`;
-      });
-    });
+    attachGyazoFallback(container);
     container.querySelectorAll('.ui-flow-item-open[data-original-url]').forEach(icon => icon.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
@@ -516,11 +523,7 @@
       openMechanismKey = section.classList.contains('is-open') ? '' : selected;
       renderMechanismAccordion(filteredItems);
     }));
-    container.querySelectorAll('img[data-gyazo-id]').forEach(image => {
-      const id = image.dataset.gyazoId;
-      const extensions = ['jpg', 'png', 'gif']; let attempt = 0;
-      image.addEventListener('error', () => { attempt += 1; if (attempt < extensions.length) image.src = `https://i.gyazo.com/${id}.${extensions[attempt]}`; });
-    });
+    attachGyazoFallback(container);
     container.querySelectorAll('.mechanism-item-open[data-original-url]').forEach(control => {
       const open = event => { event.preventDefault(); event.stopPropagation(); window.open(control.dataset.originalUrl, '_blank', 'noopener,noreferrer'); };
       control.addEventListener('click', open);
@@ -703,7 +706,7 @@
     const actionNotice = `<div class="theme2-detail-next-action ${dueState}"><span>美術下一步</span><strong>${escapeHtml(artActionOf(item))}</strong><small>目標：${escapeHtml(item.expectedDate || '未定')}${dueState === 'overdue' ? ' · 已逾期' : dueState === 'due-soon' ? ' · 7 天內到期' : ''}</small></div>`;
     const discussionSection = renderDiscussionSection(item);
     detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div>${discussionSection}</div>`;
-    detail.querySelector('.theme2-detail-thumbnail img')?.addEventListener('error', event => event.currentTarget.closest('.theme2-detail-thumbnail')?.remove());
+    attachGyazoFallback(detail, image => image.closest('.theme2-detail-thumbnail')?.remove());
     detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditorDirty = false; detailEditing = true; renderDetail(item); });
     detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
       const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);
