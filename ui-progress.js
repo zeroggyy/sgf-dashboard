@@ -826,11 +826,10 @@
   function updateDimensionCounts({ category, expectedDate, stage, query }) {
     const matchesStage = item => stage === '全部階段' || item.stage === stage;
     const matchesQuery = item => !query || searchableText(item).includes(query);
-    theme2View.querySelectorAll('#theme2-category-chips .theme2-dimension-chip').forEach(chip => {
-      const value = chip.dataset.selectValue;
+    theme2View.querySelectorAll('#theme2-category-filter option').forEach(option => {
+      const value = option.value;
       const total = items.filter(item => matchesStage(item) && matchesQuery(item) && (expectedDate === 'all' || expectedDateValue(item) === expectedDate) && (value === '全部功能分類' || itemGroup(item) === value)).length;
-      const countEl = chip.querySelector('.theme2-chip-count');
-      if (countEl) countEl.textContent = total;
+      option.textContent = `${option.dataset.label || option.textContent}（${total}）`;
     });
     theme2View.querySelectorAll('#theme2-expected-date-chips .theme2-dimension-chip').forEach(chip => {
       const value = chip.dataset.selectValue;
@@ -855,7 +854,7 @@
       return a.localeCompare(b, 'zh-Hant', { numeric: true });
     });
     const categorySelect = document.getElementById('theme2-category-filter');
-    if (categorySelect) categorySelect.innerHTML = '<option>全部功能分類</option>' + categories.map(category => `<option>${category}</option>`).join('');
+    if (categorySelect) categorySelect.innerHTML = `<option value="全部功能分類" data-label="全部機制">全部機制（${items.length}）</option>` + categories.map(category => `<option value="${escapeHtml(category)}" data-label="${escapeHtml(category)}">${escapeHtml(category)}（${count(item => itemGroup(item) === category)}）</option>`).join('');
     const expectedDateSelect = document.getElementById('theme2-expected-date-filter');
     if (expectedDateSelect) expectedDateSelect.innerHTML = '<option value="all">全部時間</option>' + expectedDates.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(expectedDateLabel(value))}</option>`).join('');
     const stageSelect = document.getElementById('theme2-stage-filter');
@@ -879,10 +878,6 @@
       }));
     }
 
-    renderChipGroup('theme2-category-chips', [
-      { label: '全部', value: '全部功能分類', index: 0, count: items.length },
-      ...categories.map((category, index) => ({ label: category, value: category, index: index + 1, count: count(item => itemGroup(item) === category) }))
-    ], 'theme2-category-filter');
     renderChipGroup('theme2-expected-date-chips', [
       { label: '全部', value: 'all', index: 0, count: items.length },
       ...expectedDates.map((value, index) => ({ label: expectedDateLabel(value), value, index: index + 1, count: count(item => expectedDateValue(item) === value) }))
@@ -892,7 +887,11 @@
       chip.classList.add('active');
       applyFilters();
     }));
-    ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
+    categorySelect?.addEventListener('change', () => {
+      theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
+      applyFilters();
+    });
+    ['theme2-expected-date-filter', 'theme2-stage-filter', 'theme2-search-input'].forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
     theme2View.querySelector('.demo-reset-btn')?.addEventListener('click', () => {
       ['theme2-category-filter', 'theme2-expected-date-filter', 'theme2-stage-filter'].forEach(id => { const select = document.getElementById(id); if (select) select.selectedIndex = 0; });
       const search = document.getElementById('theme2-search-input');
