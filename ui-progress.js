@@ -138,6 +138,7 @@
       gyazoUrl,
       notes: row['備註'] || masterRow['備註'] || '',
       checklist: Object.fromEntries(STAGES.map(stage => [stage, stageDone(masterRow, stage)])),
+      requirementApproved: stageDone(masterRow, 'requirementApproval'),
       missingFields,
       isReference,
       sourceName: isReference ? (masterRow['項目'] || masterRow['項目名稱'] || sequence) : '',
@@ -179,7 +180,7 @@
     return Number.isNaN(date.getTime()) ? null : date;
   }
   function theme2DueState(item) {
-    if (!['art', 'returned'].includes(item.stage)) return '';
+    if (item.stage !== 'returned' && (item.stage !== 'art' || !item.requirementApproved)) return '';
     const target = parseTheme2Date(item.expectedDate);
     if (!target) return '';
     const today = new Date();
@@ -191,6 +192,7 @@
   }
   function artActionOf(item) {
     if (item.stage === 'returned') return '處理退回修改';
+    if (!item.requirementApproved) return '等待製作人確認需求';
     if (item.stage === 'art') return '開始美術製作';
     if (item.stage === 'integration') return '等待正式介面整合';
     if (item.stage === 'final') return '等待製作人確認';
@@ -219,9 +221,9 @@
     return a.rowIndex - b.rowIndex;
   }
   function matchesArtWorkFilter(item, filter = artWorkFilter) {
-    if (filter === 'work') return ['art', 'returned'].includes(item.stage);
+    if (filter === 'work') return item.stage === 'returned' || (item.stage === 'art' && item.requirementApproved);
     if (filter === 'all') return true;
-    if (filter === 'ready') return item.stage === 'art';
+    if (filter === 'ready') return item.stage === 'art' && item.requirementApproved;
     if (filter === 'returned') return item.stage === 'returned';
     if (filter === 'due-soon') return theme2DueState(item) === 'due-soon';
     if (filter === 'overdue') return theme2DueState(item) === 'overdue';
