@@ -11,10 +11,11 @@
   const THEME2_CACHE_KEY = 'sgf_theme2_last_success_payload';
   const THEME2_REQUEST_TIMEOUT_MS = 20000;
   const THEME2_MAX_ATTEMPTS = 3;
-  const STAGES = ['planning', 'function', 'placeholder', 'art', 'integration', 'final'];
+  const STAGES = ['planning', 'requirementApproval', 'function', 'placeholder', 'art', 'integration', 'final'];
   const PIPELINE_STAGES = [...STAGES, 'returned', 'completed'];
   const STAGE_FIELDS = {
     planning: ['企劃需求完成', '企劃'],
+    requirementApproval: ['製作人需求確認'],
     function: ['程式功能完成', '功能'],
     placeholder: ['代圖操作確認', '代圖操作'],
     art: ['美術拆圖完成', '拆圖'],
@@ -23,6 +24,7 @@
   };
   const STAGE_LABELS = {
     planning: '待企劃需求',
+    requirementApproval: '待製作人確認需求',
     function: '待程式功能',
     placeholder: '待代圖操作確認',
     art: '待美術製作',
@@ -33,6 +35,7 @@
   };
   const PIPELINE_LABELS = {
     planning: '企劃需求',
+    requirementApproval: '需求確認',
     function: '程式功能',
     placeholder: '代圖確認',
     art: '美術製作',
@@ -200,7 +203,7 @@
     if (due === 'overdue') return 1;
     if (due === 'due-soon') return 2;
     if (item.stage === 'art') return 3;
-    if (['planning', 'function', 'placeholder'].includes(item.stage)) return 4;
+    if (['planning', 'requirementApproval', 'function', 'placeholder'].includes(item.stage)) return 4;
     if (item.stage === 'integration') return 5;
     if (item.stage === 'final') return 6;
     return 7;
@@ -276,7 +279,7 @@
     modal.id = 'theme2-art-help-modal';
     modal.className = 'theme2-stage-help-modal';
     modal.setAttribute('aria-hidden', 'true');
-    modal.innerHTML = `<div class="theme2-stage-help-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-art-help-title"><div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">ART WORK DEFINITIONS</span><h2 id="theme2-art-help-title">美術工作條件說明</h2></div><button id="theme2-art-help-close" type="button" aria-label="關閉美術工作條件說明">&times;</button></div><div class="theme2-help-intro"><p><b>用途：</b>這四項只用來找出目前需要美術處理的工作，不是完整專案階段分類。</p><p><b>日期來源：</b>即將到期與已逾期目前使用「企劃整合目標日／期望完成」判斷。</p></div><div class="stage-definition-list art-work-definition-list"><article><b>01 · 可開始製作</b><p>企劃需求、程式功能與代圖確認皆已完成，下一個未完成階段為美術製作。</p></article><article><b>02 · 退回修改</b><p>Google Sheet 的「退回修改中」為 TRUE，需要優先處理製作人回饋。</p></article><article><b>03 · 即將到期</b><p>項目目前在美術製作或退回修改中，且目標日期落在今天至未來 7 天內。</p></article><article><b>04 · 已逾期</b><p>項目目前在美術製作或退回修改中，且目標日期早於今天。</p></article></div><div class="theme2-help-intro art-work-help-note"><p><b>數量可能重疊：</b>可開始製作或退回修改的項目，也可能同時屬於即將到期或已逾期。</p></div></div>`;
+    modal.innerHTML = `<div class="theme2-stage-help-dialog" role="dialog" aria-modal="true" aria-labelledby="theme2-art-help-title"><div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">ART WORK DEFINITIONS</span><h2 id="theme2-art-help-title">美術工作條件說明</h2></div><button id="theme2-art-help-close" type="button" aria-label="關閉美術工作條件說明">&times;</button></div><div class="theme2-help-intro"><p><b>用途：</b>這四項只用來找出目前需要美術處理的工作，不是完整專案階段分類。</p><p><b>開工條件：</b>企劃需求完成後，必須先由製作人確認需求；未確認的項目不會進入美術可開始製作。</p><p><b>日期來源：</b>即將到期與已逾期目前使用「企劃整合目標日／期望完成」判斷。</p></div><div class="stage-definition-list art-work-definition-list"><article><b>01 · 可開始製作</b><p>企劃需求、製作人需求確認、程式功能與代圖確認皆已完成，下一個未完成階段為美術製作。</p></article><article><b>02 · 退回修改</b><p>Google Sheet 的「退回修改中」為 TRUE，需要優先處理製作人回饋。</p></article><article><b>03 · 即將到期</b><p>項目目前在美術製作或退回修改中，且目標日期落在今天至未來 7 天內。</p></article><article><b>04 · 已逾期</b><p>項目目前在美術製作或退回修改中，且目標日期早於今天。</p></article></div><div class="theme2-help-intro art-work-help-note"><p><b>數量可能重疊：</b>可開始製作或退回修改的項目，也可能同時屬於即將到期或已逾期。</p></div></div>`;
     theme2View.appendChild(modal);
     modal.querySelector('#theme2-art-help-close')?.addEventListener('click', closeArtHelpModal);
     modal.addEventListener('click', event => { if (event.target === modal) closeArtHelpModal(); });
@@ -639,7 +642,7 @@
     };
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
-    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('製作人需求確認', '製作人需求確認')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
     detailEditorDirty = false;
     const editForm = detail.querySelector('#theme2-edit-form');
     editForm?.addEventListener('input', () => { detailEditorDirty = true; });
@@ -660,7 +663,7 @@
         if (changes[key]) changes[key] = changes[key].replaceAll('-', '.');
       });
       if (changes['企劃整合目標日']) changes['企劃整合目標日'] = changes['企劃整合目標日'].replaceAll('-', '.');
-      ['企劃需求完成', '程式功能完成', '代圖操作確認', '美術拆圖完成', '企劃整合完成', '最終確認完成', '退回修改中'].forEach(key => { changes[key] = form.querySelector(`[name="${key}"]`).checked ? 'TRUE' : 'FALSE'; });
+      ['企劃需求完成', '製作人需求確認', '程式功能完成', '代圖操作確認', '美術拆圖完成', '企劃整合完成', '最終確認完成', '退回修改中'].forEach(key => { changes[key] = form.querySelector(`[name="${key}"]`).checked ? 'TRUE' : 'FALSE'; });
       saveButton.disabled = true;
       saveButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 儲存中';
       try {

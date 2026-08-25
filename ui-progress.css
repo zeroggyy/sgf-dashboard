@@ -39,7 +39,7 @@
 .theme2-select-row label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--text-secondary); font-size: 0.68rem; font-weight: 700; }
 .theme2-select-row select, .theme2-select-row input { height: 34px; padding: 0 0.5rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-primary); font-family: var(--font-main); font-size: 0.78rem; }
 .theme2-search span { display: block; }
-.theme2-pipeline { display: grid; grid-template-columns: repeat(8, minmax(108px, 1fr)); gap: 0.45rem; align-items: stretch; padding: 1rem; }
+.theme2-pipeline { display: grid; grid-template-columns: repeat(9, minmax(108px, 1fr)); gap: 0.45rem; align-items: stretch; padding: 1rem; }
 .theme2-pipeline > i { display: none; }
 .theme2-pipeline button { position: relative; min-height: 104px; display: flex; flex-direction: column; justify-content: center; gap: 0.55rem; padding: 1rem 0.65rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-primary); cursor: pointer; font-family: var(--font-main); transition: opacity 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease; }
 .theme2-pipeline button:hover { border-color: var(--text-primary); background: rgba(28, 26, 23, 0.04); }

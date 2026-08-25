@@ -21,13 +21,16 @@ const API_KEY = '請自行設定一組長且隨機的 API Key';
 const RESPONSE_CACHE_KEY = 'theme2_sheet_payload_v1';
 const RESPONSE_CACHE_SECONDS = 60;
 const UPDATE_UI_ITEM_ACTION = 'updateUiItem';
+const ADD_UI_DISCUSSION_ACTION = 'addUiDiscussion';
 const ITEM_ID_COLUMN = '項目ID';
+const DISCUSSION_SHEET_NAME = 'UI_討論紀錄';
+const DISCUSSION_HEADERS = ['記錄ID', '項目ID', '留言人', '訊息內容', '討論類型', '當時階段', '建立時間', '是否隱藏'];
 const EDITABLE_COLUMNS = [
   '群組編號', '機制', '項目', '序號', '項目說明',
   '企劃開表日', '企劃整合目標日', '美術可用交付日', '最終確認日',
   '介面截圖路徑（需求／代圖）', '美術上傳路徑', '拆圖歸檔路徑',
   '正式完成路徑', '網頁縮圖連結', '備註',
-  '企劃需求完成', '程式功能完成', '代圖操作確認',
+  '企劃需求完成', '製作人需求確認', '程式功能完成', '代圖操作確認',
   '美術拆圖完成', '企劃整合完成', '最終確認完成',
   '退回修改中', '退回原因', '退回日期', '重新確認日期'
 ];
@@ -71,11 +74,13 @@ function doGet(e) {
       });
 
     const projectName = items.find(item => item['專案名稱'])?.['專案名稱'] || 'SGF 專案';
+    const discussions = getUiDiscussions(spreadsheet);
     const payload = {
       projectName,
       sheetName: SHEET_NAME,
       columns,
       items,
+      discussions,
       updatedAt: new Date().toISOString()
     };
     try {
@@ -96,29 +101,85 @@ function doPost(e) {
     }
 
     const request = parseJsonBody(e);
-    if (request.action !== UPDATE_UI_ITEM_ACTION) {
+    if (request.action !== UPDATE_UI_ITEM_ACTION && request.action !== ADD_UI_DISCUSSION_ACTION) {
       return jsonResponse({ error: `Unsupported action: ${request.action || '(empty)'}` }, 400);
-    }
-
-    const itemId = String(request.itemId || '').trim();
-    if (!itemId) {
-      return jsonResponse({ error: `Missing required field: ${ITEM_ID_COLUMN}` }, 400);
-    }
-    if (!request.changes || typeof request.changes !== 'object' || Array.isArray(request.changes)) {
-      return jsonResponse({ error: 'Missing or invalid changes object' }, 400);
     }
 
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     try {
-      const result = updateUiItem(itemId, request.changes);
+      let result;
+      if (request.action === UPDATE_UI_ITEM_ACTION) {
+        const itemId = String(request.itemId || '').trim();
+        if (!itemId) throw new Error(`Missing required field: ${ITEM_ID_COLUMN}`);
+        if (!request.changes || typeof request.changes !== 'object' || Array.isArray(request.changes)) throw new Error('Missing or invalid changes object');
+        result = updateUiItem(itemId, request.changes);
+      } else {
+        result = addUiDiscussion(request);
+      }
       CacheService.getScriptCache().remove(RESPONSE_CACHE_KEY);
-      return jsonResponse({ ok: true, action: UPDATE_UI_ITEM_ACTION, ...result });
+      return jsonResponse({ ok: true, action: request.action, ...result });
     } finally {
       lock.releaseLock();
     }
   } catch (error) {
     return jsonResponse({ error: String(error && error.message ? error.message : error) }, 500);
+  }
+}
+
+function getUiDiscussions(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName(DISCUSSION_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, DISCUSSION_HEADERS.length).getDisplayValues();
+  return values.map(row => ({
+    recordId: String(row[0] || '').trim(),
+    itemId: String(row[1] || '').trim(),
+    author: String(row[2] || '').trim(),
+    message: String(row[3] || '').trim(),
+    type: String(row[4] || '一般討論').trim(),
+    stage: String(row[5] || '').trim(),
+    createdAt: String(row[6] || '').trim(),
+    hidden: String(row[7] || '').trim().toUpperCase() === 'TRUE'
+  })).filter(item => item.itemId && item.message && !item.hidden)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+function addUiDiscussion(request) {
+  const itemId = String(request.itemId || '').trim();
+  const author = String(request.author || '').trim();
+  const message = String(request.message || '').trim();
+  const type = String(request.type || '一般討論').trim();
+  const stage = String(request.stage || '').trim();
+  const allowedTypes = ['一般討論', '修改要求', '處理回覆', '完成確認'];
+  if (!itemId) throw new Error(`Missing required field: ${ITEM_ID_COLUMN}`);
+  if (!author) throw new Error('新增討論必須填寫留言人');
+  if (!message) throw new Error('新增討論必須填寫訊息內容');
+  if (allowedTypes.indexOf(type) === -1) throw new Error('討論類型不正確');
+  if (message.length > 5000) throw new Error('訊息內容不可超過 5000 字');
+
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(DISCUSSION_SHEET_NAME);
+  if (!sheet) throw new Error(`找不到分頁：${DISCUSSION_SHEET_NAME}`);
+  ensureDiscussionHeaders(sheet);
+  const discussion = {
+    recordId: Utilities.getUuid(),
+    itemId,
+    author,
+    message,
+    type,
+    stage,
+    createdAt: Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Taipei', 'yyyy/MM/dd HH:mm:ss'),
+    hidden: false
+  };
+  sheet.appendRow([discussion.recordId, discussion.itemId, discussion.author, discussion.message, discussion.type, discussion.stage, discussion.createdAt, discussion.hidden]);
+  SpreadsheetApp.flush();
+  return { discussion };
+}
+
+function ensureDiscussionHeaders(sheet) {
+  const current = sheet.getRange(1, 1, 1, DISCUSSION_HEADERS.length).getDisplayValues()[0];
+  if (DISCUSSION_HEADERS.some((header, index) => String(current[index] || '').trim() !== header)) {
+    throw new Error(`分頁「${DISCUSSION_SHEET_NAME}」欄位順序不正確`);
   }
 }
 
@@ -163,6 +224,9 @@ function updateUiItem(itemId, changes) {
   EDITABLE_COLUMNS.forEach(column => {
     if (!Object.prototype.hasOwnProperty.call(changes, column)) return;
     const columnIndex = columnIndexes[column];
+    if (column === '製作人需求確認' && !columnIndex) {
+      throw new Error('Google Sheet 缺少欄位：製作人需求確認');
+    }
     if (!columnIndex) return;
     updates.push({ column, columnIndex, value: normalizeCellValue(column, changes[column]) });
   });
@@ -176,13 +240,58 @@ function updateUiItem(itemId, changes) {
 
 function normalizeCellValue(column, value) {
   const checkboxColumns = [
-    '企劃需求完成', '程式功能完成', '代圖操作確認',
+    '企劃需求完成', '製作人需求確認', '程式功能完成', '代圖操作確認',
     '美術拆圖完成', '企劃整合完成', '最終確認完成', '退回修改中'
   ];
   if (checkboxColumns.indexOf(column) !== -1) {
     return String(value).toUpperCase() === 'TRUE';
   }
   return value === null || value === undefined ? '' : String(value);
+}
+
+/**
+ * 一次性資料遷移：新增「製作人需求確認」核取方塊欄位，並保留既有進度。
+ *
+ * 執行規則：
+ * - 已有任一後續階段完成的舊項目，視為過去已通過需求確認，寫入 TRUE。
+ * - 尚未進入任何後續階段的項目寫入 FALSE，必須由製作人重新確認。
+ *
+ * 部署新版 API 前，請在 Apps Script 編輯器手動執行一次本函式。
+ */
+function migrateRequirementApprovalColumn() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error(`找不到分頁：${SHEET_NAME}`);
+
+  let lastColumn = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastColumn < 1) throw new Error('試算表沒有欄位');
+
+  let headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+    .map(value => String(value || '').trim());
+  let approvalColumn = headers.indexOf('製作人需求確認') + 1;
+
+  if (!approvalColumn) {
+    approvalColumn = lastColumn + 1;
+    sheet.getRange(1, approvalColumn).setValue('製作人需求確認');
+    lastColumn = approvalColumn;
+    headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+      .map(value => String(value || '').trim());
+  }
+
+  if (lastRow < 2) return { updated: 0, column: approvalColumn };
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const downstreamColumns = ['程式功能完成', '代圖操作確認', '美術拆圖完成', '企劃整合完成', '最終確認完成']
+    .map(name => headers.indexOf(name))
+    .filter(index => index >= 0);
+  const values = rows.map(row => [downstreamColumns.some(index => row[index] === true || String(row[index]).toUpperCase() === 'TRUE')]);
+  const target = sheet.getRange(2, approvalColumn, values.length, 1);
+  target.insertCheckboxes();
+  target.setValues(values);
+  SpreadsheetApp.flush();
+  CacheService.getScriptCache().remove(RESPONSE_CACHE_KEY);
+  return { updated: values.length, column: approvalColumn };
 }
 
 function isAuthorized(e) {
