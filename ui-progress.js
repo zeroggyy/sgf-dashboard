@@ -220,6 +220,17 @@
     if (!aDate && bDate) return 1;
     return a.rowIndex - b.rowIndex;
   }
+  function compareItemId(a, b) {
+    const aId = String(a.itemId || '').trim();
+    const bId = String(b.itemId || '').trim();
+    if (aId && bId) {
+      const result = aId.localeCompare(bId, 'zh-Hant', { numeric: true, sensitivity: 'base' });
+      if (result) return result;
+    }
+    if (aId && !bId) return -1;
+    if (!aId && bId) return 1;
+    return a.rowIndex - b.rowIndex;
+  }
   function matchesArtWorkFilter(item, filter = artWorkFilter) {
     if (filter === 'work') return item.stage === 'returned' || (item.stage === 'art' && item.requirementApproved);
     if (filter === 'all') return true;
@@ -381,7 +392,7 @@
       const stageCounts = {};
       group.forEach(item => { stageCounts[item.stage] = (stageCounts[item.stage] || 0) + 1; });
       const currentStage = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
-      const itemCards = group.map(item => {
+      const itemCards = [...group].sort(compareItemId).map(item => {
         const itemProgress = Math.round((STAGES.filter(stage => item.checklist[stage]).length / STAGES.length) * 100);
         const itemState = [item.missingFields.length > 0 ? 'has-missing' : '', itemProgress === 100 ? 'is-complete' : '', item.returned ? 'is-returned' : '', item.isReference ? 'is-reference' : ''].filter(Boolean).join(' ');
         const itemGyazoId = getGyazoId(item.gyazoUrl);
@@ -390,10 +401,9 @@
           ? `<span class="ui-flow-item-thumb"><img src="${escapeHtml(itemPreviewUrl)}" data-gyazo-id="${escapeHtml(itemGyazoId)}" data-original-url="${escapeHtml(item.gyazoUrl)}" alt="${escapeHtml(item.name)} 預覽" loading="lazy" referrerpolicy="no-referrer"></span>`
           : '<span class="ui-flow-item-thumb is-empty">無預覽</span>';
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-        const sequenceText = item.sequence ? `<small class="ui-flow-item-sequence">${escapeHtml(item.sequence)}</small>` : '';
         const descriptionText = item.description ? `<small class="ui-flow-item-description">${escapeHtml(item.description)}</small>` : '';
         const referenceText = item.isReference ? `<small class="ui-flow-item-reference">共用 ${escapeHtml(item.sourceName || item.sequence)} 的進度</small>` : '';
-        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy">${sequenceText}<strong>${escapeHtml(item.name || category)}</strong>${descriptionText}${referenceText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
+        return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy"><strong>${escapeHtml(item.name || category)}</strong>${descriptionText}${referenceText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
       const preview = '';
@@ -510,7 +520,7 @@
       const dueLabel = dueState === 'overdue' ? '已逾期' : dueState === 'due-soon' ? '7 天內到期' : '';
       const flags = [item.isReference ? '共用進度' : '', item.returned ? '退回處理' : '', dueLabel, item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
       const openImage = imageId ? `<span class="mechanism-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
-      return `<button class="mechanism-item-card ${state} ${dueState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><small class="mechanism-item-sequence">${escapeHtml(item.sequence || '待補序號')}</small><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-action"><i class="fa-solid fa-arrow-right"></i> ${escapeHtml(artActionOf(item))}</span><span class="mechanism-item-due"><b>目標</b> ${escapeHtml(item.expectedDate || '未定')}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
+      return `<button class="mechanism-item-card ${state} ${dueState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-action"><i class="fa-solid fa-arrow-right"></i> ${escapeHtml(artActionOf(item))}</span><span class="mechanism-item-due"><b>目標</b> ${escapeHtml(item.expectedDate || '未定')}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
     };
     const accordions = [...groups.entries()].map(([mechanism, group]) => {
       const key = encodeURIComponent(mechanism);
@@ -519,7 +529,7 @@
       const summary = summaryOf(group);
       const status = `${STAGE_LABELS[summary.stage] || summary.stage} ${summary.count} 項`;
       const notices = [summary.returned ? `退回 ${summary.returned}` : '', summary.missing ? `缺欄 ${summary.missing}` : ''].filter(Boolean).map(value => `<small>${value}</small>`).join('');
-      return `<section class="mechanism-accordion ${open ? 'is-open' : ''}" data-mechanism-key="${key}"><button class="mechanism-accordion-toggle" type="button" aria-expanded="${open}"><span class="mechanism-accordion-title"><i class="fa-solid fa-layer-group"></i><strong>${escapeHtml(mechanism)}</strong><small>${group.length} 個項目</small></span><span class="mechanism-accordion-summary"><span><b>主要卡點</b>${escapeHtml(status)}</span><span class="mechanism-accordion-progress"><i><em style="width:${progress}%"></em></i><b>${progress}%</b></span><span class="mechanism-accordion-notices">${notices}</span></span><i class="fa-solid fa-chevron-down mechanism-accordion-chevron"></i></button><div class="mechanism-accordion-panel"><div class="mechanism-accordion-panel-head"><span>${escapeHtml(mechanism)} · UI 項目與進度</span><small>已依退回、期限與可執行狀態排序</small></div><div class="mechanism-item-grid">${[...group].sort(compareArtWork).map(cardOf).join('')}</div></div></section>`;
+      return `<section class="mechanism-accordion ${open ? 'is-open' : ''}" data-mechanism-key="${key}"><button class="mechanism-accordion-toggle" type="button" aria-expanded="${open}"><span class="mechanism-accordion-title"><i class="fa-solid fa-layer-group"></i><strong>${escapeHtml(mechanism)}</strong><small>${group.length} 個項目</small></span><span class="mechanism-accordion-summary"><span><b>主要卡點</b>${escapeHtml(status)}</span><span class="mechanism-accordion-progress"><i><em style="width:${progress}%"></em></i><b>${progress}%</b></span><span class="mechanism-accordion-notices">${notices}</span></span><i class="fa-solid fa-chevron-down mechanism-accordion-chevron"></i></button><div class="mechanism-accordion-panel"><div class="mechanism-accordion-panel-head"><span>${escapeHtml(mechanism)} · UI 項目與進度</span><small>已依項目 ID 排序</small></div><div class="mechanism-item-grid">${[...group].sort(compareItemId).map(cardOf).join('')}</div></div></section>`;
     }).join('');
     container.innerHTML = `<div class="mechanism-accordion-list">${accordions}</div>`;
     container.querySelectorAll('.mechanism-accordion-toggle').forEach(toggle => toggle.addEventListener('click', () => {

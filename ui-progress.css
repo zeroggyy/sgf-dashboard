@@ -231,7 +231,6 @@
 .ui-flow-item-copy { grid-column: 1 / -1; display: block; min-width: 0; }
 .ui-flow-item-copy strong { display: block; font-size: 0.82rem; line-height: 1.25; }
 .ui-flow-item-copy small { display: block; margin-top: 0.18rem; font-size: 0.68rem; }
-.ui-flow-item-sequence { color: var(--theme-accent) !important; font-weight: 700; }
 .ui-flow-item-description { display: -webkit-box !important; overflow: hidden; color: var(--text-muted); line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .ui-flow-item-thumb img { cursor: inherit; }
 .ui-flow-item-stage { grid-column: 1 / -1; justify-self: start; align-self: start; color: var(--theme-accent); font-size: 0.72rem; line-height: 1.2; font-weight: 700; white-space: nowrap; }
@@ -420,7 +419,6 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .mechanism-item-thumb.is-empty i { font-size: 1rem; color: #A9B8C0; }
 .mechanism-item-thumb.is-empty small { font-size: 0.6rem; }
 .mechanism-item-copy { display: grid; align-content: start; gap: 0.18rem; min-width: 0; padding: 0.5rem 0.08rem 0.06rem; }
-.mechanism-item-sequence { color: var(--theme-accent); font-size: 0.62rem; font-weight: 700; }
 .mechanism-item-copy strong { overflow: hidden; font-size: 0.8rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .mechanism-item-stage { color: var(--theme-accent); font-size: 0.67rem; font-weight: 700; }
 .mechanism-item-action { display: flex; align-items: center; gap: 0.3rem; color: var(--theme-accent); font-size: 0.68rem; font-weight: 800; }
