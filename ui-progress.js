@@ -53,6 +53,7 @@
   let rawSheetRows = [];
   let theme2Discussions = [];
   const expandedDiscussionItems = new Set();
+  const expandedArchivedDiscussionItems = new Set();
   let theme2ProjectName = 'SGF 專案';
   let openMechanismKey = '';
   let detailEditing = false;
@@ -613,9 +614,37 @@
     return payload.discussion;
   }
 
+  async function archiveTheme2Discussion(recordId) {
+    let response;
+    try {
+      response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'archiveUiDiscussion', recordId })
+      });
+    } catch (error) {
+      throw new Error('無法連線至 Google Sheet API，請稍後重試。');
+    }
+    const responseText = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(responseText);
+    } catch (error) {
+      throw new Error('Apps Script 尚未部署討論封存功能，請更新並重新部署網頁應用程式。');
+    }
+    if (!response.ok || payload.error) throw new Error(payload.error || `封存失敗（HTTP ${response.status}）`);
+    return payload;
+  }
+
   function discussionsForItem(itemId) {
     return theme2Discussions
       .filter(entry => entry.itemId === itemId && !entry.hidden)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  function archivedDiscussionsForItem(itemId) {
+    return theme2Discussions
+      .filter(entry => entry.itemId === itemId && entry.hidden)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }
 
@@ -625,12 +654,18 @@
 
   function renderDiscussionSection(item) {
     const records = discussionsForItem(item.itemId);
+    const archivedRecords = archivedDiscussionsForItem(item.itemId);
     const expanded = expandedDiscussionItems.has(item.itemId);
+    const archivedExpanded = expandedArchivedDiscussionItems.has(item.itemId);
     const visible = expanded ? records : records.slice(0, 3);
-    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${linkifyDiscussionText(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無討論紀錄。</p>';
+    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span><button class="theme2-discussion-archive" data-archive-discussion="${escapeHtml(entry.recordId)}" type="button" title="封存此訊息"><i class="fa-solid fa-box-archive"></i> 封存</button></header><p>${linkifyDiscussionText(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無作用中的討論紀錄。</p>';
     const toggle = records.length > 3 ? `<button id="theme2-discussion-toggle" class="theme2-discussion-toggle" type="button">${expanded ? '收合討論紀錄' : `顯示全部 ${records.length} 筆討論`} <i class="fa-solid fa-chevron-${expanded ? 'up' : 'down'}"></i></button>` : '';
+    const archivedMarkup = archivedExpanded
+      ? archivedRecords.map(entry => `<article class="theme2-discussion-entry is-archived"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time></header><p>${linkifyDiscussionText(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('')
+      : '';
+    const archivedSection = `<section class="theme2-archived-discussions"><button id="theme2-archived-discussion-toggle" class="theme2-archived-discussion-toggle" type="button" aria-expanded="${archivedExpanded}"><span><i class="fa-solid fa-box-archive"></i> 封存訊息</span><small>${archivedRecords.length} 筆</small><i class="fa-solid fa-chevron-${archivedExpanded ? 'up' : 'down'}"></i></button><div class="theme2-archived-discussion-list" ${archivedExpanded ? '' : 'hidden'}>${archivedMarkup || '<p class="theme2-discussion-empty">目前沒有封存訊息。</p>'}</div></section>`;
     const disabled = item.itemId ? '' : 'disabled';
-    return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>最新 ${Math.min(records.length, 3)} / ${records.length} 筆</small></div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form></section>`;
+    return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>最新 ${Math.min(records.length, 3)} / ${records.length} 筆</small></div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form>${archivedSection}</section>`;
   }
 
   function rebuildTheme2Items(rows) {
@@ -752,6 +787,29 @@
       else expandedDiscussionItems.add(item.itemId);
       renderDetail(item);
     });
+    detail.querySelector('#theme2-archived-discussion-toggle')?.addEventListener('click', () => {
+      if (expandedArchivedDiscussionItems.has(item.itemId)) expandedArchivedDiscussionItems.delete(item.itemId);
+      else expandedArchivedDiscussionItems.add(item.itemId);
+      renderDetail(item);
+    });
+    detail.querySelectorAll('[data-archive-discussion]').forEach(button => button.addEventListener('click', async () => {
+      const recordId = button.dataset.archiveDiscussion;
+      if (!recordId || !confirm('確定要封存這筆訊息嗎？封存後不會再列入討論類型篩選，但仍可在封存訊息中查看。')) return;
+      button.disabled = true;
+      button.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 封存中';
+      try {
+        await archiveTheme2Discussion(recordId);
+        const discussion = theme2Discussions.find(entry => entry.recordId === recordId);
+        if (discussion) discussion.hidden = true;
+        window.dashboardShowToast('訊息已封存', 'success');
+        applyFilters();
+        renderDetail(item);
+      } catch (error) {
+        window.dashboardShowToast(`封存失敗：${error.message}`, 'error');
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-box-archive"></i> 封存';
+      }
+    }));
     detail.querySelector('#theme2-discussion-form')?.addEventListener('submit', async event => {
       event.preventDefault();
       const authorInput = detail.querySelector('#theme2-discussion-author');

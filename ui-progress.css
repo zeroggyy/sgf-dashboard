@@ -363,7 +363,18 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-discussion-entry header b { color: var(--theme-accent); font-size: 0.68rem; }
 .theme2-discussion-entry header time { color: var(--text-muted); font-size: 0.58rem; }
 .theme2-discussion-entry header span { margin-left: auto; padding: 0.16rem 0.3rem; background: var(--theme-accent-soft); color: var(--theme-accent); font-size: 0.56rem; font-weight: 700; }
+.theme2-discussion-archive { display: inline-flex; align-items: center; gap: 0.22rem; padding: 0.16rem 0.34rem; border: 1px solid var(--theme2-line); background: transparent; color: var(--text-secondary); font-family: var(--font-main); font-size: 0.56rem; font-weight: 700; cursor: pointer; }
+.theme2-discussion-archive:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.theme2-discussion-archive:disabled { cursor: wait; opacity: 0.65; }
 .theme2-discussion-entry p { margin: 0.4rem 0 0; color: var(--text-primary); font-size: 0.72rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.theme2-discussion-link { color: var(--theme-accent); font-weight: 700; text-decoration: underline; text-underline-offset: 0.16em; overflow-wrap: anywhere; }
+.theme2-discussion-link:hover { color: var(--theme-accent-hover); }
+.theme2-archived-discussions { margin-top: 0.75rem; border-top: 1px dashed var(--theme2-line); padding-top: 0.65rem; }
+.theme2-archived-discussion-toggle { width: 100%; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.5rem; padding: 0.55rem 0.65rem; border: 1px solid var(--theme2-line); background: var(--bg-color); color: var(--text-primary); font-family: var(--font-main); cursor: pointer; text-align: left; }
+.theme2-archived-discussion-toggle span { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 800; }
+.theme2-archived-discussion-toggle small { color: var(--text-muted); font-size: 0.58rem; }
+.theme2-archived-discussion-list { display: grid; gap: 0.45rem; padding-top: 0.5rem; }
+.theme2-discussion-entry.is-archived { border-left-color: var(--text-muted); background: rgba(28, 26, 23, 0.025); opacity: 0.82; }
 .theme2-discussion-entry > small { display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.56rem; }
 .theme2-discussion-empty { margin: 0; padding: 0.75rem; border: 1px dashed var(--theme2-line); color: var(--text-muted); font-size: 0.68rem; text-align: center; }
 .theme2-discussion-toggle { width: 100%; padding: 0.45rem; border: 1px dashed var(--theme2-line); background: transparent; color: var(--theme-accent); font-family: var(--font-main); font-size: 0.64rem; font-weight: 700; cursor: pointer; }
