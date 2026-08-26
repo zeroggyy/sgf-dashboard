@@ -155,6 +155,25 @@
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
   }
+  function linkifyDiscussionText(value) {
+    const text = String(value ?? '');
+    const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+    let result = '';
+    let cursor = 0;
+    let match;
+    while ((match = urlPattern.exec(text)) !== null) {
+      let url = match[0];
+      let trailing = '';
+      while (/[.,!?;:，。！？；：)\]}]$/.test(url)) {
+        trailing = url.slice(-1) + trailing;
+        url = url.slice(0, -1);
+      }
+      result += escapeHtml(text.slice(cursor, match.index));
+      result += `<a class="theme2-discussion-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${escapeHtml(trailing)}`;
+      cursor = match.index + match[0].length;
+    }
+    return result + escapeHtml(text.slice(cursor));
+  }
   function getGyazoId(value) {
     return String(value || '').match(/gyazo\.com\/(?:public\/)?([a-zA-Z0-9]+)/i)?.[1] || '';
   }
@@ -608,7 +627,7 @@
     const records = discussionsForItem(item.itemId);
     const expanded = expandedDiscussionItems.has(item.itemId);
     const visible = expanded ? records : records.slice(0, 3);
-    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${escapeHtml(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無討論紀錄。</p>';
+    const recordMarkup = visible.map(entry => `<article class="theme2-discussion-entry"><header><b>${escapeHtml(entry.author || '未具名')}</b><time>${escapeHtml(entry.createdAt || '')}</time><span>${escapeHtml(entry.type || '一般討論')}</span></header><p>${linkifyDiscussionText(entry.message)}</p><small>留言時階段：${escapeHtml(entry.stage || '未記錄')}</small></article>`).join('') || '<p class="theme2-discussion-empty">尚無討論紀錄。</p>';
     const toggle = records.length > 3 ? `<button id="theme2-discussion-toggle" class="theme2-discussion-toggle" type="button">${expanded ? '收合討論紀錄' : `顯示全部 ${records.length} 筆討論`} <i class="fa-solid fa-chevron-${expanded ? 'up' : 'down'}"></i></button>` : '';
     const disabled = item.itemId ? '' : 'disabled';
     return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-regular fa-comments"></i> 討論紀錄</h3></div><small>最新 ${Math.min(records.length, 3)} / ${records.length} 筆</small></div><div class="theme2-discussion-list">${recordMarkup}${toggle}</div><form id="theme2-discussion-form" class="theme2-discussion-form"><label><span>留言人</span><input id="theme2-discussion-author" value="${escapeHtml(localStorage.getItem('sgf_theme2_discussion_author') || '')}" autocomplete="name" ${disabled}></label><label><span>討論類型</span><select id="theme2-discussion-type" ${disabled}><option>一般討論</option><option>修改要求</option><option>處理回覆</option><option>完成確認</option></select></label><label class="is-wide"><span>新增討論</span><textarea id="theme2-discussion-message" rows="3" maxlength="5000" placeholder="記錄本次反饋、處理結果或下一步…" ${disabled}></textarea></label><div class="theme2-discussion-submit"><small>${item.itemId ? '討論會獨立儲存，不會修改主項內容。' : '此項目尚無項目 ID，無法建立討論。'}</small><button id="theme2-discussion-save" class="btn btn-gouga" type="submit" ${disabled}><i class="fa-solid fa-paper-plane"></i> 新增討論</button></div></form></section>`;
