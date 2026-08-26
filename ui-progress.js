@@ -916,15 +916,21 @@
       theme2View.querySelectorAll('.theme2-dimension-chip').forEach(item => item.classList.toggle('active', item.dataset.selectValue === item.closest('.theme2-filter-content')?.querySelector('.theme2-dimension-chip')?.dataset.selectValue));
       applyFilters();
     });
-    theme2View.querySelectorAll('[data-theme2-stage]').forEach(button => button.addEventListener('click', () => {
-      const stageSelect = document.getElementById('theme2-stage-filter');
-      if (stageSelect) {
+    const pipelinePanel = theme2View.querySelector('.theme2-pipeline-panel');
+    if (pipelinePanel && pipelinePanel.dataset.stageClickBound !== 'true') {
+      pipelinePanel.dataset.stageClickBound = 'true';
+      pipelinePanel.addEventListener('click', event => {
+        const button = event.target.closest('[data-theme2-stage]');
+        if (!button || !pipelinePanel.contains(button)) return;
         const clickedStage = button.dataset.theme2Stage;
+        const stageSelect = document.getElementById('theme2-stage-filter');
+        if (!stageSelect || !clickedStage) return;
         stageSelect.value = stageSelect.value === clickedStage ? '全部階段' : clickedStage;
+        progressView = 'pipeline';
         theme2View.querySelectorAll('.theme2-filter-chip').forEach(item => item.classList.toggle('active', item.dataset.theme2Filter === 'all'));
         applyFilters();
-      }
-    }));
+      });
+    }
   }
 
   function finishTheme2Load(statusText, statusIcon = 'fa-database') {
