@@ -6,6 +6,9 @@ if (window.HTMLCollection && !HTMLCollection.prototype.forEach) {
   HTMLCollection.prototype.forEach = Array.prototype.forEach;
 }
 
+const MAIN_DASHBOARD_CACHE_KEY = 'sgf_main_last_success_payload';
+const MAIN_DASHBOARD_REQUEST_TIMEOUT_MS = 20000;
+
 // 專案全域狀態管理
 let appState = {
   gasUrl: localStorage.getItem('sgf_gas_url') || 'https://script.google.com/macros/s/AKfycbzj2EVoj-PzVjctoE0CzODST_M-5CGiYdQAo4oJTJthfpIO6Dxzcsysv-s1UO4Ywd0j/exec',
@@ -906,10 +909,39 @@ function saveConfiguration() {
 
 // 從 API 載入資料
 // 從 API 載入資料 (支援 background 背景靜態同步，避免畫面卡住)
+function readMainDashboardCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(MAIN_DASHBOARD_CACHE_KEY) || 'null');
+    return cached && Array.isArray(cached.payload?.tasks) ? cached : null;
+  } catch (error) {
+    localStorage.removeItem(MAIN_DASHBOARD_CACHE_KEY);
+    return null;
+  }
+}
+
+function applyMainDashboardPayload(result) {
+  appState.tasks = result.tasks;
+  appState.milestones = result.milestones || [];
+  appState.weeksList = result.weeksList || [];
+  const uniqueGroups = [...new Set(appState.tasks.map(t => t.group))];
+  uniqueGroups.forEach(g => appState.expandedGroups.add(g));
+  updateNewspaperMeta();
+  renderStats();
+  renderOwnerChips();
+  renderTasks();
+  updateNonsenseQuote();
+}
+
 async function loadData(isBackground = false) {
   if (!appState.gasUrl) return;
 
-  window.dashboardSetLoading?.(true, '企劃進度資料載入中，請稍候…');
+  const cached = !isBackground ? readMainDashboardCache() : null;
+  if (cached) {
+    applyMainDashboardPayload(cached.payload);
+    isBackground = true;
+  }
+
+  window.dashboardSetLoading?.(!cached, '企劃進度資料載入中，請稍候…');
 
   const sortIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
   const originalIconClass = sortIcon ? sortIcon.className : 'fa-solid fa-arrow-down-short-wide';
@@ -928,7 +960,14 @@ async function loadData(isBackground = false) {
 
   try {
     const fetchUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
-    const response = await fetch(fetchUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), MAIN_DASHBOARD_REQUEST_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(fetchUrl, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const result = await response.json();
 
     if (result.error) {
@@ -937,27 +976,18 @@ async function loadData(isBackground = false) {
       return;
     }
 
-    appState.tasks = result.tasks;
-    appState.milestones = result.milestones || []; // 保存專案時程里程碑
-    appState.weeksList = result.weeksList; // 這裡將會是 [{label: 'W27', date: '...'}, ...]
-    
-    // 初始化展開所有群組
-    const uniqueGroups = [...new Set(appState.tasks.map(t => t.group))];
-    uniqueGroups.forEach(g => appState.expandedGroups.add(g));
+    localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload: result }));
+    applyMainDashboardPayload(result);
 
     showToast('資料已成功同步！', 'success');
-    
-    // 渲染統計與元件
-    updateNewspaperMeta();
-    renderStats();
-    renderOwnerChips();
-    renderTasks();
-    updateNonsenseQuote(); // 重新整理或同步成功時也隨機刷一句
 
   } catch (err) {
     console.error(err);
-    showToast('連線失敗，請檢查 API 網址或網路狀態。', 'error');
-    showSetupModal();
+    const cachedMessage = err.name === 'AbortError'
+      ? '連線超過 20 秒，已顯示上次成功資料。'
+      : '連線失敗，已保留上次成功資料。';
+    showToast(cached ? cachedMessage : '連線失敗，請檢查 API 網址或網路狀態。', 'error');
+    if (!cached) showSetupModal();
   } finally {
     window.dashboardSetLoading?.(false);
     if (sortIcon) {

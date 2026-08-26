@@ -10,7 +10,7 @@
   let theme2ApiKey = localStorage.getItem('sgf_theme2_api_key') || DEFAULT_THEME2_API_KEY;
   const THEME2_CACHE_KEY = 'sgf_theme2_last_success_payload';
   const THEME2_REQUEST_TIMEOUT_MS = 20000;
-  const THEME2_MAX_ATTEMPTS = 3;
+  const THEME2_MAX_ATTEMPTS = 2;
   const STAGES = ['planning', 'requirementApproval', 'function', 'placeholder', 'art', 'integration', 'final'];
   const PIPELINE_STAGES = [...STAGES, 'returned', 'completed'];
   const STAGE_FIELDS = {
@@ -984,7 +984,6 @@
     const timeoutId = setTimeout(() => controller.abort(), THEME2_REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
-        cache: 'no-store',
         signal: controller.signal
       });
       if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
@@ -997,11 +996,16 @@
   }
 
   async function loadTheme2Api() {
-    window.dashboardSetLoading?.(true, 'UI 進度資料載入中，請稍候…');
+    const initialCache = readTheme2Cache();
+    if (initialCache && !rawSheetRows.length) {
+      const cachedAt = new Date(initialCache.savedAt).toLocaleString('zh-TW', { hour12: false });
+      applyTheme2Payload(initialCache.payload, `上次資料 ${cachedAt}・背景同步中`, 'fa-clock-rotate-left');
+    }
+    window.dashboardSetLoading?.(!initialCache, 'UI 進度資料載入中，請稍候…');
     let lastError;
     for (let attempt = 1; attempt <= THEME2_MAX_ATTEMPTS; attempt += 1) {
       try {
-        if (attempt > 1) setTheme2ApiStatus(`重新連線 ${attempt - 1}/2`, 'fa-rotate', 'loading');
+        if (attempt > 1) setTheme2ApiStatus('重新連線 1/1', 'fa-rotate', 'loading');
         const payload = await fetchTheme2Payload();
         writeTheme2Cache(payload);
         applyTheme2Payload(payload);

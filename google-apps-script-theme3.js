@@ -57,16 +57,19 @@ function doPost(e) {
 }
 
 function getCachedDashboardSummary(spreadsheet) {
+  const startedAt = Date.now();
   const cache = CacheService.getScriptCache();
   const cached = cache.get(SUMMARY_CACHE_KEY);
   if (cached) {
     try {
-      return { ...JSON.parse(cached), cached: true };
+      const payload = JSON.parse(cached);
+      return { ...payload, cached: true, diagnostics: { ...(payload.diagnostics || {}), serverMs: Date.now() - startedAt } };
     } catch (error) {
       cache.remove(SUMMARY_CACHE_KEY);
     }
   }
   const summary = getDashboardSummary(spreadsheet);
+  summary.diagnostics = { serverMs: Date.now() - startedAt, weaponCount: summary.weapons.length };
   const serialized = JSON.stringify(summary);
   // Apps Script 單一快取值上限約 100 KB；超過時仍正常回傳，只是不寫入快取。
   if (Utilities.newBlob(serialized).getBytes().length < 95000) cache.put(SUMMARY_CACHE_KEY, serialized, SUMMARY_CACHE_SECONDS);

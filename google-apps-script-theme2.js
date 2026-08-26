@@ -19,10 +19,15 @@ const SPREADSHEET_ID = '請填入主題二 Google Sheet ID';
 const SHEET_NAME = 'SGF_UI_DataBase';
 const API_KEY = '請自行設定一組長且隨機的 API Key';
 const RESPONSE_CACHE_KEY = 'theme2_sheet_payload_v1';
-const RESPONSE_CACHE_SECONDS = 60;
+const RESPONSE_CACHE_SECONDS = 300;
 const UPDATE_UI_ITEM_ACTION = 'updateUiItem';
 const ADD_UI_DISCUSSION_ACTION = 'addUiDiscussion';
 const ITEM_ID_COLUMN = '項目ID';
+const ITEM_NAME_COLUMNS = ['項目', '項目名稱'];
+const ITEM_ID_PREFIX = 'UI-';
+const ITEM_ID_DIGITS = 4;
+const NEXT_ITEM_ID_PROPERTY = 'SGF_UI_NEXT_ITEM_ID';
+const ITEM_ID_EDIT_HANDLER = 'handleUiItemIdEdit';
 const DISCUSSION_SHEET_NAME = 'UI_討論紀錄';
 const DISCUSSION_HEADERS = ['記錄ID', '項目ID', '留言人', '訊息內容', '討論類型', '當時階段', '建立時間', '是否隱藏'];
 const EDITABLE_COLUMNS = [
@@ -37,6 +42,7 @@ const EDITABLE_COLUMNS = [
 
 function doGet(e) {
   try {
+    const startedAt = Date.now();
     if (!isAuthorized(e)) {
       return jsonResponse({ error: 'Unauthorized: Invalid API Key' }, 401);
     }
@@ -45,7 +51,10 @@ function doGet(e) {
     const cachedPayload = cache.get(RESPONSE_CACHE_KEY);
     if (cachedPayload) {
       try {
-        return jsonResponse(JSON.parse(cachedPayload));
+        const cached = JSON.parse(cachedPayload);
+        cached.cached = true;
+        cached.diagnostics = { ...(cached.diagnostics || {}), serverMs: Date.now() - startedAt };
+        return jsonResponse(cached);
       } catch (cacheError) {
         cache.remove(RESPONSE_CACHE_KEY);
       }
@@ -57,7 +66,11 @@ function doGet(e) {
       return jsonResponse({ error: `找不到分頁：${SHEET_NAME}` }, 404);
     }
 
-    const values = sheet.getDataRange().getDisplayValues();
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    const values = lastRow && lastColumn
+      ? sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues()
+      : [];
     if (!values.length) {
       return jsonResponse({ projectName: '', columns: [], items: [] });
     }
@@ -81,7 +94,9 @@ function doGet(e) {
       columns,
       items,
       discussions,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      cached: false,
+      diagnostics: { serverMs: Date.now() - startedAt, rowCount: lastRow, columnCount: lastColumn }
     };
     try {
       cache.put(RESPONSE_CACHE_KEY, JSON.stringify(payload), RESPONSE_CACHE_SECONDS);
@@ -292,6 +307,151 @@ function migrateRequirementApprovalColumn() {
   SpreadsheetApp.flush();
   CacheService.getScriptCache().remove(RESPONSE_CACHE_KEY);
   return { updated: values.length, column: approvalColumn };
+}
+
+/**
+ * 安裝項目 ID 自動維護觸發器。
+ * 只需在 Apps Script 編輯器手動執行一次；之後新增、貼上或複製列時會自動處理。
+ */
+function installUiItemIdTrigger() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === ITEM_ID_EDIT_HANDLER)
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  ScriptApp.newTrigger(ITEM_ID_EDIT_HANDLER).forSpreadsheet(spreadsheet).onEdit().create();
+  return { installed: true, handler: ITEM_ID_EDIT_HANDLER };
+}
+
+/**
+ * 安裝型 onEdit 觸發器：
+ * - 有項目名稱但 ID 空白時，自動產生新 ID。
+ * - 複製整列造成 ID 重複時，保留原始列，替本次貼上的目標列換成新 ID。
+ * - 支援一次貼上多列。
+ */
+function handleUiItemIdEdit(e) {
+  if (!e || !e.range) return;
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== SHEET_NAME || e.range.getLastRow() < 2) return;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const context = getUiItemIdContext_(sheet);
+    if (!context.itemIdColumn || !context.itemNameColumn) return;
+
+    const firstRow = Math.max(2, e.range.getRow());
+    const rowCount = e.range.getLastRow() - firstRow + 1;
+    if (rowCount < 1) return;
+
+    const lastRow = sheet.getLastRow();
+    const idValues = sheet.getRange(2, context.itemIdColumn, lastRow - 1, 1).getDisplayValues().map(row => String(row[0] || '').trim());
+    const idCounts = idValues.reduce((counts, id) => {
+      if (id) counts.set(id, (counts.get(id) || 0) + 1);
+      return counts;
+    }, new Map());
+    const usedIds = new Set(idValues.filter(Boolean));
+    const itemNames = sheet.getRange(firstRow, context.itemNameColumn, rowCount, 1).getDisplayValues();
+    const editedIds = sheet.getRange(firstRow, context.itemIdColumn, rowCount, 1).getDisplayValues();
+    let changed = false;
+
+    const nextIds = editedIds.map((row, index) => {
+      const itemName = String(itemNames[index][0] || '').trim();
+      const currentId = String(row[0] || '').trim();
+      if (!itemName) return [currentId];
+      if (currentId && (idCounts.get(currentId) || 0) === 1) return [currentId];
+
+      const nextId = nextUiItemId_(usedIds);
+      usedIds.add(nextId);
+      changed = true;
+      return [nextId];
+    });
+
+    if (changed) {
+      sheet.getRange(firstRow, context.itemIdColumn, rowCount, 1).setValues(nextIds);
+      SpreadsheetApp.flush();
+      CacheService.getScriptCache().remove(RESPONSE_CACHE_KEY);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 手動修復工具：為缺少 ID 的項目補號，並保留第一筆、替後續重複 ID 換號。
+ */
+function repairUiItemIds() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error(`找不到分頁：${SHEET_NAME}`);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const context = getUiItemIdContext_(sheet);
+    if (!context.itemIdColumn) throw new Error(`找不到欄位：${ITEM_ID_COLUMN}`);
+    if (!context.itemNameColumn) throw new Error(`找不到項目欄位：${ITEM_NAME_COLUMNS.join('／')}`);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { filled: 0, duplicatesReplaced: 0 };
+
+    const itemNames = sheet.getRange(2, context.itemNameColumn, lastRow - 1, 1).getDisplayValues();
+    const idRange = sheet.getRange(2, context.itemIdColumn, lastRow - 1, 1);
+    const ids = idRange.getDisplayValues();
+    const usedIds = new Set(ids.map(row => String(row[0] || '').trim()).filter(Boolean));
+    const seenIds = new Set();
+    let filled = 0;
+    let duplicatesReplaced = 0;
+
+    const repaired = ids.map((row, index) => {
+      const itemName = String(itemNames[index][0] || '').trim();
+      const currentId = String(row[0] || '').trim();
+      if (!itemName) return [currentId];
+      if (currentId && !seenIds.has(currentId)) {
+        seenIds.add(currentId);
+        return [currentId];
+      }
+      const nextId = nextUiItemId_(usedIds);
+      usedIds.add(nextId);
+      seenIds.add(nextId);
+      if (currentId) duplicatesReplaced += 1;
+      else filled += 1;
+      return [nextId];
+    });
+
+    idRange.setValues(repaired);
+    SpreadsheetApp.flush();
+    CacheService.getScriptCache().remove(RESPONSE_CACHE_KEY);
+    return { filled, duplicatesReplaced };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getUiItemIdContext_(sheet) {
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+    .map(value => String(value || '').trim());
+  const itemIdColumn = headers.indexOf(ITEM_ID_COLUMN) + 1;
+  const itemNameColumn = ITEM_NAME_COLUMNS.map(name => headers.indexOf(name) + 1).find(index => index > 0) || 0;
+  return { headers, itemIdColumn, itemNameColumn };
+}
+
+function nextUiItemId_(usedIds) {
+  const properties = PropertiesService.getScriptProperties();
+  let nextNumber = Number(properties.getProperty(NEXT_ITEM_ID_PROPERTY));
+  if (!Number.isInteger(nextNumber) || nextNumber < 1) {
+    nextNumber = [...usedIds].reduce((maximum, id) => {
+      const match = String(id).match(/^UI-(\d+)$/i);
+      return match ? Math.max(maximum, Number(match[1])) : maximum;
+    }, 0) + 1;
+  }
+
+  let candidate;
+  do {
+    candidate = `${ITEM_ID_PREFIX}${String(nextNumber).padStart(ITEM_ID_DIGITS, '0')}`;
+    nextNumber += 1;
+  } while (usedIds.has(candidate));
+  properties.setProperty(NEXT_ITEM_ID_PROPERTY, String(nextNumber));
+  return candidate;
 }
 
 function isAuthorized(e) {

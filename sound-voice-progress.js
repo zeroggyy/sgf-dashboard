@@ -12,7 +12,7 @@
   const THEME3_API_URL = 'https://script.google.com/macros/s/AKfycbxPl_rsAVtlUae_2KseF10qC_-vXlm30xQlLSbMtjsy53pHxArPggUhnSOeSlEdQHuzHQ/exec';
   const THEME3_API_KEY = 'SGF_THEME3_WEAPON_SOUND_2026_w8Kp4Xn7Qm2Vz9Ld';
   const THEME3_SUMMARY_STORAGE_KEY = 'sgf_theme3_last_summary';
-  const THEME3_GET_TIMEOUT_MS = 25000;
+  const THEME3_GET_TIMEOUT_MS = 20000;
   const THEME3_POST_TIMEOUT_MS = 35000;
   let weapons = [];
 
@@ -369,10 +369,17 @@
   }
 
   async function loadTheme3Api() {
-    window.dashboardSetLoading?.(true, '音效／語音進度資料載入中，請稍候…');
+    const initialSnapshot = weapons.length ? null : restoreSummarySnapshot();
+    if (initialSnapshot) {
+      weapons = initialSnapshot.payload.weapons.map(normalizeApiWeapon);
+      renderStats();
+      renderFilters();
+      render();
+    }
+    window.dashboardSetLoading?.(!initialSnapshot, '音效／語音進度資料載入中，請稍候…');
     setTheme3ApiStatus('資料載入中', 'fa-circle-notch fa-spin', 'loading');
     try {
-      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`, { cache: 'no-store' }, 1);
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`);
       if (payload.error || !Array.isArray(payload.weapons)) throw new Error(payload.error || '主題三 API 回傳格式不正確');
       weapons = payload.weapons.map(normalizeApiWeapon);
       saveSummarySnapshot(payload);

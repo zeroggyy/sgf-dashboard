@@ -447,7 +447,9 @@
   }
 
   async function load() {
-    window.dashboardSetLoading?.(true, 'Icon 進度資料載入中，請稍候…');
+    const initialCache = readCache();
+    if (initialCache) rebuild(initialCache);
+    window.dashboardSetLoading?.(!initialCache, 'Icon 進度資料載入中，請稍候…');
     setStatus('loading', '資料載入中');
     if (!apiUrl || !apiKey) {
       const cached = readCache();
@@ -466,7 +468,6 @@
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 20000);
       const response = await fetch(`${apiUrl}?key=${encodeURIComponent(apiKey)}`, {
-        cache: 'no-store',
         signal: controller.signal
       });
       clearTimeout(timer);

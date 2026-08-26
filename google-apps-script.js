@@ -16,15 +16,31 @@
  */
 // 安全金鑰設定，請修改為您自訂的複雜字串，並在網頁 app.js 中填寫相同的金鑰
 const API_KEY = "SGF_SECURE_TOKEN_2026";
+const DASHBOARD_CACHE_KEY = "sgf_main_dashboard_payload_v1";
+const DASHBOARD_CACHE_SECONDS = 300;
 /**
  * 處理 GET 請求：讀取試算表資料並轉為 JSON 格式
  */
 function doGet(e) {
   try {
+    const startedAt = Date.now();
     // 驗證 API 金鑰
     if (!validateAuth(e)) {
       return jsonResponse({ error: "Unauthorized: Invalid API Key" }, 401);
     }
+    const cache = CacheService.getScriptCache();
+    const cachedPayload = cache.get(DASHBOARD_CACHE_KEY);
+    if (cachedPayload) {
+      try {
+        const cached = JSON.parse(cachedPayload);
+        cached.cached = true;
+        cached.diagnostics = { ...(cached.diagnostics || {}), serverMs: Date.now() - startedAt };
+        return jsonResponse(cached);
+      } catch (cacheError) {
+        cache.remove(DASHBOARD_CACHE_KEY);
+      }
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName("Task");
     
@@ -32,7 +48,12 @@ function doGet(e) {
       return jsonResponse({ error: "找不到名稱為 'Task' 的分頁，請確認分頁名稱是否正確。" }, 404);
     }
     
-    const data = sheet.getDataRange().getValues();
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    const taskRange = sheet.getRange(1, 1, lastRow, lastColumn);
+    const data = taskRange.getValues();
+    const taskRichTexts = taskRange.getRichTextValues();
+    const taskFormulas = taskRange.getFormulas();
     
     if (data.length < 2) {
       return jsonResponse({ error: "No data found in sheet" });
@@ -92,16 +113,16 @@ function doGet(e) {
       let taskName = row[taskIdx] ? row[taskIdx].toString().trim() : "";
       if (!taskName) continue;
       // 若為公式，解析出實際的顯示名稱，並提取超連結
-      const cellRange = sheet.getRange(i + 1, taskIdx + 1);
       if (taskName.startsWith("=")) {
-        taskName = cellRange.getValue().toString().trim();
+        taskName = row[taskIdx] ? row[taskIdx].toString().trim() : "";
       }
       let taskLink = "";
-      const richTextLink = cellRange.getRichTextValue().getLinkUrl();
+      const richText = taskRichTexts[i] && taskRichTexts[i][taskIdx];
+      const richTextLink = richText ? richText.getLinkUrl() : "";
       if (richTextLink) {
         taskLink = richTextLink;
       } else {
-        const formula = cellRange.getFormula();
+        const formula = taskFormulas[i] && taskFormulas[i][taskIdx] ? taskFormulas[i][taskIdx] : "";
         if (formula && formula.toUpperCase().indexOf("HYPERLINK") !== -1) {
           const match = formula.match(/HYPERLINK\(\s*["']([^"']+)["']/i);
           if (match) taskLink = match[1];
@@ -157,8 +178,11 @@ function doGet(e) {
     const milestones = [];
     const scheduleSheet = ss.getSheetByName("時程");
     if (scheduleSheet) {
-      const scheduleData = scheduleSheet.getDataRange().getValues();
-      const scheduleDisplayData = scheduleSheet.getDataRange().getDisplayValues();
+      const scheduleLastRow = scheduleSheet.getLastRow();
+      const scheduleLastColumn = scheduleSheet.getLastColumn();
+      const scheduleRange = scheduleSheet.getRange(1, 1, scheduleLastRow, scheduleLastColumn);
+      const scheduleData = scheduleRange.getValues();
+      const scheduleDisplayData = scheduleRange.getDisplayValues();
       // 從第二列 (索引 1) 開始，跳過標題
       for (let i = 1; i < scheduleData.length; i++) {
         const row = scheduleData[i];
@@ -200,7 +224,20 @@ function doGet(e) {
         }
       }
     }
-    return jsonResponse({ tasks: tasks, milestones: milestones, weeksList: weekCols });
+    const payload = {
+      tasks: tasks,
+      milestones: milestones,
+      weeksList: weekCols,
+      cached: false,
+      updatedAt: new Date().toISOString(),
+      diagnostics: { serverMs: Date.now() - startedAt, rowCount: lastRow, columnCount: lastColumn }
+    };
+    try {
+      cache.put(DASHBOARD_CACHE_KEY, JSON.stringify(payload), DASHBOARD_CACHE_SECONDS);
+    } catch (cacheError) {
+      console.warn("Main dashboard cache skipped: " + cacheError);
+    }
+    return jsonResponse(payload);
   } catch (err) {
     return jsonResponse({ error: err.toString() }, 500);
   }
@@ -214,6 +251,7 @@ function doPost(e) {
     if (!validateAuth(e)) {
       return jsonResponse({ error: "Unauthorized: Invalid API Key" }, 401);
     }
+    CacheService.getScriptCache().remove(DASHBOARD_CACHE_KEY);
     let postData;
     try {
       postData = JSON.parse(e.postData.contents);
