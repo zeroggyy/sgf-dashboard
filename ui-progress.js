@@ -24,23 +24,23 @@
   };
   const STAGE_LABELS = {
     planning: '待企劃需求',
-    requirementApproval: '待製作人確認需求',
+    requirementApproval: '待製作人需求確認',
     function: '待程式功能',
     placeholder: '待代圖操作確認',
     art: '待美術製作',
     integration: '待正式介面整合',
-    final: '待製作人確認',
+    final: '待製作人最終確認',
     returned: '退回處理中',
     completed: '已結案'
   };
   const PIPELINE_LABELS = {
     planning: '企劃需求',
-    requirementApproval: '需求確認',
+    requirementApproval: '製作人需求確認',
     function: '程式功能',
     placeholder: '代圖確認',
     art: '美術製作',
     integration: '正式介面',
-    final: '製作人確認',
+    final: '製作人最終確認',
     returned: '退回處理',
     completed: '已完成'
   };
@@ -192,10 +192,10 @@
   }
   function artActionOf(item) {
     if (item.stage === 'returned') return '處理退回修改';
-    if (!item.requirementApproved) return '等待製作人確認需求';
+    if (!item.requirementApproved) return '等待製作人需求確認';
     if (item.stage === 'art') return '開始美術製作';
     if (item.stage === 'integration') return '等待正式介面整合';
-    if (item.stage === 'final') return '等待製作人確認';
+    if (item.stage === 'final') return '等待製作人最終確認';
     if (item.stage === 'completed') return '已完成';
     return '等待需求準備';
   }
@@ -654,7 +654,7 @@
     };
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
-    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('製作人需求確認', '製作人需求確認')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('製作人需求確認', '製作人需求確認')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('製作人最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
     detailEditorDirty = false;
     const editForm = detail.querySelector('#theme2-edit-form');
     editForm?.addEventListener('input', () => { detailEditorDirty = true; });

@@ -42,7 +42,7 @@
       </section>
       <section class="theme2-pipeline-panel">
         <div class="demo-section-heading"><div><span class="theme2-kicker">DELIVERY PIPELINE</span><h2><i class="fa-solid fa-arrow-right-arrow-left"></i> 交付流程分布 <button id="theme2-stage-help-btn" class="stage-help-btn" type="button" aria-label="查看交付階段定義" data-tooltip="查看各階段完成定義"><i class="fa-solid fa-question"></i></button></h2></div><span class="theme2-muted">數量依目前篩選結果更新 · 點擊階段可聚焦流程地圖</span></div>
-        <div class="theme2-pipeline"><button data-theme2-stage="planning"><span>待企劃需求</span><strong>0</strong></button><i>→</i><button data-theme2-stage="requirementApproval"><span>待製作人確認需求</span><strong>0</strong></button><i>→</i><button data-theme2-stage="function"><span>待程式功能</span><strong>0</strong></button><i>→</i><button data-theme2-stage="placeholder"><span>待代圖操作確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="art"><span>待美術拆圖</span><strong>0</strong></button><i>→</i><button data-theme2-stage="integration"><span>待企劃整合</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>待製作人最終確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="returned"><span>退回處理中</span><strong>0</strong></button><i>→</i><button data-theme2-stage="completed"><span>已結案</span><strong>0</strong></button></div>
+        <div class="theme2-pipeline"><button data-theme2-stage="planning"><span>待企劃需求</span><strong>0</strong></button><i>→</i><button data-theme2-stage="requirementApproval"><span>待製作人需求確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="function"><span>待程式功能</span><strong>0</strong></button><i>→</i><button data-theme2-stage="placeholder"><span>待代圖操作確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="art"><span>待美術拆圖</span><strong>0</strong></button><i>→</i><button data-theme2-stage="integration"><span>待企劃整合</span><strong>0</strong></button><i>→</i><button data-theme2-stage="final"><span>待製作人最終確認</span><strong>0</strong></button><i>→</i><button data-theme2-stage="returned"><span>退回處理中</span><strong>0</strong></button><i>→</i><button data-theme2-stage="completed"><span>已結案</span><strong>0</strong></button></div>
       </section>
       <section class="theme2-module-panel"><div class="demo-section-heading"><div><span class="theme2-kicker">UI MODULES</span><h2><i class="fa-solid fa-layer-group"></i> UI 機制與項目</h2></div><span class="theme2-muted"><b id="theme2-flow-count">目前顯示 56 / 56 項</b> · 依機制展開查看 UI 項目與進度</span></div><div id="theme2-flow-map" class="theme2-flow-map"></div></section>
     </main>
@@ -52,7 +52,7 @@
         <div class="theme2-detail-dialog-header"><div><span class="theme2-kicker">DELIVERY DEFINITIONS</span><h2 id="theme2-stage-help-title">交付階段定義</h2></div><button id="theme2-stage-help-close" type="button" aria-label="關閉階段定義">&times;</button></div>
         <div class="theme2-help-intro"><p><b>這不是完成度統計：</b>每個階段代表「項目目前正等待誰處理」。數字是該工作佇列中的項目數。</p><p><b>交付流程：</b>點擊任一佇列，直接聚焦目前等待該角色處理的 UI 項目。</p><p><b>機制清單：</b>展開機制後點擊 UI 項目，可查看序號、說明、目前工作、資料完整度與檔案路徑。</p></div>
         <div class="stage-definition-list">
-          <article><b>01 · 待企劃需求</b><p><b>目前由企劃處理。</b>補齊需求、示意圖與操作說明後，項目會移至「待製作人確認需求」。</p></article><article><b>02 · 待製作人確認需求</b><p><b>目前由製作人處理。</b>確認企劃需求內容完整且方向正確；通過後才能繼續施工，並成為後續美術開工的必要條件。</p></article><article><b>03 · 待程式功能</b><p><b>目前由程式處理。</b>功能實作完成後，項目會移至「待代圖操作確認」。</p></article><article><b>04 · 待代圖操作確認</b><p><b>目前由企劃處理。</b>以代圖操作驗證功能；確認無誤後，項目才會移至「待美術拆圖」。</p></article><article><b>05 · 待美術拆圖</b><p><b>目前由美術處理。</b>只有製作人已確認需求的項目會進入此階段；完成圖素設計、上傳與拆圖歸檔後，項目會移至「待企劃整合」。</p></article><article><b>06 · 待企劃整合</b><p><b>目前由企劃處理。</b>替換正式圖素、完成整合與自測後，項目會移至「待製作人最終確認」；企劃整合目標日以此為準。</p></article><article><b>07 · 待製作人最終確認</b><p><b>目前由製作人處理。</b>確認通過後結案；確認前須有正式完成路徑、網頁縮圖與最終確認日。</p></article><article><b>08 · 退回處理中</b><p><b>目前等待退回對象處理。</b>製作人確認時退回，保留既有歷程，並以退回原因與日期作為處理依據。</p></article><article><b>09 · 已結案</b><p><b>不需要再處理。</b>製作人已完成最終確認，項目正式完成。</p></article>
+          <article><b>01 · 待企劃需求</b><p><b>目前由企劃處理。</b>補齊需求、示意圖與操作說明後，項目會移至「待製作人需求確認」。</p></article><article><b>02 · 待製作人需求確認</b><p><b>目前由製作人處理。</b>確認企劃需求內容完整且方向正確；通過後才能繼續施工，並成為後續美術開工的必要條件。</p></article><article><b>03 · 待程式功能</b><p><b>目前由程式處理。</b>功能實作完成後，項目會移至「待代圖操作確認」。</p></article><article><b>04 · 待代圖操作確認</b><p><b>目前由企劃處理。</b>以代圖操作驗證功能；確認無誤後，項目才會移至「待美術拆圖」。</p></article><article><b>05 · 待美術拆圖</b><p><b>目前由美術處理。</b>只有製作人需求確認完成的項目會進入此階段；完成圖素設計、上傳與拆圖歸檔後，項目會移至「待企劃整合」。</p></article><article><b>06 · 待企劃整合</b><p><b>目前由企劃處理。</b>替換正式圖素、完成整合與自測後，項目會移至「待製作人最終確認」；企劃整合目標日以此為準。</p></article><article><b>07 · 待製作人最終確認</b><p><b>目前由製作人處理。</b>確認通過後結案；確認前須有正式完成路徑、網頁縮圖與最終確認日。</p></article><article><b>08 · 退回處理中</b><p><b>目前等待退回對象處理。</b>製作人最終確認時退回，保留既有歷程，並以退回原因與日期作為處理依據。</p></article><article><b>09 · 已結案</b><p><b>不需要再處理。</b>製作人已完成最終確認，項目正式完成。</p></article>
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
   <div id="theme-drawer-backdrop" class="theme-drawer-backdrop" aria-hidden="true"></div>
   <div id="toast" class="toast"></div>
   <script src="dashboard-shared.js?v=1.3.0"></script>
-  <script src="ui-progress.js?v=2.3.1"></script>
+  <script src="ui-progress.js?v=2.3.2"></script>
   <script src="dashboard-navigation.js?v=1.3.0"></script>
 </body>
 </html>
