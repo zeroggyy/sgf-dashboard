@@ -13,10 +13,10 @@
 </head>
 <body data-dashboard-mode="multipage" data-dashboard-key="theme3">
   <main id="theme-view-theme3" class="page-container theme-view theme-view-demo theme3-view">
-    <header class="demo-theme-header theme3-app-header">
-      <button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 音效語音進度控制台</strong></span></button>
-      <div><span class="theme-drawer-kicker">SOUND &amp; VOICE TRACKING</span><h1>SGF 音效語音進度控制台</h1><p>以武器為單位，整合音效與語音的製作、確認與最終驗收。</p></div>
-      <div class="theme3-header-tools"><button id="theme3-sync-voice-btn" class="theme3-sync-voice-btn" type="button"><i class="fa-solid fa-users-gear"></i> 同步角色語音項目</button><span id="theme3-api-status" class="demo-theme-status"><i class="fa-solid fa-circle-notch fa-spin"></i> 資料載入中</span></div>
+    <header class="app-header unified-dashboard-header theme3-app-header">
+      <div class="header-ad-box"><button class="theme-toggle-btn demo-theme-toggle" data-theme-toggle type="button" aria-expanded="false" aria-controls="theme-drawer" title="切換追蹤主題"><span class="theme-toggle-icon"><i class="fa-solid fa-bars"></i></span><span class="theme-toggle-copy"><span class="theme-toggle-label">目前主題</span><strong>SGF 音效語音進度控制台</strong></span></button><span class="ad-label">SGF 音效語音同步系統</span><span class="ad-phone">2026-AUDIO-SYNC</span><span class="ad-url">連線狀態：正常運行</span></div>
+      <div class="header-center-title"><h1>SGF 音效語音進度控制台</h1></div>
+      <div class="header-right-meta unified-header-meta"><div class="newspaper-meta-box"><span class="meta-val">2026年</span><span class="meta-val">音效語音</span><span id="theme3-api-status" class="meta-val demo-theme-status"><i class="fa-solid fa-circle-notch fa-spin"></i> 資料載入中</span></div><div class="header-control-grid unified-header-control-grid"><button id="theme3-sync-voice-btn" class="btn" type="button" title="同步角色語音項目" aria-label="同步角色語音項目"><i class="fa-solid fa-users-gear"></i></button><button class="btn header-control-placeholder" type="button" tabindex="-1" aria-hidden="true"><i class="fa-solid fa-circle-question"></i></button><button class="btn header-control-placeholder" type="button" tabindex="-1" aria-hidden="true"><i class="fa-solid fa-arrow-down-short-wide"></i></button><button class="btn header-control-placeholder" type="button" tabindex="-1" aria-hidden="true"><i class="fa-solid fa-gear"></i></button></div></div>
     </header>
     <main class="theme3-dashboard-layout">
       <section id="theme3-stats" class="theme3-stats-grid" aria-label="武器進度摘要"></section>
@@ -27,6 +27,7 @@
       <section class="theme3-content-panel"><div class="demo-section-heading"><div><span class="theme3-kicker">PRIORITIZED WEAPONS</span><h2><i class="fa-solid fa-shield-halved"></i> 武器清單</h2></div><span id="theme3-result-count" class="theme3-muted"></span></div><div id="theme3-weapon-grid" class="theme3-weapon-grid"></div></section>
       <section id="theme3-detail-panel" class="theme3-detail-panel" hidden aria-live="polite"></section>
     </main>
+    <footer class="app-footer-bar shared-dashboard-footer"><p class="nonsense-quote">「只要你能解決這個問題，這個問題就被解決了。」</p></footer>
     <div id="theme3-action-modal" class="theme3-action-modal" aria-hidden="true">
       <div class="theme3-action-dialog" role="dialog" aria-modal="true" aria-labelledby="theme3-action-modal-title">
         <div class="theme3-action-dialog-header"><div><span class="theme3-kicker">COMMAND DISCUSSION</span><h2 id="theme3-action-modal-title">指令討論</h2></div><button id="theme3-action-close" type="button" aria-label="關閉指令編輯視窗">&times;</button></div>

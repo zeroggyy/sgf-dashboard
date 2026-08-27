@@ -67,3 +67,8 @@ body{background:var(--icon-paper);color:var(--icon-ink)}.icon-page{min-height:10
 #icon-detail-modal .icon-progress-item.pending i{color:#aeb5b0}
 @media(max-width:760px){#icon-detail-modal .icon-dialog{width:98vw}#icon-detail-modal .icon-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:500px){#icon-detail-modal .icon-meta{grid-template-columns:1fr}}
+
+/* 與其他控制台共用企畫頁的報紙式頁首骨架。 */
+.theme4-view .icon-header.unified-dashboard-header{display:grid;grid-template-columns:minmax(210px,1fr) minmax(360px,2.2fr) minmax(230px,1fr);gap:1.2rem;align-items:center;padding:1.2rem 2rem;border-top:0;border-bottom:5px double var(--icon-green);background:transparent}
+.theme4-view .icon-api-status{flex-basis:auto;text-align:right}
+@media(max-width:760px){.theme4-view .icon-header.unified-dashboard-header{grid-template-columns:1fr auto;padding:1rem}.theme4-view .icon-header.unified-dashboard-header .header-center-title{grid-column:1/-1;grid-row:1}.theme4-view .icon-header.unified-dashboard-header .header-ad-box{grid-column:1;grid-row:2}.theme4-view .icon-header.unified-dashboard-header .unified-header-meta{grid-column:2;grid-row:2}.theme4-view .icon-header.unified-dashboard-header .newspaper-meta-box{display:none}}

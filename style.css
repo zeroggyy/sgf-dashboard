@@ -1603,6 +1603,22 @@ input[disabled] {
 }
 
 /* === 廢話文學管理器彈窗專屬樣式 === */
+.unified-dashboard-header { display:grid; grid-template-columns:minmax(210px,1fr) minmax(360px,2.2fr) minmax(230px,1fr); align-items:center; gap:1.2rem; padding:1.2rem 2rem; border-top:0; border-bottom:5px double currentColor; background:transparent; }
+.unified-dashboard-header .header-center-title { min-width:0; }
+.unified-dashboard-header .header-center-title h1 { margin:0; }
+.unified-header-meta { justify-content:flex-end; min-width:230px; }
+.unified-header-control-grid { display:grid; grid-template-columns:repeat(2,36px); gap:.35rem .5rem; }
+.unified-header-control-grid .btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:34px; padding:0; }
+.header-control-placeholder { visibility:hidden; pointer-events:none; }
+.shared-dashboard-footer { color:var(--text-primary); }
+.theme3-view .unified-dashboard-header { color:var(--theme3-accent); }
+.theme3-view .unified-dashboard-header h1,.theme3-view .unified-dashboard-header .header-ad-box,.theme3-view .unified-dashboard-header .newspaper-meta-box { color:var(--text-primary); }
+.theme3-view .unified-header-control-grid .btn:not(.header-control-placeholder) { border-color:var(--theme3-accent); color:var(--theme3-accent); }
+.theme4-view .unified-dashboard-header { color:var(--icon-green); }
+.theme4-view .unified-dashboard-header h1,.theme4-view .unified-dashboard-header .header-ad-box,.theme4-view .unified-dashboard-header .newspaper-meta-box { color:var(--icon-ink); }
+.theme4-view .unified-header-control-grid .btn:not(.header-control-placeholder) { border-color:var(--icon-green); color:var(--icon-green); }
+@media (max-width:760px) { .unified-dashboard-header{grid-template-columns:1fr auto;padding:1rem}.unified-dashboard-header .header-center-title{grid-column:1/-1;grid-row:1}.unified-dashboard-header .header-ad-box{grid-column:1;grid-row:2}.unified-dashboard-header .unified-header-meta{grid-column:2;grid-row:2}.unified-dashboard-header .newspaper-meta-box{display:none} }
+
 .nonsense-list-container {
   max-height: 280px;
   overflow-y: auto;
