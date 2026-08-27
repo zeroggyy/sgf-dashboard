@@ -491,7 +491,6 @@
       }
       const updatedCount = Number(payload.updated) || selectedRows.length;
       resetBatchEdit();
-      state.detailStatus = '全部';
       renderStats();
       renderFilters();
       render();
