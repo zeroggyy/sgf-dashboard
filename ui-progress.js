@@ -1066,7 +1066,8 @@
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), THEME2_REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(`${theme2ApiUrl}?key=${encodeURIComponent(theme2ApiKey)}`, {
+      const separator = theme2ApiUrl.includes('?') ? '&' : '?';
+      const response = await fetch(`${theme2ApiUrl}${separator}key=${encodeURIComponent(theme2ApiKey)}&refresh=1&_=${Date.now()}`, {
         signal: controller.signal
       });
       if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
