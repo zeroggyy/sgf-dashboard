@@ -573,10 +573,30 @@
       }
       closeActionEditor();
       window.dashboardShowToast(`正在背景儲存 ${saves.length} 項變更；你可以繼續操作。`, 'success');
-      Promise.all(saves).then(async () => {
+      Promise.all(saves).then(() => {
         if (newDiscussion) localStorage.setItem('sgf_theme3_discussion_author', discussionAuthor);
-        await loadTheme3Api();
-        if (state.selected === weapon.name) await loadTheme3WeaponDetail(weapon.name);
+        if (soundChanged) action.soundStatus = modal._draft.soundStatus;
+        voiceChanges.forEach(entry => { entry.voiceStatus = modal._draft.voices[entry.key].status; });
+        if (newDiscussion) {
+          action.discussions = action.discussions || [];
+          action.discussions.push({
+            date: new Date().toLocaleString('zh-TW', { hour12: false }),
+            author: discussionAuthor,
+            text: newDiscussion,
+            type: discussion.type,
+            characterId: discussion.characterId,
+            characterName: discussion.characterName
+          });
+        }
+        weapon.soundCounts = countsFor(weapon.actions, 'soundStatus');
+        weapon.voiceCounts = countsFor(weapon.actions.flatMap(item => item.voiceEntries || []), 'voiceStatus');
+        const updatedAt = new Date().toLocaleString('zh-TW', { hour12: false });
+        if (soundChanged || (newDiscussion && editType === 'sound')) weapon.soundUpdatedAt = updatedAt;
+        if (voiceChanges.length || (newDiscussion && editType === 'voice')) weapon.voiceUpdatedAt = updatedAt;
+        weapon.lastUpdatedAt = updatedAt;
+        renderStats();
+        renderFilters();
+        render();
         window.dashboardShowToast(`已儲存 ${saves.length} 項變更並同步至 Google Sheet`, 'success');
       }).catch(error => {
         console.error('Theme 3 Google Sheet API background update failed', error);
