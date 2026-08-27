@@ -494,8 +494,7 @@
       state.detailStatus = '全部';
       renderStats();
       renderFilters();
-      renderCards();
-      renderDetail();
+      render();
       window.dashboardShowToast(`已批次更新 ${updatedCount} 項${isSoundView ? '音效' : '語音'}狀態`, 'success');
     } catch (error) {
       state.batchSaving = false;
