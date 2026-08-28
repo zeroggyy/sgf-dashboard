@@ -4,6 +4,8 @@
 
   const API_URL_KEY = 'sgf_icon_gas_url';
   const API_KEY_KEY = 'sgf_icon_api_key';
+  const DEFAULT_ICON_API_URL = 'https://script.google.com/macros/s/AKfycbz_AJC4Z8rwobLVT8oVSUwToCJYZaDNIBLMnABbAznU7lIbl3iBQqQQ1p2GIqpYUHdU/exec';
+  const DEFAULT_ICON_API_KEY = 'sgf_icon_65eWYhLc08GZ0v1I3Hi1FWc2iiVjd_bHMdFomhyUxtc';
   const CACHE_KEY = 'sgf_icon_single_sheet_payload_v2';
   const STAGES = [
     ['planning', '待企劃需求'],
@@ -23,8 +25,8 @@
     '退回修改中', '企劃驗收完成'
   ];
 
-  let apiUrl = localStorage.getItem(API_URL_KEY) || '';
-  let apiKey = localStorage.getItem(API_KEY_KEY) || '';
+  let apiUrl = localStorage.getItem(API_URL_KEY) || DEFAULT_ICON_API_URL;
+  let apiKey = localStorage.getItem(API_KEY_KEY) || DEFAULT_ICON_API_KEY;
   let items = [];
   let selectedItem = null;
   let editing = false;
