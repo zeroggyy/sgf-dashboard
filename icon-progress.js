@@ -122,8 +122,35 @@
     return missing;
   }
 
+  function normalizePayload(payload) {
+    if (Array.isArray(payload?.items)) return payload;
+    if (!Array.isArray(payload?.icons) || !Array.isArray(payload?.locales)) return payload;
+
+    const localesByIcon = new Map();
+    payload.locales.forEach(locale => {
+      const iconId = String(locale['Icon ID'] || '').trim();
+      if (!iconId) return;
+      if (!localesByIcon.has(iconId)) localesByIcon.set(iconId, []);
+      localesByIcon.get(iconId).push(locale);
+    });
+
+    const items = payload.icons.map(icon => {
+      const iconId = String(icon['Icon ID'] || '').trim();
+      const locales = localesByIcon.get(iconId) || [];
+      const languages = [...new Set(locales.map(locale => locale['語言']).filter(Boolean))];
+      return {
+        ...icon,
+        '語系': languages.join('、'),
+        _locales: locales
+      };
+    });
+
+    return { ...payload, items };
+  }
+
   function rebuild(payload) {
-    const source = Array.isArray(payload.items) ? payload.items : [];
+    const normalized = normalizePayload(payload);
+    const source = Array.isArray(normalized.items) ? normalized.items : [];
     items = source.map((raw, index) => ({
       raw,
       index,
@@ -473,9 +500,9 @@
         signal: controller.signal
       });
       clearTimeout(timer);
-      const payload = await response.json();
+      const payload = normalizePayload(await response.json());
       if (payload.error || !Array.isArray(payload.items)) {
-        throw new Error(payload.error || 'API 格式不正確，請重新部署單表版 Apps Script');
+        throw new Error(payload.error || 'API 格式不正確，請確認 Icon Apps Script 版本');
       }
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
       rebuild(payload);
