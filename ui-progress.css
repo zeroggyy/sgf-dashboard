@@ -150,6 +150,10 @@
 .detail-complete { margin-top: 0.7rem; padding: 0.55rem; color: var(--theme-success); background: rgba(63, 128, 98, 0.08); font-size: 0.7rem; font-weight: 700; }
 .detail-reference, .detail-returned { display: grid; gap: 0.25rem; margin-top: 0.7rem; padding: 0.6rem; font-size: 0.7rem; line-height: 1.45; }
 .detail-reference { color: var(--theme-accent); background: var(--theme-accent-soft); }
+.detail-reference { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.detail-reference div { display: grid; gap: 0.2rem; }
+.detail-reference span, .detail-reference p { margin: 0; color: var(--text-secondary); }
+.detail-reference.is-invalid { color: #9b281b; background: #fff0ec; border-left: 3px solid var(--accent-red); }
 .detail-returned { color: #9b281b; background: #fff0ec; border-left: 3px solid var(--accent-red); }
 .detail-returned span, .detail-returned p { margin: 0; color: var(--text-secondary); }
 .detail-paths { display: grid; gap: 0.35rem; margin-top: 0.7rem; color: var(--text-muted); font-size: 0.68rem; line-height: 1.45; overflow-wrap: anywhere; }
@@ -326,7 +330,7 @@ html[data-active-theme="theme2"] .theme-option:hover { background: rgba(47, 111,
 .theme2-detail-thumbnail img { display: block; width: 100%; max-height: 280px; object-fit: contain; }
 .theme2-detail-thumbnail span { position: absolute; right: 0.45rem; top: 0.45rem; padding: 0.32rem 0.48rem; background: rgba(255, 255, 255, 0.92); color: var(--theme-accent); font-size: 0.65rem; font-weight: 700; opacity: 0; transition: opacity 0.15s ease; }
 .theme2-detail-thumbnail:hover span, .theme2-detail-thumbnail:focus-visible span { opacity: 1; }
-.theme2-detail-actions { display: flex; justify-content: flex-end; margin: 0 0 0.6rem; }
+.theme2-detail-actions { display: flex; justify-content: flex-end; gap: 0.4rem; margin: 0 0 0.6rem; }
 .theme2-detail-edit { padding: 0.4rem 0.65rem; border: 1px solid var(--theme-accent); background: transparent; color: var(--theme-accent); font-family: var(--font-main); font-size: 0.7rem; font-weight: 700; cursor: pointer; }
 .theme2-detail-edit:hover { background: var(--theme-accent); color: #fff; }
 .theme2-edit-form { display: grid; gap: 0.75rem; padding: 0.8rem 0 0; }

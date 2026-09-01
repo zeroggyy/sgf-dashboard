@@ -87,38 +87,38 @@
   function expectedDateLabel(value) {
     return value === '__undetermined__' ? '未定' : value;
   }
-  function normalizeRow(row, index, masterRowsBySequence) {
-    const sequence = String(row['序號'] || '').trim();
+  function normalizeRow(row, index, rowsByItemId) {
+    const sequence = String(row['序號'] || '');
     const isReference = String(row['進度主項'] || '').toUpperCase() === 'FALSE';
-    const masterRow = isReference && masterRowsBySequence.get(sequence) ? masterRowsBySequence.get(sequence) : row;
-    const hasWorkflow = STAGES.some(stage => STAGE_FIELDS[stage].some(field => masterRow[field] !== undefined && masterRow[field] !== ''));
+    const progressMasterId = String(row['進度主項ID'] || '').trim();
+    const linkedMaster = isReference && progressMasterId ? rowsByItemId.get(progressMasterId) : null;
+    const hasWorkflow = STAGES.some(stage => STAGE_FIELDS[stage].some(field => row[field] !== undefined && row[field] !== ''));
     const usesNewColumns = Object.prototype.hasOwnProperty.call(row, '機制') || Object.prototype.hasOwnProperty.call(row, '項目');
     const category = row['機制'] || row['分類'] || '未分類';
     const name = row['項目'] || row['項目名稱'] || (sequence ? `${category} · ${sequence}` : category);
     if (!hasWorkflow || (!row['機制'] && !row['項目'] && !row['分類'] && !row['項目名稱'])) return null;
     const batch = String(row['製作批次'] || row['優先'] || '').trim();
-    const expectedDate = masterRow['企劃整合目標日'] || masterRow['期望完成'] || '';
-    const screenshotPath = masterRow['介面截圖路徑（需求／代圖）'] || masterRow['介面截圖路徑'] || masterRow['介面截圖路徑(需求)'] || '';
-    const artUploadPath = masterRow['美術上傳路徑'] || '';
-    const archivePath = masterRow['拆圖歸檔路徑'] || '';
-    const formalPath = masterRow['正式完成路徑'] || '';
-    const gyazoUrl = masterRow['網頁縮圖連結'] || masterRow['截圖'] || masterRow['圖片網址'] || masterRow['Gyazo'] || masterRow['P'] || '';
-    const finalDate = masterRow['最終確認日'] || '';
+    const expectedDate = row['企劃整合目標日'] || row['期望完成'] || '';
+    const screenshotPath = row['介面截圖路徑（需求／代圖）'] || row['介面截圖路徑'] || row['介面截圖路徑(需求)'] || '';
+    const artUploadPath = row['美術上傳路徑'] || '';
+    const archivePath = row['拆圖歸檔路徑'] || '';
+    const formalPath = row['正式完成路徑'] || '';
+    const gyazoUrl = row['網頁縮圖連結'] || row['截圖'] || row['圖片網址'] || row['Gyazo'] || row['P'] || '';
+    const finalDate = row['最終確認日'] || '';
     const criticalFields = [
-      [masterRow['企劃開表日'] || masterRow['企劃開表'], '企劃開表日'],
+      [row['企劃開表日'] || row['企劃開表'], '企劃開表日'],
       [expectedDate, '企劃整合目標日'],
       [screenshotPath, '需求／代圖路徑']
     ];
-    if (stageDone(masterRow, 'art')) criticalFields.push([artUploadPath, '美術上傳路徑'], [archivePath, '拆圖歸檔路徑']);
-    if (stageDone(masterRow, 'final')) criticalFields.push([formalPath && formalPath !== '1111' ? formalPath : '', '正式完成路徑'], [gyazoUrl, '網頁縮圖連結'], [finalDate, '最終確認日']);
+    if (stageDone(row, 'art')) criticalFields.push([artUploadPath, '美術上傳路徑'], [archivePath, '拆圖歸檔路徑']);
+    if (stageDone(row, 'final')) criticalFields.push([formalPath && formalPath !== '1111' ? formalPath : '', '正式完成路徑'], [gyazoUrl, '網頁縮圖連結'], [finalDate, '最終確認日']);
     const missingFields = criticalFields.filter(([value]) => !String(value || '').trim()).map(([, label]) => label);
     return {
       rowIndex: index + 2,
       id: `${category}-${name}-${index}`,
       itemId: String(row['項目ID'] || '').trim(),
-      sourceItemId: String(masterRow['項目ID'] || '').trim(),
+      sourceItemId: linkedMaster ? String(linkedMaster['項目ID'] || '').trim() : progressMasterId,
       raw: row,
-      masterRaw: masterRow,
       name,
       category,
       mechanism: usesNewColumns ? category : (row['第二層節點'] || row['機制分類'] || ''),
@@ -127,26 +127,29 @@
       batch,
       // 新版 A 欄字母只作為內部批次代碼；畫面統一顯示 B 欄「機制」。
       batchLabel: usesNewColumns ? (category || '未分批') : batchLabel(batch),
-      stage: firstStage(masterRow),
-      stageLabel: STAGE_LABELS[firstStage(masterRow)] || '已完成',
-      plannedDate: masterRow['企劃開表日'] || masterRow['企劃開表'] || '',
+      stage: firstStage(row),
+      stageLabel: STAGE_LABELS[firstStage(row)] || '已完成',
+      plannedDate: row['企劃開表日'] || row['企劃開表'] || '',
       expectedDate,
-      artSubmitDate: masterRow['美術可用交付日'] || masterRow['美術提交'] || '',
+      artSubmitDate: row['美術可用交付日'] || row['美術提交'] || '',
       screenshotPath,
       artUploadPath,
       archivePath,
       formalPath,
       gyazoUrl,
-      notes: row['備註'] || masterRow['備註'] || '',
-      checklist: Object.fromEntries(STAGES.map(stage => [stage, stageDone(masterRow, stage)])),
-      requirementApproved: stageDone(masterRow, 'requirementApproval'),
+      notes: row['備註'] || '',
+      checklist: Object.fromEntries(STAGES.map(stage => [stage, stageDone(row, stage)])),
+      requirementApproved: stageDone(row, 'requirementApproval'),
       missingFields,
       isReference,
-      sourceName: isReference ? (masterRow['項目'] || masterRow['項目名稱'] || sequence) : '',
-      returned: isTrue(masterRow['退回修改中']),
-      returnReason: masterRow['退回原因'] || '',
-      returnDate: masterRow['退回日期'] || '',
-      reconfirmationDate: masterRow['重新確認日期'] || '',
+      sourceName: linkedMaster ? (linkedMaster['項目'] || linkedMaster['項目名稱'] || progressMasterId) : '',
+      sourceResolved: Boolean(linkedMaster),
+      sourceStageLabel: linkedMaster ? (STAGE_LABELS[firstStage(linkedMaster)] || '已完成') : '',
+      sourceExpectedDate: linkedMaster ? (linkedMaster['企劃整合目標日'] || linkedMaster['期望完成'] || '') : '',
+      returned: isTrue(row['退回修改中']),
+      returnReason: row['退回原因'] || '',
+      returnDate: row['退回日期'] || '',
+      reconfirmationDate: row['重新確認日期'] || '',
       finalDate
     };
   }
@@ -422,7 +425,9 @@
           : '<span class="ui-flow-item-thumb is-empty">無預覽</span>';
         const openOriginal = itemGyazoId ? `<span class="ui-flow-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" title="開啟原圖" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
         const descriptionText = item.description ? `<small class="ui-flow-item-description">${escapeHtml(item.description)}</small>` : '';
-        const referenceText = item.isReference ? `<small class="ui-flow-item-reference">共用 ${escapeHtml(item.sourceName || item.sequence)} 的進度</small>` : '';
+        const referenceText = item.isReference
+          ? `<small class="ui-flow-item-reference">${item.sourceResolved ? `介面共用自 ${escapeHtml(item.sourceName || item.sourceItemId)}` : `共用來源異常：${escapeHtml(item.sourceItemId || '未填進度主項ID')}`}</small>`
+          : '';
         return `<button class="ui-flow-item ${itemState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${itemPreview}${openOriginal}<span class="ui-flow-item-copy"><strong>${escapeHtml(item.name || category)}</strong>${descriptionText}${referenceText}</span><b class="ui-flow-item-stage">${escapeHtml(item.stageLabel)}</b></button>`;
       }).join('');
       const categoryState = missingCount > 0 ? 'has-missing' : progress === 100 ? 'is-complete' : '';
@@ -538,7 +543,7 @@
       const state = [item.missingFields.length ? 'has-missing' : '', item.returned ? 'is-returned' : '', item.isReference ? 'is-reference' : '', STAGES.every(stage => item.checklist[stage]) ? 'is-complete' : ''].filter(Boolean).join(' ');
       const dueState = theme2DueState(item);
       const dueLabel = dueState === 'overdue' ? '已逾期' : dueState === 'due-soon' ? '7 天內到期' : '';
-      const flags = [item.isReference ? '共用進度' : '', item.returned ? '退回處理' : '', dueLabel, item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
+      const flags = [item.isReference ? (item.sourceResolved ? '共用介面' : '共用來源異常') : '', item.returned ? '退回處理' : '', dueLabel, item.missingFields.length ? `待補 ${item.missingFields.length}` : ''].filter(Boolean).map(flag => `<small>${escapeHtml(flag)}</small>`).join('');
       const openImage = imageId ? `<span class="mechanism-item-open" data-original-url="${escapeHtml(item.gyazoUrl)}" role="button" tabindex="0" aria-label="開啟 ${escapeHtml(item.name)} 原圖"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>` : '';
       return `<button class="mechanism-item-card ${state} ${dueState}" data-theme2-item-id="${escapeHtml(item.id)}" type="button">${preview}${openImage}<span class="mechanism-item-copy"><strong>${escapeHtml(item.name || item.category)}</strong><span class="mechanism-item-action"><i class="fa-solid fa-arrow-right"></i> ${escapeHtml(artActionOf(item))}</span><span class="mechanism-item-due"><b>目標</b> ${escapeHtml(item.expectedDate || '未定')}</span><span class="mechanism-item-flags">${flags}</span></span></button>`;
     };
@@ -669,12 +674,12 @@
   }
 
   function rebuildTheme2Items(rows) {
-    const masterRowsBySequence = new Map();
+    const rowsByItemId = new Map();
     rows.forEach(row => {
-      const sequence = String(row['序號'] || '').trim();
-      if (sequence && isTrue(row['進度主項'])) masterRowsBySequence.set(sequence, row);
+      const itemId = String(row['項目ID'] || '').trim();
+      if (itemId) rowsByItemId.set(itemId, row);
     });
-    items = rows.map((row, index) => normalizeRow(row, index, masterRowsBySequence)).filter(Boolean);
+    items = rows.map((row, index) => normalizeRow(row, index, rowsByItemId)).filter(Boolean);
   }
 
   function applyLocalTheme2Changes(itemId, changes) {
@@ -688,7 +693,7 @@
   function renderDetailEditor(item) {
     const detail = document.getElementById('theme2-detail-modal-body');
     if (!detail) return;
-    const data = item.masterRaw;
+    const data = item.raw;
     const textInput = (label, key, value = data[key] || '', wide = false) => `<label class="theme2-edit-field ${wide ? 'is-wide' : ''}"><span>${label}</span><input name="${escapeHtml(key)}" value="${escapeHtml(value)}" autocomplete="off"></label>`;
     const textarea = (label, key, value = data[key] || '') => `<label class="theme2-edit-field is-wide"><span>${label}</span><textarea name="${escapeHtml(key)}" rows="3">${escapeHtml(value)}</textarea></label>`;
     const dateInput = (label, key, mode = 'date', value = data[key] || '') => {
@@ -708,7 +713,7 @@
     };
     const check = (label, key) => `<label class="theme2-edit-check"><input type="checkbox" name="${escapeHtml(key)}" ${isTrue(data[key]) ? 'checked' : ''}><span>${label}</span></label>`;
     document.getElementById('theme2-detail-modal-heading').textContent = `編輯：${item.name || '項目詳情'}`;
-    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯主項 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('製作人需求確認', '製作人需求確認')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('製作人最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
+    detail.innerHTML = `<form id="theme2-edit-form" class="theme2-edit-form"><div class="theme2-edit-note"><i class="fa-solid fa-pen-to-square"></i> 正在編輯項目 <b>${escapeHtml(item.itemId || '待補項目ID')}</b>；儲存後會直接回寫 Google Sheet。</div><div class="theme2-edit-grid">${textInput('群組編號', '群組編號')}${textInput('機制', '機制')}${textInput('項目', '項目')}${textInput('序號', '序號')}${textarea('項目說明', '項目說明')}${dateInput('企劃開表日', '企劃開表日')}${dateInput('企劃整合目標日', '企劃整合目標日', 'month')}${dateInput('美術可用交付日', '美術可用交付日')}${dateInput('最終確認日', '最終確認日')}${textInput('需求／代圖路徑', '介面截圖路徑（需求／代圖）', data['介面截圖路徑（需求／代圖）'] || data['介面截圖路徑'] || '', true)}${textInput('美術上傳路徑', '美術上傳路徑', data['美術上傳路徑'] || '', true)}${textInput('拆圖歸檔路徑', '拆圖歸檔路徑', data['拆圖歸檔路徑'] || '', true)}${textInput('正式完成路徑', '正式完成路徑', data['正式完成路徑'] || '', true)}${textInput('網頁縮圖連結', '網頁縮圖連結', data['網頁縮圖連結'] || '', true)}${textarea('備註', '備註')}</div><fieldset class="theme2-edit-stages"><legend>交付流程狀態</legend>${check('企劃需求完成', '企劃需求完成')}${check('製作人需求確認', '製作人需求確認')}${check('程式功能完成', '程式功能完成')}${check('代圖操作確認', '代圖操作確認')}${check('美術製作完成', '美術拆圖完成')}${check('正式介面完成', '企劃整合完成')}${check('製作人最終確認完成', '最終確認完成')}</fieldset><fieldset class="theme2-edit-stages theme2-edit-return"><legend>製作人退回處理</legend>${check('退回修改中', '退回修改中')}${textarea('退回原因', '退回原因')}${dateInput('退回日期', '退回日期')}${dateInput('重新確認日期', '重新確認日期')}</fieldset><div class="theme2-edit-actions"><button id="theme2-edit-cancel" class="btn" type="button">取消</button><button id="theme2-edit-save" class="btn btn-gouga" type="submit"><i class="fa-solid fa-floppy-disk"></i> 儲存變更</button></div></form>`;
     detailEditorDirty = false;
     const editForm = detail.querySelector('#theme2-edit-form');
     editForm?.addEventListener('input', () => { detailEditorDirty = true; });
@@ -765,11 +770,16 @@
     const thumbnailId = getGyazoId(item.gyazoUrl);
     const thumbnail = thumbnailId ? `<a class="theme2-detail-thumbnail" href="${escapeHtml(item.gyazoUrl)}" target="_blank" rel="noopener noreferrer" title="開啟原始縮圖"><img src="https://i.gyazo.com/${escapeHtml(thumbnailId)}.jpg" data-gyazo-id="${escapeHtml(thumbnailId)}" alt="${escapeHtml(item.name)} 縮圖" loading="lazy" referrerpolicy="no-referrer"><span><i class="fa-solid fa-arrow-up-right-from-square"></i> 點擊開啟原圖</span></a>` : '';
     const notes = item.notes ? `<div class="theme2-detail-description"><span>備註</span><p>${escapeHtml(item.notes)}</p></div>` : '';
-    const source = item.isReference ? `<div class="detail-reference"><i class="fa-solid fa-link"></i> 此項目共用「${escapeHtml(item.sourceName || item.sequence)}」的進度與交付資料。</div>` : '';
+    const source = item.isReference
+      ? item.sourceResolved
+        ? `<div class="detail-reference"><i class="fa-solid fa-link"></i><div><b>此介面共用自「${escapeHtml(item.sourceName || item.sourceItemId)}」</b><span>來源 ID：${escapeHtml(item.sourceItemId)} · 來源階段：${escapeHtml(item.sourceStageLabel || '未記錄')} · 來源目標：${escapeHtml(item.sourceExpectedDate || '未定')}</span><p>目前項目的進度、交付時間與內容維持獨立；可查看來源項目了解既有製作資訊。</p></div></div>`
+        : `<div class="detail-reference is-invalid"><i class="fa-solid fa-triangle-exclamation"></i><div><b>共用來源關聯異常</b><span>找不到進度主項ID：${escapeHtml(item.sourceItemId || '未填寫')}</span></div></div>`
+      : '';
     const returned = item.returned ? `<div class="detail-returned"><i class="fa-solid fa-rotate-left"></i><b>製作人退回修改中</b><span>退回日期：${escapeHtml(item.returnDate || '待補')} · 重新確認：${escapeHtml(item.reconfirmationDate || '待補')}</span><p>${escapeHtml(item.returnReason || '待補退回原因')}</p></div>` : '';
-    const editAction = item.isReference
-      ? `<button class="theme2-detail-edit" data-edit-source-id="${escapeHtml(item.sourceItemId)}" type="button"><i class="fa-solid fa-arrow-up-right-from-square"></i> 編輯共用主項</button>`
-      : '<button id="theme2-detail-edit" class="theme2-detail-edit" type="button"><i class="fa-solid fa-pen-to-square"></i> 編輯內容</button>';
+    const viewSourceAction = item.isReference && item.sourceResolved
+      ? `<button class="theme2-detail-edit" data-view-source-id="${escapeHtml(item.sourceItemId)}" type="button"><i class="fa-solid fa-arrow-up-right-from-square"></i> 查看共用來源</button>`
+      : '';
+    const editAction = `<button id="theme2-detail-edit" class="theme2-detail-edit" type="button"><i class="fa-solid fa-pen-to-square"></i> 編輯此項目</button>${viewSourceAction}`;
     document.getElementById('theme2-detail-modal-heading').textContent = item.name || '項目詳情';
     const dueState = theme2DueState(item);
     const actionNotice = `<div class="theme2-detail-next-action ${dueState}"><span>美術下一步</span><strong>${escapeHtml(artActionOf(item))}</strong><small>目標：${escapeHtml(item.expectedDate || '未定')}${dueState === 'overdue' ? ' · 已逾期' : dueState === 'due-soon' ? ' · 7 天內到期' : ''}</small></div>`;
@@ -777,9 +787,9 @@
     detail.innerHTML = `<div class="theme2-detail-content"><div class="theme2-detail-actions">${editAction}</div>${actionNotice}${description}${thumbnail}${source}${returned}<div class="detail-meta-grid"><div><span>機制</span><strong>${escapeHtml(item.category)}</strong></div><div><span>序號</span><strong>${escapeHtml(item.sequence || '待補')}</strong></div><div><span>目前階段</span><strong>${escapeHtml(item.stageLabel)}</strong></div><div><span>企劃開表日</span><strong>${escapeHtml(item.plannedDate || '待補')}</strong></div><div><span>企劃整合目標日</span><strong>${escapeHtml(item.expectedDate || '未排期')}</strong></div><div><span>美術可用交付日</span><strong>${escapeHtml(item.artSubmitDate || '待補')}</strong></div><div><span>最終確認日</span><strong>${escapeHtml(item.finalDate || '待確認')}</strong></div></div>${notes}${completeness}<div class="detail-paths">${pathRow('需求／代圖', item.screenshotPath)}${pathRow('美術上傳', item.artUploadPath)}${pathRow('拆圖歸檔', item.archivePath)}${pathRow('正式完成', item.formalPath && item.formalPath !== '1111' ? item.formalPath : '')}</div>${discussionSection}</div>`;
     attachGyazoFallback(detail, image => image.closest('.theme2-detail-thumbnail')?.remove());
     detail.querySelector('#theme2-detail-edit')?.addEventListener('click', () => { detailEditorDirty = false; detailEditing = true; renderDetail(item); });
-    detail.querySelector('[data-edit-source-id]')?.addEventListener('click', () => {
-      const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId && !candidate.isReference);
-      if (sourceItem) { detailEditorDirty = false; detailEditing = true; renderDetail(sourceItem); }
+    detail.querySelector('[data-view-source-id]')?.addEventListener('click', () => {
+      const sourceItem = items.find(candidate => candidate.itemId === item.sourceItemId);
+      if (sourceItem) { detailEditorDirty = false; detailEditing = false; renderDetail(sourceItem); }
       else window.dashboardShowToast('找不到此引用項目的主項', 'error');
     });
     detail.querySelector('#theme2-discussion-toggle')?.addEventListener('click', () => {
