@@ -1991,6 +1991,20 @@ input[disabled] {
   padding: 0.2rem;
 }
 
+.badge-version {
+  background: var(--text-secondary);
+  color: var(--bg-color);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: var(--font-main);
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.35rem;
+  border: 1px solid var(--text-secondary);
+  display: inline-block;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
 .dashboard-loading-notice {
   position: fixed;
   left: 50%;

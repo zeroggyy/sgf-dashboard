@@ -21,6 +21,7 @@ let appState = {
   activeStatusFilter: 'pending', // 首頁預設顯示狀態：進行中
   activeTimeFilters: ['current'],   // 首頁預設時間篩選：當週焦點 (支援複選)
   activeSpecialFilter: 'all',    // 預設特殊篩選：無 (不做過濾)
+  activeVersionFilter: 'all',    // 標題中的 #版本標籤
   activeGroupFilter: 'all',      // 新增：只顯示單一分類 (專注模式)
   timelineFilterMode: 'history', // 編輯抽屜時間軸篩選：'history' (歷程) 或 'all' (全部)
   timelineOlderExpanded: false,  // 上週以前的較早歷程預設收合
@@ -61,6 +62,7 @@ const roleChips = document.getElementById('role-chips');
 const statusChips = document.getElementById('status-chips');
 const timeChips = document.getElementById('time-chips');
 const specialChips = document.getElementById('special-chips');
+const versionChips = document.getElementById('version-chips');
 const filteredCount = document.getElementById('filtered-count');
 
 // Stats DOM
@@ -604,6 +606,7 @@ function setupEventListeners() {
       appState.activeStatusFilter = 'pending';
       appState.activeTimeFilters = ['current'];
       appState.activeSpecialFilter = 'all';
+      appState.activeVersionFilter = 'all';
       appState.searchQuery = '';
       
       const searchInput = document.getElementById('search-input');
@@ -928,6 +931,7 @@ function applyMainDashboardPayload(result) {
   updateNewspaperMeta();
   renderStats();
   renderOwnerChips();
+  renderVersionChips();
   renderTasks();
   updateNonsenseQuote();
 }
@@ -1148,11 +1152,57 @@ function renderOwnerChips() {
           appState.activeOwnerFilters.push(owner);
         }
       }
+      renderVersionChips();
       syncRolesWithOwnerSelection();
       renderOwnerChips();
       renderTasks();
     });
   });
+}
+
+// 開頭「>」代表優先；以空白分隔的「#文字」代表版本標籤。
+function parseTaskTitle(taskName) {
+  const raw = String(taskName || '').trim();
+  const priority = raw.startsWith('>');
+  const withoutPriority = priority ? raw.replace(/^>\s*/, '') : raw;
+  const versions = [];
+  const seen = new Set();
+  const cleanName = withoutPriority.replace(/(^|\s)#([^\s#]+)/g, (match, spacing, label) => {
+    const normalized = label.toLocaleLowerCase('zh-Hant');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      versions.push(label);
+    }
+    return spacing;
+  }).replace(/\s{2,}/g, ' ').trim();
+  return { raw, priority, versions, cleanName };
+}
+
+function escapeTaskText(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function renderVersionChips() {
+  if (!versionChips) return;
+  const labels = new Map();
+  appState.tasks.forEach(task => parseTaskTitle(task.taskName).versions.forEach(label => {
+    const key = label.toLocaleLowerCase('zh-Hant');
+    if (!labels.has(key)) labels.set(key, label);
+  }));
+  const versions = [...labels.entries()].sort((a, b) => a[1].localeCompare(b[1], 'zh-Hant', { numeric: true, sensitivity: 'base' }));
+  if (appState.activeVersionFilter !== 'all' && appState.activeVersionFilter !== 'untagged' && !labels.has(appState.activeVersionFilter)) {
+    appState.activeVersionFilter = 'all';
+  }
+  versionChips.innerHTML = [
+    `<button class="chip ${appState.activeVersionFilter === 'all' ? 'active' : ''}" data-version="all">全部版本</button>`,
+    ...versions.map(([key, label]) => `<button class="chip ${appState.activeVersionFilter === key ? 'active' : ''}" data-version="${escapeTaskText(key)}">${escapeTaskText(label)}</button>`),
+    `<button class="chip ${appState.activeVersionFilter === 'untagged' ? 'active' : ''}" data-version="untagged">未標記</button>`
+  ].join('');
+  versionChips.querySelectorAll('[data-version]').forEach(chip => chip.addEventListener('click', () => {
+    appState.activeVersionFilter = chip.dataset.version || 'all';
+    renderVersionChips();
+    renderTasks();
+  }));
 }
 
 // 負責人複選時同時查詢主要與支援；回到單選模式時恢復只查詢主要。
@@ -1186,6 +1236,7 @@ function renderTasks() {
   console.log("【除錯】包含 '!' 或群組有 'Andy' 的任務：", appState.tasks.filter(t => t.taskName.includes('!') || t.taskName.includes('Andy') || t.group.includes('Andy')));
   
   const filteredTasks = appState.tasks.filter(task => {
+    const parsedTitle = parseTaskTitle(task.taskName);
     let matchesOwner = false;
     const activeRoles = appState.activeRoles || ['primary'];
     if (appState.activeOwnerFilters.length === 0) {
@@ -1295,8 +1346,13 @@ function renderTasks() {
     }
 
     const matchesGroup = appState.activeGroupFilter === 'all' || task.group === appState.activeGroupFilter;
+    const normalizedVersions = parsedTitle.versions.map(label => label.toLocaleLowerCase('zh-Hant'));
+    const matchesVersion = appState.activeVersionFilter === 'all'
+      || (appState.activeVersionFilter === 'untagged'
+        ? normalizedVersions.length === 0
+        : normalizedVersions.includes(appState.activeVersionFilter));
 
-    return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial && matchesGroup;
+    return matchesOwner && matchesSearch && matchesStatus && matchesTime && matchesSpecial && matchesGroup && matchesVersion;
   });
 
   appState.filteredTasks = filteredTasks;
@@ -1390,15 +1446,15 @@ function renderTasks() {
        const doneClass = task.isDone ? 'task-done' : '';
        
        // 檢測是否為高優先項目 (開頭為 >) 或 等 Andy 確認項目 (為 !!)
-       const isPriority = task.taskName.trim().startsWith('>');
+       const parsedTitle = parseTaskTitle(task.taskName);
+       const isPriority = parsedTitle.priority;
        const isAndy = task.taskName.trim() === '!!';
        
-       let displayName = task.taskName;
+       let displayName = parsedTitle.cleanName;
        let priorityClass = '';
        let priorityBadge = '';
        
        if (isPriority) {
-         displayName = task.taskName.replace(/^>\s*/, ''); // 去除 > 與隨後的空格
          priorityClass = 'task-priority-high';
          priorityBadge = '<span class="badge-priority">優先</span>';
        } else if (isAndy) {
@@ -1406,6 +1462,7 @@ function renderTasks() {
          priorityClass = 'task-priority-andy';
          priorityBadge = '<span class="badge-andy">待確認</span>';
        }
+        const versionBadges = parsedTitle.versions.map(version => `<span class="badge-version">${escapeTaskText(version)}</span>`).join('');
         const linkIcon = task.taskLink ? ` <a href="${task.taskLink}" target="_blank" class="task-link-icon" title="查看專案超連結" onclick="event.stopPropagation();"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : '';
 
         html += `
@@ -1413,7 +1470,7 @@ function renderTasks() {
             <div class="checkbox-cell">
               <input type="checkbox" ${checkedAttr} disabled class="task-checkbox" data-row="${task.rowNumber}">
             </div>
-            <div class="task-name-cell">${priorityBadge}${displayName}${linkIcon}</div>
+            <div class="task-name-cell">${priorityBadge}${versionBadges}${escapeTaskText(displayName)}${linkIcon}</div>
             <div class="owner-cell" title="支援">
               ${(function() {
                 if (task.coOwners && task.coOwners.length > 0) {
@@ -1779,6 +1836,7 @@ async function handleFormSubmit(e) {
 
     // 重新渲染畫面
     renderStats();
+    renderVersionChips();
     renderTasks();
     attemptCloseDrawer(true);
 
