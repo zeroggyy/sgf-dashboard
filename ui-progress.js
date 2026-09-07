@@ -52,6 +52,9 @@
   let items = [];
   let rawSheetRows = [];
   let theme2Discussions = [];
+  let theme2DiscussionSummary = {};
+  const loadedDiscussionItems = new Set();
+  const loadingDiscussionItems = new Set();
   const expandedDiscussionItems = new Set();
   const expandedArchivedDiscussionItems = new Set();
   let theme2ProjectName = 'SGF 專案';
@@ -641,6 +644,15 @@
     return payload;
   }
 
+  async function fetchTheme2Discussions(itemId) {
+    const separator = theme2ApiUrl.includes('?') ? '&' : '?';
+    const response = await fetch(`${theme2ApiUrl}${separator}key=${encodeURIComponent(theme2ApiKey)}&mode=discussions&itemId=${encodeURIComponent(itemId)}`);
+    const payload = await response.json();
+    if (!response.ok || payload.error || !Array.isArray(payload.discussions)) throw new Error(payload.error || '討論紀錄讀取失敗');
+    theme2Discussions = theme2Discussions.filter(entry => entry.itemId !== itemId).concat(payload.discussions);
+    loadedDiscussionItems.add(itemId);
+  }
+
   function discussionsForItem(itemId) {
     return theme2Discussions
       .filter(entry => entry.itemId === itemId && !entry.hidden)
@@ -654,10 +666,14 @@
   }
 
   function itemHasDiscussion(item, type = '') {
-    return theme2Discussions.some(entry => entry.itemId === item.itemId && !entry.hidden && (!type || entry.type === type || (type === '完成確認' && entry.type === '完成回覆')));
+    if (loadedDiscussionItems.has(item.itemId)) return theme2Discussions.some(entry => entry.itemId === item.itemId && !entry.hidden && (!type || entry.type === type || (type === '完成確認' && entry.type === '完成回覆')));
+    const summary = theme2DiscussionSummary[item.itemId];
+    if (!summary) return false;
+    return type ? Boolean(summary.types?.[type] || (type === '完成確認' && summary.types?.['完成回覆'])) : Number(summary.total) > 0;
   }
 
   function renderDiscussionSection(item) {
+    if (item.itemId && !loadedDiscussionItems.has(item.itemId)) return `<section class="theme2-discussion-section"><div class="theme2-discussion-heading"><div><span class="theme2-kicker">DISCUSSION HISTORY</span><h3><i class="fa-solid fa-circle-notch fa-spin"></i> 討論紀錄載入中</h3></div></div></section>`;
     const records = discussionsForItem(item.itemId);
     const archivedRecords = archivedDiscussionsForItem(item.itemId);
     const expanded = expandedDiscussionItems.has(item.itemId);
@@ -744,7 +760,6 @@
         detailEditorDirty = false;
         detailEditing = false;
         closeDetailModal(true);
-        loadTheme2Api().catch(error => console.warn('Theme 2 background refresh failed', error));
       } catch (error) {
         window.dashboardShowToast(`儲存失敗：${error.message}`, 'error');
         saveButton.disabled = false;
@@ -842,7 +857,6 @@
         applyFilters();
         window.dashboardShowToast('討論紀錄已新增', 'success');
         renderDetail(item);
-        loadTheme2Api().catch(error => console.warn('Theme 2 discussion refresh failed', error));
       } catch (error) {
         window.dashboardShowToast(`新增討論失敗：${error.message}`, 'error');
         saveButton.disabled = false;
@@ -873,6 +887,13 @@
     }));
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
+    if (item.itemId && !loadedDiscussionItems.has(item.itemId) && !loadingDiscussionItems.has(item.itemId)) {
+      loadingDiscussionItems.add(item.itemId);
+      fetchTheme2Discussions(item.itemId)
+        .then(() => { if (modal.classList.contains('open') && !detailEditing) renderDetail(item); })
+        .catch(error => window.dashboardShowToast(`討論紀錄載入失敗：${error.message}`, 'error'))
+        .finally(() => loadingDiscussionItems.delete(item.itemId));
+    }
     document.body.classList.add('body-scroll-lock');
     document.body.classList.add('body-scroll-lock');
   }
@@ -1050,6 +1071,18 @@
       createdAt: String(entry.createdAt || '').trim(),
       hidden: Boolean(entry.hidden)
     })) : [];
+    theme2DiscussionSummary = payload.discussionSummary && typeof payload.discussionSummary === 'object' ? payload.discussionSummary : {};
+    loadedDiscussionItems.clear();
+    if (Array.isArray(payload.discussions)) {
+      theme2Discussions.forEach(entry => loadedDiscussionItems.add(entry.itemId));
+      theme2DiscussionSummary = theme2Discussions.reduce((summary, entry) => {
+        if (entry.hidden) return summary;
+        if (!summary[entry.itemId]) summary[entry.itemId] = { total: 0, types: {} };
+        summary[entry.itemId].total += 1;
+        summary[entry.itemId].types[entry.type] = (summary[entry.itemId].types[entry.type] || 0) + 1;
+        return summary;
+      }, {});
+    }
     rebuildTheme2Items(rawSheetRows);
     finishTheme2Load(statusText, statusIcon);
   }
@@ -1072,12 +1105,13 @@
     }
   }
 
-  async function fetchTheme2Payload() {
+  async function fetchTheme2Payload(forceRefresh = false) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), THEME2_REQUEST_TIMEOUT_MS);
     try {
       const separator = theme2ApiUrl.includes('?') ? '&' : '?';
-      const response = await fetch(`${theme2ApiUrl}${separator}key=${encodeURIComponent(theme2ApiKey)}&refresh=1&_=${Date.now()}`, {
+      const refreshQuery = forceRefresh ? '&refresh=1' : '';
+      const response = await fetch(`${theme2ApiUrl}${separator}key=${encodeURIComponent(theme2ApiKey)}${refreshQuery}&_=${Date.now()}`, {
         signal: controller.signal
       });
       if (!response.ok) throw new Error(`Theme 2 API ${response.status}`);
@@ -1089,7 +1123,7 @@
     }
   }
 
-  async function loadTheme2Api() {
+  async function loadTheme2Api(forceRefresh = false) {
     const initialCache = readTheme2Cache();
     if (initialCache && !rawSheetRows.length) {
       const cachedAt = new Date(initialCache.savedAt).toLocaleString('zh-TW', { hour12: false });
@@ -1100,7 +1134,7 @@
     for (let attempt = 1; attempt <= THEME2_MAX_ATTEMPTS; attempt += 1) {
       try {
         if (attempt > 1) setTheme2ApiStatus('重新連線 1/1', 'fa-rotate', 'loading');
-        const payload = await fetchTheme2Payload();
+        const payload = await fetchTheme2Payload(forceRefresh);
         writeTheme2Cache(payload);
         applyTheme2Payload(payload);
         window.dashboardSetLoading?.(false);
