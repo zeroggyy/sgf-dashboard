@@ -139,7 +139,7 @@
     }
     if (!weapon.detailLoaded) {
       panel.hidden = false;
-      panel.innerHTML = '<div class="theme3-empty"><i class="fa-solid fa-circle-notch fa-spin"></i> 正在讀取此武器的動作與角色語音明細…</div>';
+      panel.innerHTML = '<div class="theme3-empty"><i class="fa-solid fa-circle-notch fa-spin"></i> 正在讀取此武器的音效動作明細…</div>';
       return;
     }
     const isSoundView = state.detailType === 'sound';
@@ -188,7 +188,18 @@
     panel.querySelector('#theme3-batch-cancel')?.addEventListener('click', () => { resetBatchEdit(); renderDetail(); });
     panel.querySelector('#theme3-batch-status')?.addEventListener('change', event => { state.batchStatus = event.target.value; });
     panel.querySelector('#theme3-batch-save')?.addEventListener('click', () => saveBatchStatuses(weapon, allRows, isSoundView));
-    panel.querySelectorAll('[data-theme3-detail-type]').forEach(button => button.addEventListener('click', () => { resetBatchEdit(); state.detailType = button.dataset.theme3DetailType; state.detailStatus = '全部'; state.detailCharacter = '全部'; state.voiceView = button.dataset.theme3DetailType === 'voice' ? 'overview' : 'actions'; renderDetail(); }));
+    panel.querySelectorAll('[data-theme3-detail-type]').forEach(button => button.addEventListener('click', async () => {
+      const selection = state.detailSelection = (state.detailSelection || 0) + 1;
+      const type = button.dataset.theme3DetailType;
+      if (type === 'voice' && !weapon.loadedSections?.has('voice')) {
+        button.disabled = true;
+        button.textContent = '語音讀取中…';
+        const ok = await loadTheme3WeaponDetail(weapon.name, 'voice');
+        if (!ok || state.selected !== weapon.name || selection !== state.detailSelection) { renderDetail(); return; }
+      }
+      resetBatchEdit(); state.detailType = type; state.detailStatus = '全部'; state.detailCharacter = '全部';
+      state.voiceView = type === 'voice' ? 'overview' : 'actions'; renderDetail();
+    }));
     panel.querySelectorAll('[data-theme3-detail-status]').forEach(button => button.addEventListener('click', () => { state.detailStatus = button.dataset.theme3DetailStatus; renderDetail(); }));
     panel.querySelector('#theme3-character-filter')?.addEventListener('change', event => { state.detailCharacter = event.target.value; renderDetail(); });
     panel.querySelectorAll('[data-theme3-character]').forEach(button => button.addEventListener('click', () => { resetBatchEdit(); state.detailCharacter = button.dataset.theme3Character; state.detailStatus = '全部'; state.voiceView = 'actions'; renderDetail(); }));
@@ -232,7 +243,15 @@
     });
   }
 
-  function openActionEditor(weaponName, actionId, voiceKey = '') {
+  let editorLoadSequence = 0;
+  async function openActionEditor(weaponName, actionId, voiceKey = '') {
+    const sequence = ++editorLoadSequence;
+    const existing = weapons.find(item => item.name === weaponName);
+    if (!existing?.loadedSections?.has('discussions')) {
+      window.dashboardShowToast('正在讀取討論紀錄…', 'info');
+      if (!await loadTheme3WeaponDetail(weaponName, 'discussions')) return;
+    }
+    if (sequence !== editorLoadSequence || state.selected !== weaponName) return;
     const { weapon, action } = actionFor(weaponName, actionId);
     const modal = document.getElementById('theme3-action-modal');
     if (!weapon || !action || !modal) return;
@@ -245,9 +264,16 @@
     document.getElementById('theme3-new-discussion').value = '';
     const initialType = state.detailType === 'voice' && voiceKey ? 'voice' : 'sound';
     renderActionEditorTab(weapon, action, initialType, voiceKey || action.voiceEntries?.[0]?.key || '');
-    document.querySelectorAll('[data-theme3-editor-type]').forEach(button => button.onclick = () => {
+    document.querySelectorAll('[data-theme3-editor-type]').forEach(button => button.onclick = async () => {
       stashActionEditorDraft(modal);
       const nextType = button.dataset.theme3EditorType;
+      if (nextType === 'voice' && !weapon.loadedSections?.has('voice')) {
+        button.disabled = true;
+        const ok = await loadTheme3WeaponDetail(weaponName, 'voice');
+        button.disabled = false;
+        if (!ok || sequence !== editorLoadSequence || !modal.classList.contains('open')) return;
+        (action.voiceEntries || []).forEach(entry => { modal._draft.voices[entry.key] ||= { status: entry.voiceStatus }; });
+      }
       renderActionEditorTab(weapon, action, nextType, modal.dataset.voiceKey || action.voiceEntries?.[0]?.key || '');
     });
     document.getElementById('theme3-edit-voice-character').onchange = event => {
@@ -304,6 +330,7 @@
   }
 
   function closeActionEditor() {
+    editorLoadSequence += 1;
     const modal = document.getElementById('theme3-action-modal');
     modal?.classList.remove('open');
     modal?.setAttribute('aria-hidden', 'true');
@@ -381,7 +408,16 @@
     try {
       const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}`);
       if (payload.error || !Array.isArray(payload.weapons)) throw new Error(payload.error || '主題三 API 回傳格式不正確');
-      weapons = payload.weapons.map(normalizeApiWeapon);
+      // 保留同一物件，避免首頁背景同步丟掉已讀明細或進行中的請求。
+      weapons = payload.weapons.map(source => {
+        const next = normalizeApiWeapon(source);
+        const existing = weapons.find(item => item.name === next.name);
+        if (!existing) return next;
+        const actions = existing.actions;
+        Object.assign(existing, next);
+        if (existing.detailLoaded) existing.actions = actions;
+        return existing;
+      });
       saveSummarySnapshot(payload);
       setTheme3ApiStatus('Google Sheet 已連線', 'fa-cloud', 'connected');
       renderStats();
@@ -406,24 +442,49 @@
     }
   }
 
-  async function loadTheme3WeaponDetail(weaponName) {
+  async function loadTheme3WeaponDetail(weaponName, section = 'sound') {
     const weapon = weapons.find(item => item.name === weaponName);
-    if (!weapon || weapon.detailLoaded || weapon.detailLoading || !weapon.hasContent) return;
-    weapon.detailLoading = true;
+    if (!weapon || !weapon.hasContent) return false;
+    weapon.loadedSections ||= new Set();
+    weapon.sectionRequests ||= new Map();
+    if (weapon.loadedSections.has(section)) return true;
+    if (weapon.sectionRequests.has(section)) return weapon.sectionRequests.get(section);
+    const request = (async () => {
     try {
-      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}&weapon=${encodeURIComponent(weaponName)}`, { cache: 'no-store' }, 1);
+      const startedAt = performance.now();
+      const payload = await requestTheme3Json(`${THEME3_API_URL}?key=${encodeURIComponent(THEME3_API_KEY)}&weapon=${encodeURIComponent(weaponName)}&section=${section}`, { cache: 'no-store' }, 1);
       if (payload.error || !payload.weapon) throw new Error(payload.error || '武器明細回傳格式不正確');
-      const detail = normalizeApiWeapon(payload.weapon);
-      weapon.actions = detail.actions.map(action => ({ ...action, voiceEntries: Array.isArray(payload.weapon.actions?.find(source => String(source.id) === action.id)?.voiceEntries) ? payload.weapon.actions.find(source => String(source.id) === action.id).voiceEntries.map(entry => ({ ...entry, voiceStatus: EDITABLE_STATUSES.includes(entry.voiceStatus) ? entry.voiceStatus : ({ '待確認': '未開始', '最終確認': '已確認' }[entry.voiceStatus] || '未開始'), rowNumber: Number(entry.rowNumber) })) : [] }));
-      weapon.detailLoaded = true;
+      // 舊部署沒有 section，仍視為完整明細，避免前後端更新順序造成缺資料。
+      const sections = !payload.section || payload.section === 'all' ? ['sound', 'voice', 'discussions'] : [payload.section];
+      if (sections.includes('sound')) {
+        weapon.actions = normalizeApiWeapon(payload.weapon).actions;
+        weapon.detailLoaded = true;
+      }
+      const sourceById = new Map(payload.weapon.actions.map(action => [String(action.id).trim(), action]));
+      weapon.actions.forEach(action => {
+        const source = sourceById.get(action.id);
+        if (!source) return;
+        if (sections.includes('voice')) action.voiceEntries = (source.voiceEntries || []).map(entry => ({ ...entry, voiceStatus: EDITABLE_STATUSES.includes(entry.voiceStatus) ? entry.voiceStatus : ({ '待確認': '未開始', '最終確認': '已確認' }[entry.voiceStatus] || '未開始'), rowNumber: Number(entry.rowNumber) }));
+        if (sections.includes('discussions')) action.discussions = source.discussions || [];
+      });
+      sections.forEach(value => weapon.loadedSections.add(value));
+      console.info('Theme 3 detail timing', { section, totalMs: Math.round(performance.now() - startedAt), ...payload.diagnostics });
       if (state.selected === weaponName) renderDetail();
+      return true;
     } catch (error) {
       console.error('Theme 3 weapon detail load failed', error);
       const panel = document.getElementById('theme3-detail-panel');
-      if (state.selected === weaponName && panel) panel.innerHTML = `<div class="theme3-empty">無法讀取武器明細：${esc(error.message)}</div>`;
+      if (!weapon.detailLoaded && state.selected === weaponName && panel) {
+        panel.innerHTML = `<div class="theme3-empty">無法讀取武器明細：${esc(error.message)} <button id="theme3-detail-retry" type="button">重試</button></div>`;
+        panel.querySelector('#theme3-detail-retry').onclick = () => loadTheme3WeaponDetail(weaponName, section);
+      } else window.dashboardShowToast(`讀取失敗，可再次點擊重試：${error.message}`, 'error');
+      return false;
     } finally {
-      weapon.detailLoading = false;
+      weapon.sectionRequests.delete(section);
     }
+    })();
+    weapon.sectionRequests.set(section, request);
+    return request;
   }
 
   async function updateTheme3Action(weapon, action, values) {
