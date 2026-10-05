@@ -936,7 +936,28 @@ function applyMainDashboardPayload(result) {
   updateNonsenseQuote();
 }
 
-async function loadData(isBackground = false) {
+function showMainReadFailure(message, options) {
+  document.getElementById('main-read-retry')?.remove();
+  const notice = document.createElement('div');
+  notice.id = 'main-read-retry';
+  notice.setAttribute('role', 'alert');
+  notice.className = 'loading-state';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'btn';
+  retry.textContent = '重新讀取清單';
+  retry.addEventListener('click', async () => {
+    retry.disabled = true;
+    await loadData(true, options); // 只重送 GET，不重複新增或排序。
+    retry.disabled = false;
+  });
+  notice.append(text, retry);
+  taskAccordion.before(notice);
+}
+
+async function loadData(isBackground = false, options = {}) {
   if (!appState.gasUrl) return;
 
   const cached = !isBackground ? readMainDashboardCache() : null;
@@ -945,7 +966,7 @@ async function loadData(isBackground = false) {
     isBackground = true;
   }
 
-  window.dashboardSetLoading?.(!cached, '企劃進度資料載入中，請稍候…');
+  window.dashboardSetLoading?.(!isBackground, '企劃進度資料載入中，請稍候…');
 
   const sortIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
   const originalIconClass = sortIcon ? sortIcon.className : 'fa-solid fa-arrow-down-short-wide';
@@ -966,32 +987,36 @@ async function loadData(isBackground = false) {
     const fetchUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), MAIN_DASHBOARD_REQUEST_TIMEOUT_MS);
-    let response;
+    let result;
     try {
-      response = await fetch(fetchUrl, { signal: controller.signal });
+      const response = await fetch(fetchUrl, { signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      result = await response.json();
     } finally {
       clearTimeout(timeoutId);
     }
-    const result = await response.json();
 
-    if (result.error) {
-      showToast(`載入失敗: ${result.error}`, 'error');
-      showSetupModal();
-      return;
-    }
+    if (result.error) throw new Error(String(result.error));
+    if (!Array.isArray(result.tasks)) throw new Error('API 回傳的任務清單格式不正確');
 
-    localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload: result }));
+    try {
+      localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload: result }));
+    } catch (cacheError) { console.warn('無法儲存本機快取', cacheError); }
     applyMainDashboardPayload(result);
+    document.getElementById('main-read-retry')?.remove();
 
     showToast('資料已成功同步！', 'success');
+    return true;
 
   } catch (err) {
     console.error(err);
-    const cachedMessage = err.name === 'AbortError'
-      ? '連線超過 20 秒，已顯示上次成功資料。'
-      : '連線失敗，已保留上次成功資料。';
-    showToast(cached ? cachedMessage : '連線失敗，請檢查 API 網址或網路狀態。', 'error');
-    if (!cached) showSetupModal();
+    const reason = err.name === 'AbortError' ? '連線超過 20 秒' : err.message;
+    const message = options.afterCreate
+      ? `項目已新增至 Google Sheet，但清單更新失敗（${reason}）。請重新讀取，不要重複新增。`
+      : `清單讀取失敗（${reason}）。已保留目前資料，可重新讀取；若為授權錯誤，請手動檢查 API 設定。`;
+    showToast(message, 'error');
+    showMainReadFailure(message, options);
+    return false;
   } finally {
     window.dashboardSetLoading?.(false);
     if (sortIcon) {
@@ -1809,7 +1834,7 @@ async function handleFormSubmit(e) {
     const success = await syncTaskToGoogleSheet(null, payload);
     if (success) {
       showToast('任務新建成功！正在背景讀取最新進度...', 'success');
-      loadData(true);
+      loadData(true, { afterCreate: true });
       closeDrawer();
     } else {
       showToast('新建任務失敗，請檢查 API 連線。', 'error');
