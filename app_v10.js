@@ -7,7 +7,7 @@ if (window.HTMLCollection && !HTMLCollection.prototype.forEach) {
 }
 
 const MAIN_DASHBOARD_CACHE_KEY = 'sgf_main_last_success_payload';
-const MAIN_DASHBOARD_REQUEST_TIMEOUT_MS = 20000;
+const MAIN_DASHBOARD_REQUEST_TIMEOUT_MS = 45000;
 
 // 專案全域狀態管理
 let appState = {
@@ -983,6 +983,11 @@ async function loadData(isBackground = false, options = {}) {
     }
   }
 
+  const slowTimer = setTimeout(() => {
+    showToast(options.afterCreate
+      ? '項目已新增；Google Sheet 回應較慢，仍在更新清單，請勿重複新增。'
+      : 'Google Sheet 回應較慢，仍在讀取中，請稍候…', 'info');
+  }, 20000);
   try {
     const fetchUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
     const controller = new AbortController();
@@ -1010,14 +1015,17 @@ async function loadData(isBackground = false, options = {}) {
 
   } catch (err) {
     console.error(err);
-    const reason = err.name === 'AbortError' ? '連線超過 20 秒' : err.message;
+    const reason = err.name === 'AbortError' ? `連線超過 ${Math.round(MAIN_DASHBOARD_REQUEST_TIMEOUT_MS / 1000)} 秒` : err.message;
+    const hasData = Boolean(cached || appState.tasks?.length);
     const message = options.afterCreate
       ? `項目已新增至 Google Sheet，但清單更新失敗（${reason}）。請重新讀取，不要重複新增。`
-      : `清單讀取失敗（${reason}）。已保留目前資料，可重新讀取；若為授權錯誤，請手動檢查 API 設定。`;
+      : `清單讀取失敗（${reason}）。${hasData ? '已保留目前資料' : '尚未取得資料'}，可重新讀取；若為授權錯誤，請手動檢查 API 設定。`;
+    if (!hasData && !isBackground) taskAccordion.innerHTML = '';
     showToast(message, 'error');
     showMainReadFailure(message, options);
     return false;
   } finally {
+    clearTimeout(slowTimer);
     window.dashboardSetLoading?.(false);
     if (sortIcon) {
       sortIcon.className = originalIconClass;
