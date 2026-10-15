@@ -8,6 +8,7 @@ if (window.HTMLCollection && !HTMLCollection.prototype.forEach) {
 
 const MAIN_DASHBOARD_CACHE_KEY = 'sgf_main_last_success_payload';
 const MAIN_DASHBOARD_REQUEST_TIMEOUT_MS = 45000;
+let planningWriteVersion = 0;
 
 // 專案全域狀態管理
 let appState = {
@@ -251,6 +252,7 @@ function setupEventListeners() {
   // 新建任務項目按鈕點擊事件
   if (addTaskBtn) {
     addTaskBtn.addEventListener('click', () => {
+      if (taskSubmitInFlight) { showToast('目前仍在儲存，請稍候。', 'info'); return; }
       isCreateMode = true;
       
       // 1. 修改抽屜 UI 至新建狀態
@@ -958,6 +960,7 @@ function showMainReadFailure(message, options) {
 }
 
 async function loadData(isBackground = false, options = {}) {
+  const readVersion = planningWriteVersion;
   if (!appState.gasUrl) return;
 
   const cached = !isBackground ? readMainDashboardCache() : null;
@@ -994,7 +997,7 @@ async function loadData(isBackground = false, options = {}) {
     const timeoutId = setTimeout(() => controller.abort(), MAIN_DASHBOARD_REQUEST_TIMEOUT_MS);
     let result;
     try {
-      const response = await fetch(fetchUrl, { signal: controller.signal });
+      const response = await window.dashboardFetch(fetchUrl, { signal: controller.signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       result = await response.json();
     } finally {
@@ -1003,6 +1006,7 @@ async function loadData(isBackground = false, options = {}) {
 
     if (result.error) throw new Error(String(result.error));
     if (!Array.isArray(result.tasks)) throw new Error('API 回傳的任務清單格式不正確');
+    if (readVersion !== planningWriteVersion) return false; // 不讓寫入前發出的舊 GET 蓋掉新狀態。
 
     try {
       localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload: result }));
@@ -1053,7 +1057,7 @@ async function runSortAndLoad() {
       action: "sortTasks"
     };
 
-    const response = await fetch(postUrl, {
+    const response = await window.dashboardFetch(postUrl, {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -1072,7 +1076,7 @@ async function runSortAndLoad() {
     }
   } catch (err) {
     console.error('Sort Error:', err);
-    showToast('連線失敗，無法執行試算表排序。', 'error');
+    showToast(err.message || '排序結果待確認，請先核對 Sheet。', 'error');
   } finally {
     if (sortIcon) {
       sortIcon.className = originalIconClass;
@@ -1649,6 +1653,7 @@ function getTimelineWeeks() {
 
 // 開啟編輯抽屜並載入資料
 function openDrawer(rowNum) {
+  if (taskSubmitInFlight) { showToast('目前仍在儲存，請稍候。', 'info'); return; }
   isCreateMode = false;
   
   // 還原 UI 至編輯狀態
@@ -1781,6 +1786,7 @@ function isDrawerDirty() {
 
 // 嘗試關閉抽屜 (可觸發防呆詢問)
 function attemptCloseDrawer(force = false) {
+  if (taskSubmitInFlight) { showToast('仍在儲存中，請稍候。', 'info'); return; }
   if (force) {
     closeDrawer();
     return;
@@ -1796,106 +1802,59 @@ function attemptCloseDrawer(force = false) {
 }
 
 // 處理編輯表單提交
+let taskSubmitInFlight = false;
+let lastTaskSyncResult = null;
+let lastTaskSyncError = '';
+function persistPlanningSnapshot() {
+  try { localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload: { tasks: appState.tasks, milestones: appState.milestones, weeksList: appState.weeksList } })); } catch {}
+}
 async function handleFormSubmit(e) {
   e.preventDefault();
+  if (taskSubmitInFlight) return;
   const rowNum = editRowNum.value;
-  const detail = editDetail.value.trim();
-  const taskLink = editTaskLink.value.trim();
-  const taskId = editTaskId.value.trim(); 
-  const owner = editOwnerSelect.value;   
-  const taskName = editTaskName.value.trim(); 
-  const coOwners = Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value);
-
-  if (!taskName) {
-    showToast('專案項目名稱不可為空！', 'error');
-    return;
-  }
-  if (!taskId) {
-    showToast('ID 欄位不可為空！', 'error');
-    return;
-  }
-
-  // 1. 收集進度狀態 (從左側全年歷史時間軸收集所有週別內容)
-  const weeksPayload = {};
-  const timelineTextareas = document.querySelectorAll('.timeline-textarea');
-  timelineTextareas.forEach(textarea => {
-    const weekLabel = textarea.getAttribute('data-week');
-    if (weekLabel) {
-      weeksPayload[weekLabel] = textarea.value.trim();
-    }
+  const values = {
+    detail: editDetail.value.trim(), taskLink: editTaskLink.value.trim(),
+    taskId: editTaskId.value.trim(), taskName: editTaskName.value.trim(),
+    owner: editOwnerSelect.value,
+    coOwners: Array.from(document.querySelectorAll('.co-owner-checkbox:checked')).map(cb => cb.value),
+    isDone: editIsDone.checked
+  };
+  if (!values.taskName || !values.taskId) { showToast('請填寫項目名稱與 ID。', 'error'); return; }
+  const task = isCreateMode ? null : appState.tasks.find(t => t.rowNumber == rowNum);
+  if (!isCreateMode && !task) return;
+  const original = task ? { ...drawerOriginalState, coOwners: JSON.parse(drawerOriginalState.coOwners), weeks: JSON.parse(drawerOriginalState.weeks) } : null;
+  const weeks = {};
+  document.querySelectorAll('.timeline-textarea').forEach(input => {
+    const key = input.getAttribute('data-week');
+    if (key && (!original || input.value.trim() !== String(original.weeks?.[key] || ''))) weeks[key] = input.value.trim();
   });
-
-  if (isCreateMode) {
-    // === 新增任務模式 ===
-    showToast('正在新增任務到 Google Sheet...', 'info');
-    const payload = {
-      action: "createTask",
-      detail: detail,
-      taskId: taskId,
-      taskName: taskName,
-      owner: owner,
-      coOwners: coOwners,
-      taskLink: taskLink,
-      weeks: weeksPayload
-    };
-
-    const success = await syncTaskToGoogleSheet(null, payload);
-    if (success) {
-      showToast('任務新建成功！正在背景讀取最新進度...', 'success');
-      loadData(true, { afterCreate: true });
-      closeDrawer();
-    } else {
-      showToast('新建任務失敗，請檢查 API 連線。', 'error');
-    }
-  } else {
-    // === 傳統編輯模式 ===
-    const isDone = editIsDone.checked;
-    const task = appState.tasks.find(t => t.rowNumber == rowNum);
-    if (!task) return;
-    
-    const updatedWeeks = { ...task.weeks, ...weeksPayload };
-
-    // 更新本地狀態
-    updateLocalTask(rowNum, {
-      detail: detail,
-      taskId: taskId,
-      taskName: taskName,
-      owner: owner,
-      coOwners: coOwners,
-      isDone: isDone,
-      taskLink: taskLink,
-      weeks: updatedWeeks
-    });
-
-    // 重新渲染畫面
-    renderStats();
-    renderVersionChips();
-    renderTasks();
-    attemptCloseDrawer(true);
-
-    // 送出 POST 到 Google Apps Script 同步
-    showToast('正在將變更同步到 Google Sheet...', 'info');
-    const payload = {
-      action: "updateTask",
-      rowNumber: rowNum,
-      detail: detail,
-      taskId: taskId,     
-      taskName: taskName, 
-      owner: owner,       
-      coOwners: coOwners,
-      isDone: isDone,     
-      taskLink: taskLink, 
-      weeks: weeksPayload 
-    };
-
+  const creating = isCreateMode;
+  const payload = creating ? { action: 'createTask', ...values, weeks } : {
+    action: 'updateTask', rowNumber: rowNum, expectedTaskId: drawerOriginalState.taskId,
+    expectedTaskName: drawerOriginalState.taskName, weeks
+  };
+  if (!creating) Object.entries(values).forEach(([key, value]) => {
+    if (JSON.stringify(value) !== JSON.stringify(original[key])) payload[key] = value;
+  });
+  taskSubmitInFlight = true;
+  const button = document.getElementById('save-task-btn');
+  if (button) button.disabled = true;
+  try {
+    showToast('正在儲存，請保留此視窗…', 'info');
     const success = await syncTaskToGoogleSheet(rowNum, payload);
-    if (success) {
-      showToast('同步成功！正在背景更新最新狀態...', 'success');
-      loadData(true); 
-    } else {
-      showToast('同步失敗，請檢查 API 設定並點擊手動同步。', 'error');
-      loadData(true); 
-    }
+    if (!success) { showToast(lastTaskSyncError || '儲存結果待確認；修改內容保留在編輯視窗。', 'error'); return; }
+    planningWriteVersion++;
+    if (creating) {
+      if (lastTaskSyncResult.task) appState.tasks.push(lastTaskSyncResult.task);
+      else { loadData(true, { afterCreate: true }); } // 舊部署相容，不偽造後端列號。
+    } else updateLocalTask(rowNum, { ...values, weeks: { ...task.weeks, ...weeks } });
+    persistPlanningSnapshot();
+    renderStats(); renderOwnerChips(); renderVersionChips(); renderTasks();
+    closeDrawer();
+    showToast(creating ? '項目已新增到本機，結束後請同步 Google Sheet。' : '變更已儲存到本機，結束後請同步 Google Sheet。', 'success');
+  } finally {
+    taskSubmitInFlight = false;
+    if (button) button.disabled = false;
   }
 }
 
@@ -1905,7 +1864,7 @@ async function syncTaskToGoogleSheet(rowNum, payload) {
     const postUrl = `${appState.gasUrl}?key=${encodeURIComponent(appState.apiKey)}`;
     
     // 由於 GAS Web App 限制，直接使用 POST 需要發送 JSON payload
-    const response = await fetch(postUrl, {
+    const response = await window.dashboardFetch(postUrl, {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -1915,9 +1874,13 @@ async function syncTaskToGoogleSheet(rowNum, payload) {
     });
 
     const result = await response.json();
+    lastTaskSyncResult = result;
+    lastTaskSyncError = result.error || '';
     return result.success === true;
   } catch (err) {
     console.error('Sync Error:', err);
+    lastTaskSyncError = err.message;
+    showToast(err.message, 'error');
     return false;
   }
 }
@@ -2438,7 +2401,7 @@ function setupMilestoneEditModalListeners() {
     
     const success = await syncTaskToGoogleSheet(rowNumber, payload);
     if (success) {
-      showToast('時程內容更新成功！', 'success');
+      showToast('時程已儲存到本機，結束後請同步 Google Sheet。', 'success');
       
       // 1. 更新本地狀態 appState.milestones
       const existingIdx = appState.milestones.findIndex(m => m.rowNumber == rowNumber);
@@ -2460,7 +2423,7 @@ function setupMilestoneEditModalListeners() {
       
       closeEditor();
     } else {
-      showToast('更新失敗，請確認 API 連線。', 'error');
+      showToast(lastTaskSyncError || '更新結果待確認，請核對 Sheet。', 'error');
     }
   };
   
