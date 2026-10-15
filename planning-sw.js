@@ -1,5 +1,5 @@
-const PLANNING_CACHE = 'sgf-planning-shell-v1';
-const PLANNING_FILES = ['index.html', 'style.css?v=1.2.3', 'dashboard-api.js?v=1.0.0', 'dashboard-shared.js?v=1.3.0', 'app_v10.js?v=1.5.0', 'planning-offline.js?v=1.0.0', 'dashboard-navigation.js?v=1.3.0'];
+const PLANNING_CACHE = 'sgf-planning-shell-v3';
+const PLANNING_FILES = ['index.html', 'style.css?v=1.2.3', 'dashboard-api.js?v=1.0.0', 'dashboard-shared.js?v=1.3.0', 'app_v10.js?v=1.5.1', 'planning-offline.js?v=1.1.0', 'dashboard-navigation.js?v=1.3.0'];
 self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('message', event => {

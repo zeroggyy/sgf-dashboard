@@ -1,10 +1,14 @@
 /* Planning-only workspace. One IndexedDB record atomically holds snapshot + outbox.
- * No network writes occur outside the explicit Sync action. */
+ * Meeting sessions only write through explicit Sync; normal mode uses the live API. */
 (() => {
   const clone = value => structuredClone(value);
   const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const nativeFetch = window.fetch.bind(window);
   const scope = appState.gasUrl;
+  const onlineSave = syncTaskToGoogleSheet;
+  let readGeneration = 0, onlineMessage = '正在讀取 Sheet…';
+  const inSession = () => Boolean(workspace && (workspace.active || workspace.queue.length));
+  window.planningIsOfflineSession = inSession;
   let db, workspace, busy = false, saving = false, revision = 0;
   const ready = new Promise((resolve, reject) => {
     const request = indexedDB.open('sgf-planning-offline', 1);
@@ -18,6 +22,9 @@
       request.onerror = () => reject(request.error);
     });
     revision = workspace.revision;
+    // Old workspaces were always offline. Preserve pending work, but let empty
+    // legacy snapshots return to automatic online reads.
+    if (workspace.queue.length) workspace.active = true;
   });
   ready.catch(error => { console.error(error); });
   async function commit(next) {
@@ -42,8 +49,22 @@
   function snapshot() { return clone({ tasks: appState.tasks, milestones: appState.milestones, weeksList: appState.weeksList }); }
   function status() {
     const el = document.getElementById('planning-offline-status');
-    if (el) el.textContent = `${navigator.onLine ? '本機工作模式' : '離線中'} · ${workspace?.queue.length || 0} 筆待同步 · ${workspace?.preparedAt ? '資料準備：' + new Date(workspace.preparedAt).toLocaleString() : '尚未準備離線資料'}`;
+    if (el) el.textContent = inSession()
+      ? `${navigator.onLine ? '離線工作階段' : '離線中'} · ${workspace.queue.length} 筆待同步 · 資料準備：${new Date(workspace.preparedAt).toLocaleString()}`
+      : `線上模式 · ${onlineMessage}`;
     document.querySelectorAll('[data-offline-action]').forEach(b => b.disabled = busy);
+    const start = document.getElementById('planning-prepare');
+    if (start) start.disabled = busy || inSession();
+    const syncButton = document.getElementById('planning-sync');
+    if (syncButton) { syncButton.hidden = !inSession(); syncButton.style.display = inSession() ? '' : 'none'; syncButton.textContent = '同步並結束離線工作'; }
+    for (const id of ['save-task-btn', 'save-milestone-modal-btn']) {
+      const button = document.getElementById(id);
+      if (button) button.textContent = inSession() ? '儲存到本機' : '儲存至 Google Sheet';
+    }
+    const help = document.getElementById('planning-mode-help');
+    if (help) help.textContent = inSession()
+      ? '修改先儲存到本機，結束後手動同步。同步失敗或有衝突會保留此工作階段。'
+      : '平時自動讀取 Sheet，儲存直接寫回。開會前按「開始離線工作」，才會將修改保存在本機。';
   }
   function apply() {
     applyMainDashboardPayload(clone(workspace.snapshot));
@@ -51,14 +72,32 @@
     status();
   }
   async function readRemote() {
-    const response = await window.dashboardFetch(`${scope}?key=${encodeURIComponent(appState.apiKey)}&fresh=1`);
+    const response = await planningRead(`${scope}?key=${encodeURIComponent(appState.apiKey)}&fresh=1`);
     const value = await response.json();
     if (value.error || !Array.isArray(value.tasks) || !Array.isArray(value.milestones) || !Array.isArray(value.weeksList)) throw new Error(value.error || '資料格式不正確');
     return value;
   }
+  function planningRead(url) {
+    if (typeof window.dashboardFetch !== 'function') {
+      throw new Error('共用連線程式 dashboard-api.js 未成功載入。請將此檔案上傳到與 index.html 相同的目錄，等待網站部署完成後按 Ctrl+F5。已存本機的修改仍保留，請勿清除網站資料。');
+    }
+    return window.dashboardFetch(url);
+  }
   async function shell() {
     if (!('serviceWorker' in navigator)) throw new Error('此瀏覽器不支援離線頁面，請使用 HTTPS 或 localhost。');
-    await navigator.serviceWorker.register('./planning-sw.js', { scope: './' });
+    const registration = await navigator.serviceWorker.register('./planning-sw.js', { scope: './' });
+    const installing = registration.installing;
+    if (installing && installing.state !== 'activated') {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { installing.removeEventListener('statechange', changed); reject(new Error('離線程式更新逾時，請稍後重試。')); }, 30000);
+        function changed() {
+          if (!['activated', 'redundant'].includes(installing.state)) return;
+          clearTimeout(timer); installing.removeEventListener('statechange', changed);
+          installing.state === 'activated' ? resolve() : reject(new Error('離線程式更新失敗，請重新載入頁面。'));
+        }
+        installing.addEventListener('statechange', changed); changed();
+      });
+    }
     const reg = await navigator.serviceWorker.ready;
     await new Promise((resolve, reject) => {
       const channel = new MessageChannel();
@@ -69,21 +108,32 @@
   }
   async function prepare() {
     await ready;
-    if (workspace.queue.length) throw new Error('請先同步待處理修改；準備資料不會覆蓋本機工作。');
+    if (inSession()) throw new Error('已有離線工作階段，請先同步並結束。');
+    if (isDrawerDirty() || document.getElementById('milestone-edit-modal').classList.contains('open')) throw new Error('請先儲存或關閉編輯視窗，再開始離線工作。');
+    ++readGeneration;
     const payload = await readRemote();
     await shell();
-    await commit({ ...workspace, snapshot: payload, preparedAt: Date.now() });
-    apply(); showToast('離線資料與頁面已準備完成，可以開始使用。', 'success');
+    await commit({ ...workspace, active: true, snapshot: payload, preparedAt: Date.now() });
+    apply(); showToast('已開始離線工作，修改請儲存到本機。', 'success');
   }
-  // Replace the initial/background GET: a saved workspace always wins, never refresh
-  // over pending edits. First-time users must explicitly prepare their workspace.
   loadData = async () => {
+    const generation = ++readGeneration;
     try {
       await ready;
-      if (workspace.snapshot) { apply(); return true; }
-      taskAccordion.textContent = '請先按「準備離線資料」，下載企劃任務、週進度與時程。';
-      status(); return false;
-    } catch (error) { showToast(error.message, 'error'); return false; }
+      if (inSession()) { apply(); return true; }
+      const payload = await readRemote();
+      if (generation !== readGeneration || inSession() || busy) return false;
+      applyMainDashboardPayload(payload);
+      try { localStorage.setItem(MAIN_DASHBOARD_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload })); } catch {}
+      onlineMessage = '已讀取 Sheet 最新資料'; status(); return true;
+    } catch (error) {
+      if (generation !== readGeneration || inSession()) return false;
+      const cache = readMainDashboardCache();
+      if (cache) applyMainDashboardPayload(cache.payload);
+      else taskAccordion.textContent = '尚未取得 Sheet 資料，請檢查連線後按「重新讀取 Sheet」。';
+      onlineMessage = cache ? '讀取失敗，顯示上次快取（非即時資料）' : '讀取失敗';
+      status(); showToast(error.message, 'error'); return false;
+    }
   };
   runSortAndLoad = async () => {
     appState.tasks.sort((a, b) => String(a.taskId).localeCompare(String(b.taskId), undefined, { numeric: true }));
@@ -109,6 +159,11 @@
     try {
       await ready;
       if (busy) throw new Error('同步進行中，請稍後再儲存。');
+      if (!inSession()) {
+        const result = await onlineSave(row, payload);
+        if (result) { ++readGeneration; onlineMessage = '變更已寫入 Sheet'; status(); }
+        return result;
+      }
       if (!workspace.snapshot) throw new Error('請先準備離線資料。');
       const next = clone(workspace), body = clone(payload);
       const list = body.action === 'updateMilestone' ? next.snapshot.milestones : next.snapshot.tasks;
@@ -166,8 +221,10 @@
   }
   async function sync() {
     await ready;
-    if (!workspace.queue.length) { showToast('沒有待同步的修改。', 'info'); return; }
-    const capability = await (await window.dashboardFetch(`${scope}?key=${encodeURIComponent(appState.apiKey)}&mode=capabilities`)).json();
+    if (isDrawerDirty() || document.getElementById('milestone-edit-modal').classList.contains('open')) throw new Error('請先儲存或關閉編輯視窗，再結束離線工作。');
+    if (!inSession()) return;
+    if (!workspace.queue.length) { await finishSession(); return; }
+    const capability = await (await planningRead(`${scope}?key=${encodeURIComponent(appState.apiKey)}&mode=capabilities`)).json();
     if (capability.planningOffline !== 'cas-v1') throw new Error('請先部署新版企劃 Apps Script（支援離線衝突核對），本機修改仍保留。');
     let completed = 0;
     for (const saved of [...workspace.queue]) {
@@ -192,7 +249,18 @@
       await commit(done); completed++;
     }
     apply(); renderPending();
-    showToast(`已同步 ${completed} 筆，剩餘 ${workspace.queue.length} 筆。`, workspace.queue.length ? 'info' : 'success');
+    if (!workspace.queue.length) await finishSession();
+    else showToast(`已同步 ${completed} 筆，剩餘 ${workspace.queue.length} 筆，離線工作仍保留。`, 'info');
+  }
+  async function finishSession() {
+    // Do not exit before a fresh read succeeds: retrying with an empty queue only
+    // downloads latest data, never repeats completed writes.
+    let payload;
+    try { payload = await readRemote(); }
+    catch (error) { throw new Error('修改已無待同步項目，但最新資料讀取失敗；離線工作保留，請再次按同步並結束。' + error.message); }
+    await commit({ ...workspace, active: false, snapshot: payload });
+    apply(); onlineMessage = '已同步並讀取 Sheet 最新資料'; status();
+    showToast('已結束離線工作，回到線上模式。', 'success');
   }
   async function mark(op, values) {
     const next = clone(workspace);
@@ -207,7 +275,7 @@
       if (op.attempted && op.error) {
         const check = document.createElement('button'); check.className = 'btn'; check.textContent = '查詢提交狀態與最新 Sheet 資料';
         check.onclick = () => perform(async () => {
-          const receipt = await (await window.dashboardFetch(`${scope}?key=${encodeURIComponent(appState.apiKey)}&mode=writeReceipt&requestId=${encodeURIComponent(op.wire.requestId)}`)).json();
+          const receipt = await (await planningRead(`${scope}?key=${encodeURIComponent(appState.apiKey)}&mode=writeReceipt&requestId=${encodeURIComponent(op.wire.requestId)}`)).json();
           if (receipt.error) throw new Error(receipt.error);
           const latest = await readRemote();
           const rows = op.kind === 'updateMilestone' ? latest.milestones.filter(t => t.date === op.identity) : latest.tasks.filter(t => t.taskId === (op.body.taskId || op.identity));
@@ -279,10 +347,16 @@
   window.addEventListener('DOMContentLoaded', () => {
     const panel = document.createElement('section'); panel.id = 'planning-offline-panel';
     panel.style.cssText = 'margin:1rem;padding:1rem;border:2px solid currentColor;background:var(--bg-color,#fffaf0)';
-    panel.innerHTML = '<p id="planning-offline-status" role="status">正在開啟本機資料…</p><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn" data-offline-action id="planning-prepare">準備離線資料</button><button class="btn" data-offline-action id="planning-sync">同步 Google Sheet</button><button class="btn" data-offline-action id="planning-export">匯出本機備份</button></div><small>編輯後請按「儲存到本機」。同步前其他人看不到修改。外部文件與未下載的圖片需要網路。</small><details><summary>待同步項目與衝突處理</summary><div id="planning-pending"></div></details>';
+    panel.innerHTML = '<p id="planning-offline-status" role="status">正在開啟本機資料…</p><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn" data-offline-action id="planning-prepare">開始離線工作</button><button class="btn" data-offline-action id="planning-sync" hidden>同步並結束離線工作</button><button class="btn" data-offline-action id="planning-reload">重新讀取 Sheet</button><button class="btn" data-offline-action id="planning-export">匯出本機備份</button></div><small id="planning-mode-help"></small><details><summary>待同步項目與衝突處理</summary><div id="planning-pending"></div></details>';
     taskAccordion.before(panel);
     document.getElementById('planning-prepare').onclick = () => perform(prepare);
     document.getElementById('planning-sync').onclick = () => perform(sync);
+    document.getElementById('planning-reload').onclick = () => {
+      if (busy || saving || taskSubmitInFlight) return;
+      if (inSession()) { showToast('離線工作期間保留本機資料，請先同步並結束。', 'info'); return; }
+      if (isDrawerDirty() || document.getElementById('milestone-edit-modal').classList.contains('open')) { showToast('請先儲存或關閉編輯視窗。', 'info'); return; }
+      loadData();
+    };
     document.getElementById('planning-export').onclick = () => perform(async () => {
       await ready;
       const url = URL.createObjectURL(new Blob([JSON.stringify(workspace, null, 2)], { type: 'application/json' }));

@@ -1851,7 +1851,7 @@ async function handleFormSubmit(e) {
     persistPlanningSnapshot();
     renderStats(); renderOwnerChips(); renderVersionChips(); renderTasks();
     closeDrawer();
-    showToast(creating ? '項目已新增到本機，結束後請同步 Google Sheet。' : '變更已儲存到本機，結束後請同步 Google Sheet。', 'success');
+    showToast(window.planningIsOfflineSession?.() ? (creating ? '項目已新增到本機，結束後請同步 Google Sheet。' : '變更已儲存到本機，結束後請同步 Google Sheet。') : '變更已儲存至 Google Sheet。', 'success');
   } finally {
     taskSubmitInFlight = false;
     if (button) button.disabled = false;
@@ -2401,7 +2401,7 @@ function setupMilestoneEditModalListeners() {
     
     const success = await syncTaskToGoogleSheet(rowNumber, payload);
     if (success) {
-      showToast('時程已儲存到本機，結束後請同步 Google Sheet。', 'success');
+      showToast(window.planningIsOfflineSession?.() ? '時程已儲存到本機，結束後請同步 Google Sheet。' : '時程已儲存至 Google Sheet。', 'success');
       
       // 1. 更新本地狀態 appState.milestones
       const existingIdx = appState.milestones.findIndex(m => m.rowNumber == rowNumber);
